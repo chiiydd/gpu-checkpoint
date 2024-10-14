@@ -1,5 +1,5 @@
 
-#include "cuda_hook.hpp"
+#include "cuda_hook.h"
 
 
 int main(){
