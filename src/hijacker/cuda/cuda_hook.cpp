@@ -1,7 +1,7 @@
 
 // auto generate 378 apis
 
-#include<cuda.h>
+#include "cuda_subset.h"
 #include "hook.h"
 #include "macro_common.h"
 #include "trace_profile.h"
