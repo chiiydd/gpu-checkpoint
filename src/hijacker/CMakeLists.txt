@@ -11,7 +11,6 @@ if (USE_CUDA)
     
     add_library(hijacker SHARED ${HIJACK_CUDA_SRC_FILES})
     target_compile_options(hijacker PUBLIC ${HIJACKER_COMPILE_FLAGS})
-    target_link_libraries(hijacker PUBLIC -lcuda)
 endif()
 
 
