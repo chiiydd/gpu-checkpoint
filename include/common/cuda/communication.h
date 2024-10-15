@@ -1,7 +1,7 @@
 #include <cstddef>
 enum cuda_call{
-    CudaMalloc,
-    CudaFree,
+    CudaMemMalloc,
+    CudaMemFree,
     CudaLaunchKernel,
     CudaMemcpy,
 };
@@ -12,12 +12,12 @@ typedef struct {
 
     union{
         struct{
-            void **devPtr;
+            CUdeviceptr *dptr;
             size_t size;
-        }cudaMalloc;
+        }cudaMemMalloc;
 
         struct{
-            void *devPtr;
+            CUdeviceptr dptr;
         }cudaFree;
         
         struct{

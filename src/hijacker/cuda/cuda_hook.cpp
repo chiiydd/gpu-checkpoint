@@ -1,10 +1,11 @@
 
-// auto generate 378 apis
+// auto generate 471 apis
 
 #include "cuda_subset.h"
 #include "hook.h"
 #include "macro_common.h"
 #include "trace_profile.h"
+#include <cstdio>
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuGetErrorString(CUresult error, const char * * pStr) {
     HOOK_TRACE_PROFILE("cuGetErrorString");
@@ -142,6 +143,14 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetDefaultMemPool(CUmemoryPool * po
     return func_entry(pool_out, dev);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetExecAffinitySupport(int * pi, CUexecAffinityType type, CUdevice dev) {
+    HOOK_TRACE_PROFILE("cuDeviceGetExecAffinitySupport");
+    using func_ptr = CUresult (*)(int *, CUexecAffinityType, CUdevice);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetExecAffinitySupport"));
+    HOOK_CHECK(func_entry);
+    return func_entry(pi, type, dev);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuFlushGPUDirectRDMAWrites(CUflushGPUDirectRDMAWritesTarget target, CUflushGPUDirectRDMAWritesScope scope) {
     HOOK_TRACE_PROFILE("cuFlushGPUDirectRDMAWrites");
     using func_ptr = CUresult (*)(CUflushGPUDirectRDMAWritesTarget, CUflushGPUDirectRDMAWritesScope);
@@ -204,14 +213,6 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuDevicePrimaryCtxReset(CUdevice dev) {
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDevicePrimaryCtxReset"));
     HOOK_CHECK(func_entry);
     return func_entry(dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetExecAffinitySupport(int * pi, CUexecAffinityType type, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceGetExecAffinitySupport");
-    using func_ptr = CUresult (*)(int *, CUexecAffinityType, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetExecAffinitySupport"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pi, type, dev);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxCreate(CUcontext * pctx, unsigned int flags, CUdevice dev) {
@@ -286,6 +287,22 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxGetFlags(unsigned int * flags) {
     return func_entry(flags);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxSetFlags(unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuCtxSetFlags");
+    using func_ptr = CUresult (*)(unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxSetFlags"));
+    HOOK_CHECK(func_entry);
+    return func_entry(flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxGetId(CUcontext ctx, unsigned long long * ctxId) {
+    HOOK_TRACE_PROFILE("cuCtxGetId");
+    using func_ptr = CUresult (*)(CUcontext, unsigned long long *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetId"));
+    HOOK_CHECK(func_entry);
+    return func_entry(ctx, ctxId);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxSynchronize(void ) {
     HOOK_TRACE_PROFILE("cuCtxSynchronize");
     using func_ptr = CUresult (*)(void);
@@ -322,22 +339,6 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxSetCacheConfig(CUfunc_cache config) {
     HOOK_TRACE_PROFILE("cuCtxSetCacheConfig");
     using func_ptr = CUresult (*)(CUfunc_cache);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxSetCacheConfig"));
-    HOOK_CHECK(func_entry);
-    return func_entry(config);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxGetSharedMemConfig(CUsharedconfig * pConfig) {
-    HOOK_TRACE_PROFILE("cuCtxGetSharedMemConfig");
-    using func_ptr = CUresult (*)(CUsharedconfig *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetSharedMemConfig"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pConfig);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxSetSharedMemConfig(CUsharedconfig config) {
-    HOOK_TRACE_PROFILE("cuCtxSetSharedMemConfig");
-    using func_ptr = CUresult (*)(CUsharedconfig);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxSetSharedMemConfig"));
     HOOK_CHECK(func_entry);
     return func_entry(config);
 }
@@ -390,6 +391,22 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxDetach(CUcontext ctx) {
     return func_entry(ctx);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxGetSharedMemConfig(CUsharedconfig * pConfig) {
+    HOOK_TRACE_PROFILE("cuCtxGetSharedMemConfig");
+    using func_ptr = CUresult (*)(CUsharedconfig *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetSharedMemConfig"));
+    HOOK_CHECK(func_entry);
+    return func_entry(pConfig);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxSetSharedMemConfig(CUsharedconfig config) {
+    HOOK_TRACE_PROFILE("cuCtxSetSharedMemConfig");
+    using func_ptr = CUresult (*)(CUsharedconfig);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxSetSharedMemConfig"));
+    HOOK_CHECK(func_entry);
+    return func_entry(config);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuModuleLoad(CUmodule * module, const char * fname) {
     HOOK_TRACE_PROFILE("cuModuleLoad");
     using func_ptr = CUresult (*)(CUmodule *, const char *);
@@ -430,6 +447,14 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuModuleUnload(CUmodule hmod) {
     return func_entry(hmod);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuModuleGetLoadingMode(CUmoduleLoadingMode * mode) {
+    HOOK_TRACE_PROFILE("cuModuleGetLoadingMode");
+    using func_ptr = CUresult (*)(CUmoduleLoadingMode *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleGetLoadingMode"));
+    HOOK_CHECK(func_entry);
+    return func_entry(mode);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuModuleGetFunction(CUfunction * hfunc, CUmodule hmod, const char * name) {
     HOOK_TRACE_PROFILE("cuModuleGetFunction");
     using func_ptr = CUresult (*)(CUfunction *, CUmodule, const char *);
@@ -438,28 +463,28 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuModuleGetFunction(CUfunction * hfunc, CUm
     return func_entry(hfunc, hmod, name);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuModuleGetFunctionCount(unsigned int * count, CUmodule mod) {
+    HOOK_TRACE_PROFILE("cuModuleGetFunctionCount");
+    using func_ptr = CUresult (*)(unsigned int *, CUmodule);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleGetFunctionCount"));
+    HOOK_CHECK(func_entry);
+    return func_entry(count, mod);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuModuleEnumerateFunctions(CUfunction * functions, unsigned int numFunctions, CUmodule mod) {
+    HOOK_TRACE_PROFILE("cuModuleEnumerateFunctions");
+    using func_ptr = CUresult (*)(CUfunction *, unsigned int, CUmodule);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleEnumerateFunctions"));
+    HOOK_CHECK(func_entry);
+    return func_entry(functions, numFunctions, mod);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuModuleGetGlobal(CUdeviceptr * dptr, size_t * bytes, CUmodule hmod, const char * name) {
     HOOK_TRACE_PROFILE("cuModuleGetGlobal");
     using func_ptr = CUresult (*)(CUdeviceptr *, size_t *, CUmodule, const char *);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleGetGlobal"));
     HOOK_CHECK(func_entry);
     return func_entry(dptr, bytes, hmod, name);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuModuleGetTexRef(CUtexref * pTexRef, CUmodule hmod, const char * name) {
-    HOOK_TRACE_PROFILE("cuModuleGetTexRef");
-    using func_ptr = CUresult (*)(CUtexref *, CUmodule, const char *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleGetTexRef"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pTexRef, hmod, name);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuModuleGetSurfRef(CUsurfref * pSurfRef, CUmodule hmod, const char * name) {
-    HOOK_TRACE_PROFILE("cuModuleGetSurfRef");
-    using func_ptr = CUresult (*)(CUsurfref *, CUmodule, const char *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleGetSurfRef"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pSurfRef, hmod, name);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuLinkCreate(unsigned int numOptions, CUjit_option * options, void * * optionValues, CUlinkState * stateOut) {
@@ -500,6 +525,150 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuLinkDestroy(CUlinkState state) {
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLinkDestroy"));
     HOOK_CHECK(func_entry);
     return func_entry(state);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuModuleGetTexRef(CUtexref * pTexRef, CUmodule hmod, const char * name) {
+    HOOK_TRACE_PROFILE("cuModuleGetTexRef");
+    using func_ptr = CUresult (*)(CUtexref *, CUmodule, const char *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleGetTexRef"));
+    HOOK_CHECK(func_entry);
+    return func_entry(pTexRef, hmod, name);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuModuleGetSurfRef(CUsurfref * pSurfRef, CUmodule hmod, const char * name) {
+    HOOK_TRACE_PROFILE("cuModuleGetSurfRef");
+    using func_ptr = CUresult (*)(CUsurfref *, CUmodule, const char *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleGetSurfRef"));
+    HOOK_CHECK(func_entry);
+    return func_entry(pSurfRef, hmod, name);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuLibraryLoadData(CUlibrary * library, const void * code, CUjit_option * jitOptions, void * * jitOptionsValues, unsigned int numJitOptions, CUlibraryOption * libraryOptions, void * * libraryOptionValues, unsigned int numLibraryOptions) {
+    HOOK_TRACE_PROFILE("cuLibraryLoadData");
+    using func_ptr = CUresult (*)(CUlibrary *, const void *, CUjit_option *, void * *, unsigned int, CUlibraryOption *, void * *, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryLoadData"));
+    HOOK_CHECK(func_entry);
+    return func_entry(library, code, jitOptions, jitOptionsValues, numJitOptions, libraryOptions, libraryOptionValues, numLibraryOptions);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuLibraryLoadFromFile(CUlibrary * library, const char * fileName, CUjit_option * jitOptions, void * * jitOptionsValues, unsigned int numJitOptions, CUlibraryOption * libraryOptions, void * * libraryOptionValues, unsigned int numLibraryOptions) {
+    HOOK_TRACE_PROFILE("cuLibraryLoadFromFile");
+    using func_ptr = CUresult (*)(CUlibrary *, const char *, CUjit_option *, void * *, unsigned int, CUlibraryOption *, void * *, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryLoadFromFile"));
+    HOOK_CHECK(func_entry);
+    return func_entry(library, fileName, jitOptions, jitOptionsValues, numJitOptions, libraryOptions, libraryOptionValues, numLibraryOptions);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuLibraryUnload(CUlibrary library) {
+    HOOK_TRACE_PROFILE("cuLibraryUnload");
+    using func_ptr = CUresult (*)(CUlibrary);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryUnload"));
+    HOOK_CHECK(func_entry);
+    return func_entry(library);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuLibraryGetKernel(CUkernel * pKernel, CUlibrary library, const char * name) {
+    HOOK_TRACE_PROFILE("cuLibraryGetKernel");
+    using func_ptr = CUresult (*)(CUkernel *, CUlibrary, const char *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryGetKernel"));
+    HOOK_CHECK(func_entry);
+    return func_entry(pKernel, library, name);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuLibraryGetKernelCount(unsigned int * count, CUlibrary lib) {
+    HOOK_TRACE_PROFILE("cuLibraryGetKernelCount");
+    using func_ptr = CUresult (*)(unsigned int *, CUlibrary);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryGetKernelCount"));
+    HOOK_CHECK(func_entry);
+    return func_entry(count, lib);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuLibraryEnumerateKernels(CUkernel * kernels, unsigned int numKernels, CUlibrary lib) {
+    HOOK_TRACE_PROFILE("cuLibraryEnumerateKernels");
+    using func_ptr = CUresult (*)(CUkernel *, unsigned int, CUlibrary);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryEnumerateKernels"));
+    HOOK_CHECK(func_entry);
+    return func_entry(kernels, numKernels, lib);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuLibraryGetModule(CUmodule * pMod, CUlibrary library) {
+    HOOK_TRACE_PROFILE("cuLibraryGetModule");
+    using func_ptr = CUresult (*)(CUmodule *, CUlibrary);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryGetModule"));
+    HOOK_CHECK(func_entry);
+    return func_entry(pMod, library);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuKernelGetFunction(CUfunction * pFunc, CUkernel kernel) {
+    HOOK_TRACE_PROFILE("cuKernelGetFunction");
+    using func_ptr = CUresult (*)(CUfunction *, CUkernel);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuKernelGetFunction"));
+    HOOK_CHECK(func_entry);
+    return func_entry(pFunc, kernel);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuLibraryGetGlobal(CUdeviceptr * dptr, size_t * bytes, CUlibrary library, const char * name) {
+    HOOK_TRACE_PROFILE("cuLibraryGetGlobal");
+    using func_ptr = CUresult (*)(CUdeviceptr *, size_t *, CUlibrary, const char *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryGetGlobal"));
+    HOOK_CHECK(func_entry);
+    return func_entry(dptr, bytes, library, name);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuLibraryGetManaged(CUdeviceptr * dptr, size_t * bytes, CUlibrary library, const char * name) {
+    HOOK_TRACE_PROFILE("cuLibraryGetManaged");
+    using func_ptr = CUresult (*)(CUdeviceptr *, size_t *, CUlibrary, const char *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryGetManaged"));
+    HOOK_CHECK(func_entry);
+    return func_entry(dptr, bytes, library, name);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuLibraryGetUnifiedFunction(void * * fptr, CUlibrary library, const char * symbol) {
+    HOOK_TRACE_PROFILE("cuLibraryGetUnifiedFunction");
+    using func_ptr = CUresult (*)(void * *, CUlibrary, const char *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryGetUnifiedFunction"));
+    HOOK_CHECK(func_entry);
+    return func_entry(fptr, library, symbol);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuKernelGetAttribute(int * pi, CUfunction_attribute attrib, CUkernel kernel, CUdevice dev) {
+    HOOK_TRACE_PROFILE("cuKernelGetAttribute");
+    using func_ptr = CUresult (*)(int *, CUfunction_attribute, CUkernel, CUdevice);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuKernelGetAttribute"));
+    HOOK_CHECK(func_entry);
+    return func_entry(pi, attrib, kernel, dev);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuKernelSetAttribute(CUfunction_attribute attrib, int val, CUkernel kernel, CUdevice dev) {
+    HOOK_TRACE_PROFILE("cuKernelSetAttribute");
+    using func_ptr = CUresult (*)(CUfunction_attribute, int, CUkernel, CUdevice);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuKernelSetAttribute"));
+    HOOK_CHECK(func_entry);
+    return func_entry(attrib, val, kernel, dev);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuKernelSetCacheConfig(CUkernel kernel, CUfunc_cache config, CUdevice dev) {
+    HOOK_TRACE_PROFILE("cuKernelSetCacheConfig");
+    using func_ptr = CUresult (*)(CUkernel, CUfunc_cache, CUdevice);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuKernelSetCacheConfig"));
+    HOOK_CHECK(func_entry);
+    return func_entry(kernel, config, dev);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuKernelGetName(const char * * name, CUkernel hfunc) {
+    HOOK_TRACE_PROFILE("cuKernelGetName");
+    using func_ptr = CUresult (*)(const char * *, CUkernel);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuKernelGetName"));
+    HOOK_CHECK(func_entry);
+    return func_entry(name, hfunc);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuKernelGetParamInfo(CUkernel kernel, size_t paramIndex, size_t * paramOffset, size_t * paramSize) {
+    HOOK_TRACE_PROFILE("cuKernelGetParamInfo");
+    using func_ptr = CUresult (*)(CUkernel, size_t, size_t *, size_t *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuKernelGetParamInfo"));
+    HOOK_CHECK(func_entry);
+    return func_entry(kernel, paramIndex, paramOffset, paramSize);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemGetInfo(size_t * free, size_t * total) {
@@ -588,6 +757,22 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemAllocManaged(CUdeviceptr * dptr, size_
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAllocManaged"));
     HOOK_CHECK(func_entry);
     return func_entry(dptr, bytesize, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceRegisterAsyncNotification(CUdevice device, CUasyncCallback callbackFunc, void * userData, CUasyncCallbackHandle * callback) {
+    HOOK_TRACE_PROFILE("cuDeviceRegisterAsyncNotification");
+    using func_ptr = CUresult (*)(CUdevice, CUasyncCallback, void *, CUasyncCallbackHandle *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceRegisterAsyncNotification"));
+    HOOK_CHECK(func_entry);
+    return func_entry(device, callbackFunc, userData, callback);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceUnregisterAsyncNotification(CUdevice device, CUasyncCallbackHandle callback) {
+    HOOK_TRACE_PROFILE("cuDeviceUnregisterAsyncNotification");
+    using func_ptr = CUresult (*)(CUdevice, CUasyncCallbackHandle);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceUnregisterAsyncNotification"));
+    HOOK_CHECK(func_entry);
+    return func_entry(device, callback);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetByPCIBusId(CUdevice * dev, const char * pciBusId) {
@@ -982,6 +1167,22 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMipmappedArrayGetSparseProperties(CUDA_AR
     return func_entry(sparseProperties, mipmap);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuArrayGetMemoryRequirements(CUDA_ARRAY_MEMORY_REQUIREMENTS * memoryRequirements, CUarray array, CUdevice device) {
+    HOOK_TRACE_PROFILE("cuArrayGetMemoryRequirements");
+    using func_ptr = CUresult (*)(CUDA_ARRAY_MEMORY_REQUIREMENTS *, CUarray, CUdevice);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuArrayGetMemoryRequirements"));
+    HOOK_CHECK(func_entry);
+    return func_entry(memoryRequirements, array, device);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMipmappedArrayGetMemoryRequirements(CUDA_ARRAY_MEMORY_REQUIREMENTS * memoryRequirements, CUmipmappedArray mipmap, CUdevice device) {
+    HOOK_TRACE_PROFILE("cuMipmappedArrayGetMemoryRequirements");
+    using func_ptr = CUresult (*)(CUDA_ARRAY_MEMORY_REQUIREMENTS *, CUmipmappedArray, CUdevice);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMipmappedArrayGetMemoryRequirements"));
+    HOOK_CHECK(func_entry);
+    return func_entry(memoryRequirements, mipmap, device);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuArrayGetPlane(CUarray * pPlaneArray, CUarray hArray, unsigned int planeIdx) {
     HOOK_TRACE_PROFILE("cuArrayGetPlane");
     using func_ptr = CUresult (*)(CUarray *, CUarray, unsigned int);
@@ -1036,6 +1237,14 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMipmappedArrayDestroy(CUmipmappedArray hM
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMipmappedArrayDestroy"));
     HOOK_CHECK(func_entry);
     return func_entry(hMipmappedArray);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemGetHandleForAddressRange(void * handle, CUdeviceptr dptr, size_t size, CUmemRangeHandleType handleType, unsigned long long flags) {
+    HOOK_TRACE_PROFILE("cuMemGetHandleForAddressRange");
+    using func_ptr = CUresult (*)(void *, CUdeviceptr, size_t, CUmemRangeHandleType, unsigned long long);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemGetHandleForAddressRange"));
+    HOOK_CHECK(func_entry);
+    return func_entry(handle, dptr, size, handleType, flags);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemAddressReserve(CUdeviceptr * ptr, size_t size, size_t alignment, CUdeviceptr addr, unsigned long long flags) {
@@ -1262,6 +1471,54 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemPoolImportPointer(CUdeviceptr * ptr_ou
     return func_entry(ptr_out, pool, shareData);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMulticastCreate(CUmemGenericAllocationHandle * mcHandle, const CUmulticastObjectProp * prop) {
+    HOOK_TRACE_PROFILE("cuMulticastCreate");
+    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle *, const CUmulticastObjectProp *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMulticastCreate"));
+    HOOK_CHECK(func_entry);
+    return func_entry(mcHandle, prop);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMulticastAddDevice(CUmemGenericAllocationHandle mcHandle, CUdevice dev) {
+    HOOK_TRACE_PROFILE("cuMulticastAddDevice");
+    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle, CUdevice);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMulticastAddDevice"));
+    HOOK_CHECK(func_entry);
+    return func_entry(mcHandle, dev);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMulticastBindMem(CUmemGenericAllocationHandle mcHandle, size_t mcOffset, CUmemGenericAllocationHandle memHandle, size_t memOffset, size_t size, unsigned long long flags) {
+    HOOK_TRACE_PROFILE("cuMulticastBindMem");
+    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle, size_t, CUmemGenericAllocationHandle, size_t, size_t, unsigned long long);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMulticastBindMem"));
+    HOOK_CHECK(func_entry);
+    return func_entry(mcHandle, mcOffset, memHandle, memOffset, size, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMulticastBindAddr(CUmemGenericAllocationHandle mcHandle, size_t mcOffset, CUdeviceptr memptr, size_t size, unsigned long long flags) {
+    HOOK_TRACE_PROFILE("cuMulticastBindAddr");
+    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle, size_t, CUdeviceptr, size_t, unsigned long long);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMulticastBindAddr"));
+    HOOK_CHECK(func_entry);
+    return func_entry(mcHandle, mcOffset, memptr, size, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMulticastUnbind(CUmemGenericAllocationHandle mcHandle, CUdevice dev, size_t mcOffset, size_t size) {
+    HOOK_TRACE_PROFILE("cuMulticastUnbind");
+    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle, CUdevice, size_t, size_t);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMulticastUnbind"));
+    HOOK_CHECK(func_entry);
+    return func_entry(mcHandle, dev, mcOffset, size);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMulticastGetGranularity(size_t * granularity, const CUmulticastObjectProp * prop, CUmulticastGranularity_flags option) {
+    HOOK_TRACE_PROFILE("cuMulticastGetGranularity");
+    using func_ptr = CUresult (*)(size_t *, const CUmulticastObjectProp *, CUmulticastGranularity_flags);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMulticastGetGranularity"));
+    HOOK_CHECK(func_entry);
+    return func_entry(granularity, prop, option);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuPointerGetAttribute(void * data, CUpointer_attribute attribute, CUdeviceptr ptr) {
     HOOK_TRACE_PROFILE("cuPointerGetAttribute");
     using func_ptr = CUresult (*)(void *, CUpointer_attribute, CUdeviceptr);
@@ -1278,12 +1535,28 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemPrefetchAsync(CUdeviceptr devPtr, size
     return func_entry(devPtr, count, dstDevice, hStream);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemPrefetchAsync_v2(CUdeviceptr devPtr, size_t count, CUmemLocation location, unsigned int flags, CUstream hStream) {
+    HOOK_TRACE_PROFILE("cuMemPrefetchAsync_v2");
+    using func_ptr = CUresult (*)(CUdeviceptr, size_t, CUmemLocation, unsigned int, CUstream);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPrefetchAsync_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(devPtr, count, location, flags, hStream);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemAdvise(CUdeviceptr devPtr, size_t count, CUmem_advise advice, CUdevice device) {
     HOOK_TRACE_PROFILE("cuMemAdvise");
     using func_ptr = CUresult (*)(CUdeviceptr, size_t, CUmem_advise, CUdevice);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAdvise"));
     HOOK_CHECK(func_entry);
     return func_entry(devPtr, count, advice, device);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemAdvise_v2(CUdeviceptr devPtr, size_t count, CUmem_advise advice, CUmemLocation location) {
+    HOOK_TRACE_PROFILE("cuMemAdvise_v2");
+    using func_ptr = CUresult (*)(CUdeviceptr, size_t, CUmem_advise, CUmemLocation);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAdvise_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(devPtr, count, advice, location);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemRangeGetAttribute(void * data, size_t dataSize, CUmem_range_attribute attribute, CUdeviceptr devPtr, size_t count) {
@@ -1350,6 +1623,14 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamGetFlags(CUstream hStream, unsigned
     return func_entry(hStream, flags);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamGetId(CUstream hStream, unsigned long long * streamId) {
+    HOOK_TRACE_PROFILE("cuStreamGetId");
+    using func_ptr = CUresult (*)(CUstream, unsigned long long *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetId"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hStream, streamId);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamGetCtx(CUstream hStream, CUcontext * pctx) {
     HOOK_TRACE_PROFILE("cuStreamGetCtx");
     using func_ptr = CUresult (*)(CUstream, CUcontext *);
@@ -1382,6 +1663,14 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamBeginCapture(CUstream hStream, CUst
     return func_entry(hStream, mode);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamBeginCaptureToGraph(CUstream hStream, CUgraph hGraph, const CUgraphNode * dependencies, const CUgraphEdgeData * dependencyData, size_t numDependencies, CUstreamCaptureMode mode) {
+    HOOK_TRACE_PROFILE("cuStreamBeginCaptureToGraph");
+    using func_ptr = CUresult (*)(CUstream, CUgraph, const CUgraphNode *, const CUgraphEdgeData *, size_t, CUstreamCaptureMode);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBeginCaptureToGraph"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hStream, hGraph, dependencies, dependencyData, numDependencies, mode);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuThreadExchangeStreamCaptureMode(CUstreamCaptureMode * mode) {
     HOOK_TRACE_PROFILE("cuThreadExchangeStreamCaptureMode");
     using func_ptr = CUresult (*)(CUstreamCaptureMode *);
@@ -1406,20 +1695,20 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamIsCapturing(CUstream hStream, CUstr
     return func_entry(hStream, captureStatus);
 }
 
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamGetCaptureInfo(CUstream hStream, CUstreamCaptureStatus * captureStatus_out, cuuint64_t * id_out) {
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamGetCaptureInfo(CUstream hStream, CUstreamCaptureStatus * captureStatus_out, cuuint64_t * id_out, CUgraph * graph_out, const CUgraphNode * * dependencies_out, size_t * numDependencies_out) {
     HOOK_TRACE_PROFILE("cuStreamGetCaptureInfo");
-    using func_ptr = CUresult (*)(CUstream, CUstreamCaptureStatus *, cuuint64_t *);
+    using func_ptr = CUresult (*)(CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, size_t *);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetCaptureInfo"));
     HOOK_CHECK(func_entry);
-    return func_entry(hStream, captureStatus_out, id_out);
+    return func_entry(hStream, captureStatus_out, id_out, graph_out, dependencies_out, numDependencies_out);
 }
 
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamGetCaptureInfo_v2(CUstream hStream, CUstreamCaptureStatus * captureStatus_out, cuuint64_t * id_out, CUgraph * graph_out, const CUgraphNode * * dependencies_out, size_t * numDependencies_out) {
-    HOOK_TRACE_PROFILE("cuStreamGetCaptureInfo_v2");
-    using func_ptr = CUresult (*)(CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetCaptureInfo_v2"));
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamGetCaptureInfo_v3(CUstream hStream, CUstreamCaptureStatus * captureStatus_out, cuuint64_t * id_out, CUgraph * graph_out, const CUgraphNode * * dependencies_out, const CUgraphEdgeData * * edgeData_out, size_t * numDependencies_out) {
+    HOOK_TRACE_PROFILE("cuStreamGetCaptureInfo_v3");
+    using func_ptr = CUresult (*)(CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, const CUgraphEdgeData * *, size_t *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetCaptureInfo_v3"));
     HOOK_CHECK(func_entry);
-    return func_entry(hStream, captureStatus_out, id_out, graph_out, dependencies_out, numDependencies_out);
+    return func_entry(hStream, captureStatus_out, id_out, graph_out, dependencies_out, edgeData_out, numDependencies_out);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamUpdateCaptureDependencies(CUstream hStream, CUgraphNode * dependencies, size_t numDependencies, unsigned int flags) {
@@ -1428,6 +1717,14 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamUpdateCaptureDependencies(CUstream 
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamUpdateCaptureDependencies"));
     HOOK_CHECK(func_entry);
     return func_entry(hStream, dependencies, numDependencies, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamUpdateCaptureDependencies_v2(CUstream hStream, CUgraphNode * dependencies, const CUgraphEdgeData * dependencyData, size_t numDependencies, unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuStreamUpdateCaptureDependencies_v2");
+    using func_ptr = CUresult (*)(CUstream, CUgraphNode *, const CUgraphEdgeData *, size_t, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamUpdateCaptureDependencies_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hStream, dependencies, dependencyData, numDependencies, flags);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamAttachMemAsync(CUstream hStream, CUdeviceptr dptr, size_t length, unsigned int flags) {
@@ -1670,14 +1967,6 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuFuncSetCacheConfig(CUfunction hfunc, CUfu
     return func_entry(hfunc, config);
 }
 
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuFuncSetSharedMemConfig(CUfunction hfunc, CUsharedconfig config) {
-    HOOK_TRACE_PROFILE("cuFuncSetSharedMemConfig");
-    using func_ptr = CUresult (*)(CUfunction, CUsharedconfig);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncSetSharedMemConfig"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hfunc, config);
-}
-
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuFuncGetModule(CUmodule * hmod, CUfunction hfunc) {
     HOOK_TRACE_PROFILE("cuFuncGetModule");
     using func_ptr = CUresult (*)(CUmodule *, CUfunction);
@@ -1686,12 +1975,52 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuFuncGetModule(CUmodule * hmod, CUfunction
     return func_entry(hmod, hfunc);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuFuncGetName(const char * * name, CUfunction hfunc) {
+    HOOK_TRACE_PROFILE("cuFuncGetName");
+    using func_ptr = CUresult (*)(const char * *, CUfunction);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncGetName"));
+    HOOK_CHECK(func_entry);
+    return func_entry(name, hfunc);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuFuncGetParamInfo(CUfunction func, size_t paramIndex, size_t * paramOffset, size_t * paramSize) {
+    HOOK_TRACE_PROFILE("cuFuncGetParamInfo");
+    using func_ptr = CUresult (*)(CUfunction, size_t, size_t *, size_t *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncGetParamInfo"));
+    HOOK_CHECK(func_entry);
+    return func_entry(func, paramIndex, paramOffset, paramSize);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuFuncIsLoaded(CUfunctionLoadingState * state, CUfunction function) {
+    HOOK_TRACE_PROFILE("cuFuncIsLoaded");
+    using func_ptr = CUresult (*)(CUfunctionLoadingState *, CUfunction);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncIsLoaded"));
+    HOOK_CHECK(func_entry);
+    return func_entry(state, function);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuFuncLoad(CUfunction function) {
+    HOOK_TRACE_PROFILE("cuFuncLoad");
+    using func_ptr = CUresult (*)(CUfunction);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncLoad"));
+    HOOK_CHECK(func_entry);
+    return func_entry(function);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuLaunchKernel(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void * * kernelParams, void * * extra) {
     HOOK_TRACE_PROFILE("cuLaunchKernel");
     using func_ptr = CUresult (*)(CUfunction, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, CUstream, void * *, void * *);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLaunchKernel"));
     HOOK_CHECK(func_entry);
     return func_entry(f, gridDimX, gridDimY, gridDimZ, blockDimX, blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams, extra);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuLaunchKernelEx(const CUlaunchConfig * config, CUfunction f, void * * kernelParams, void * * extra) {
+    HOOK_TRACE_PROFILE("cuLaunchKernelEx");
+    using func_ptr = CUresult (*)(const CUlaunchConfig *, CUfunction, void * *, void * *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLaunchKernelEx"));
+    HOOK_CHECK(func_entry);
+    return func_entry(config, f, kernelParams, extra);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuLaunchCooperativeKernel(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void * * kernelParams) {
@@ -1796,6 +2125,14 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuParamSetTexRef(CUfunction hfunc, int texu
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuParamSetTexRef"));
     HOOK_CHECK(func_entry);
     return func_entry(hfunc, texunit, hTexRef);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuFuncSetSharedMemConfig(CUfunction hfunc, CUsharedconfig config) {
+    HOOK_TRACE_PROFILE("cuFuncSetSharedMemConfig");
+    using func_ptr = CUresult (*)(CUfunction, CUsharedconfig);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncSetSharedMemConfig"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hfunc, config);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphCreate(CUgraph * phGraph, unsigned int flags) {
@@ -2022,6 +2359,38 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphExternalSemaphoresWaitNodeSetParams(
     return func_entry(hNode, nodeParams);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphAddBatchMemOpNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, const CUDA_BATCH_MEM_OP_NODE_PARAMS * nodeParams) {
+    HOOK_TRACE_PROFILE("cuGraphAddBatchMemOpNode");
+    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_BATCH_MEM_OP_NODE_PARAMS *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddBatchMemOpNode"));
+    HOOK_CHECK(func_entry);
+    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, nodeParams);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphBatchMemOpNodeGetParams(CUgraphNode hNode, CUDA_BATCH_MEM_OP_NODE_PARAMS * nodeParams_out) {
+    HOOK_TRACE_PROFILE("cuGraphBatchMemOpNodeGetParams");
+    using func_ptr = CUresult (*)(CUgraphNode, CUDA_BATCH_MEM_OP_NODE_PARAMS *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphBatchMemOpNodeGetParams"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hNode, nodeParams_out);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphBatchMemOpNodeSetParams(CUgraphNode hNode, const CUDA_BATCH_MEM_OP_NODE_PARAMS * nodeParams) {
+    HOOK_TRACE_PROFILE("cuGraphBatchMemOpNodeSetParams");
+    using func_ptr = CUresult (*)(CUgraphNode, const CUDA_BATCH_MEM_OP_NODE_PARAMS *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphBatchMemOpNodeSetParams"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hNode, nodeParams);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphExecBatchMemOpNodeSetParams(CUgraphExec hGraphExec, CUgraphNode hNode, const CUDA_BATCH_MEM_OP_NODE_PARAMS * nodeParams) {
+    HOOK_TRACE_PROFILE("cuGraphExecBatchMemOpNodeSetParams");
+    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, const CUDA_BATCH_MEM_OP_NODE_PARAMS *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecBatchMemOpNodeSetParams"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hGraphExec, hNode, nodeParams);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphAddMemAllocNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, CUDA_MEM_ALLOC_NODE_PARAMS * nodeParams) {
     HOOK_TRACE_PROFILE("cuGraphAddMemAllocNode");
     using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUDA_MEM_ALLOC_NODE_PARAMS *);
@@ -2126,12 +2495,28 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphGetEdges(CUgraph hGraph, CUgraphNode
     return func_entry(hGraph, from, to, numEdges);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphGetEdges_v2(CUgraph hGraph, CUgraphNode * from, CUgraphNode * to, CUgraphEdgeData * edgeData, size_t * numEdges) {
+    HOOK_TRACE_PROFILE("cuGraphGetEdges_v2");
+    using func_ptr = CUresult (*)(CUgraph, CUgraphNode *, CUgraphNode *, CUgraphEdgeData *, size_t *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphGetEdges_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hGraph, from, to, edgeData, numEdges);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphNodeGetDependencies(CUgraphNode hNode, CUgraphNode * dependencies, size_t * numDependencies) {
     HOOK_TRACE_PROFILE("cuGraphNodeGetDependencies");
     using func_ptr = CUresult (*)(CUgraphNode, CUgraphNode *, size_t *);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeGetDependencies"));
     HOOK_CHECK(func_entry);
     return func_entry(hNode, dependencies, numDependencies);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphNodeGetDependencies_v2(CUgraphNode hNode, CUgraphNode * dependencies, CUgraphEdgeData * edgeData, size_t * numDependencies) {
+    HOOK_TRACE_PROFILE("cuGraphNodeGetDependencies_v2");
+    using func_ptr = CUresult (*)(CUgraphNode, CUgraphNode *, CUgraphEdgeData *, size_t *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeGetDependencies_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hNode, dependencies, edgeData, numDependencies);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphNodeGetDependentNodes(CUgraphNode hNode, CUgraphNode * dependentNodes, size_t * numDependentNodes) {
@@ -2142,12 +2527,28 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphNodeGetDependentNodes(CUgraphNode hN
     return func_entry(hNode, dependentNodes, numDependentNodes);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphNodeGetDependentNodes_v2(CUgraphNode hNode, CUgraphNode * dependentNodes, CUgraphEdgeData * edgeData, size_t * numDependentNodes) {
+    HOOK_TRACE_PROFILE("cuGraphNodeGetDependentNodes_v2");
+    using func_ptr = CUresult (*)(CUgraphNode, CUgraphNode *, CUgraphEdgeData *, size_t *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeGetDependentNodes_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hNode, dependentNodes, edgeData, numDependentNodes);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphAddDependencies(CUgraph hGraph, const CUgraphNode * from, const CUgraphNode * to, size_t numDependencies) {
     HOOK_TRACE_PROFILE("cuGraphAddDependencies");
     using func_ptr = CUresult (*)(CUgraph, const CUgraphNode *, const CUgraphNode *, size_t);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddDependencies"));
     HOOK_CHECK(func_entry);
     return func_entry(hGraph, from, to, numDependencies);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphAddDependencies_v2(CUgraph hGraph, const CUgraphNode * from, const CUgraphNode * to, const CUgraphEdgeData * edgeData, size_t numDependencies) {
+    HOOK_TRACE_PROFILE("cuGraphAddDependencies_v2");
+    using func_ptr = CUresult (*)(CUgraph, const CUgraphNode *, const CUgraphNode *, const CUgraphEdgeData *, size_t);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddDependencies_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hGraph, from, to, edgeData, numDependencies);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphRemoveDependencies(CUgraph hGraph, const CUgraphNode * from, const CUgraphNode * to, size_t numDependencies) {
@@ -2158,6 +2559,14 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphRemoveDependencies(CUgraph hGraph, c
     return func_entry(hGraph, from, to, numDependencies);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphRemoveDependencies_v2(CUgraph hGraph, const CUgraphNode * from, const CUgraphNode * to, const CUgraphEdgeData * edgeData, size_t numDependencies) {
+    HOOK_TRACE_PROFILE("cuGraphRemoveDependencies_v2");
+    using func_ptr = CUresult (*)(CUgraph, const CUgraphNode *, const CUgraphNode *, const CUgraphEdgeData *, size_t);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphRemoveDependencies_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hGraph, from, to, edgeData, numDependencies);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphDestroyNode(CUgraphNode hNode) {
     HOOK_TRACE_PROFILE("cuGraphDestroyNode");
     using func_ptr = CUresult (*)(CUgraphNode);
@@ -2166,20 +2575,28 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphDestroyNode(CUgraphNode hNode) {
     return func_entry(hNode);
 }
 
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphInstantiate(CUgraphExec * phGraphExec, CUgraph hGraph, CUgraphNode * phErrorNode, char * logBuffer, size_t bufferSize) {
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphInstantiate(CUgraphExec * phGraphExec, CUgraph hGraph, unsigned long long flags) {
     HOOK_TRACE_PROFILE("cuGraphInstantiate");
-    using func_ptr = CUresult (*)(CUgraphExec *, CUgraph, CUgraphNode *, char *, size_t);
+    using func_ptr = CUresult (*)(CUgraphExec *, CUgraph, unsigned long long);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphInstantiate"));
     HOOK_CHECK(func_entry);
-    return func_entry(phGraphExec, hGraph, phErrorNode, logBuffer, bufferSize);
+    return func_entry(phGraphExec, hGraph, flags);
 }
 
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphInstantiateWithFlags(CUgraphExec * phGraphExec, CUgraph hGraph, unsigned long long flags) {
-    HOOK_TRACE_PROFILE("cuGraphInstantiateWithFlags");
-    using func_ptr = CUresult (*)(CUgraphExec *, CUgraph, unsigned long long);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphInstantiateWithFlags"));
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphInstantiateWithParams(CUgraphExec * phGraphExec, CUgraph hGraph, CUDA_GRAPH_INSTANTIATE_PARAMS * instantiateParams) {
+    HOOK_TRACE_PROFILE("cuGraphInstantiateWithParams");
+    using func_ptr = CUresult (*)(CUgraphExec *, CUgraph, CUDA_GRAPH_INSTANTIATE_PARAMS *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphInstantiateWithParams"));
     HOOK_CHECK(func_entry);
-    return func_entry(phGraphExec, hGraph, flags);
+    return func_entry(phGraphExec, hGraph, instantiateParams);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphExecGetFlags(CUgraphExec hGraphExec, cuuint64_t * flags) {
+    HOOK_TRACE_PROFILE("cuGraphExecGetFlags");
+    using func_ptr = CUresult (*)(CUgraphExec, cuuint64_t *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecGetFlags"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hGraphExec, flags);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphExecKernelNodeSetParams(CUgraphExec hGraphExec, CUgraphNode hNode, const CUDA_KERNEL_NODE_PARAMS * nodeParams) {
@@ -2254,6 +2671,22 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphExecExternalSemaphoresWaitNodeSetPar
     return func_entry(hGraphExec, hNode, nodeParams);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphNodeSetEnabled(CUgraphExec hGraphExec, CUgraphNode hNode, unsigned int isEnabled) {
+    HOOK_TRACE_PROFILE("cuGraphNodeSetEnabled");
+    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeSetEnabled"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hGraphExec, hNode, isEnabled);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphNodeGetEnabled(CUgraphExec hGraphExec, CUgraphNode hNode, unsigned int * isEnabled) {
+    HOOK_TRACE_PROFILE("cuGraphNodeGetEnabled");
+    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, unsigned int *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeGetEnabled"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hGraphExec, hNode, isEnabled);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphUpload(CUgraphExec hGraphExec, CUstream hStream) {
     HOOK_TRACE_PROFILE("cuGraphUpload");
     using func_ptr = CUresult (*)(CUgraphExec, CUstream);
@@ -2286,12 +2719,12 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphDestroy(CUgraph hGraph) {
     return func_entry(hGraph);
 }
 
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphExecUpdate(CUgraphExec hGraphExec, CUgraph hGraph, CUgraphNode * hErrorNode_out, CUgraphExecUpdateResult * updateResult_out) {
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphExecUpdate(CUgraphExec hGraphExec, CUgraph hGraph, CUgraphExecUpdateResultInfo * resultInfo) {
     HOOK_TRACE_PROFILE("cuGraphExecUpdate");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraph, CUgraphNode *, CUgraphExecUpdateResult *);
+    using func_ptr = CUresult (*)(CUgraphExec, CUgraph, CUgraphExecUpdateResultInfo *);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecUpdate"));
     HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hGraph, hErrorNode_out, updateResult_out);
+    return func_entry(hGraphExec, hGraph, resultInfo);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphKernelNodeCopyAttributes(CUgraphNode dst, CUgraphNode src) {
@@ -2366,6 +2799,46 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphReleaseUserObject(CUgraph graph, CUu
     return func_entry(graph, object, count);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphAddNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, CUgraphNodeParams * nodeParams) {
+    HOOK_TRACE_PROFILE("cuGraphAddNode");
+    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUgraphNodeParams *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddNode"));
+    HOOK_CHECK(func_entry);
+    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, nodeParams);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphAddNode_v2(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, const CUgraphEdgeData * dependencyData, size_t numDependencies, CUgraphNodeParams * nodeParams) {
+    HOOK_TRACE_PROFILE("cuGraphAddNode_v2");
+    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, const CUgraphEdgeData *, size_t, CUgraphNodeParams *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddNode_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(phGraphNode, hGraph, dependencies, dependencyData, numDependencies, nodeParams);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphNodeSetParams(CUgraphNode hNode, CUgraphNodeParams * nodeParams) {
+    HOOK_TRACE_PROFILE("cuGraphNodeSetParams");
+    using func_ptr = CUresult (*)(CUgraphNode, CUgraphNodeParams *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeSetParams"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hNode, nodeParams);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphExecNodeSetParams(CUgraphExec hGraphExec, CUgraphNode hNode, CUgraphNodeParams * nodeParams) {
+    HOOK_TRACE_PROFILE("cuGraphExecNodeSetParams");
+    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, CUgraphNodeParams *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecNodeSetParams"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hGraphExec, hNode, nodeParams);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphConditionalHandleCreate(CUgraphConditionalHandle * pHandle_out, CUgraph hGraph, CUcontext ctx, unsigned int defaultLaunchValue, unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuGraphConditionalHandleCreate");
+    using func_ptr = CUresult (*)(CUgraphConditionalHandle *, CUgraph, CUcontext, unsigned int, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphConditionalHandleCreate"));
+    HOOK_CHECK(func_entry);
+    return func_entry(pHandle_out, hGraph, ctx, defaultLaunchValue, flags);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(int * numBlocks, CUfunction func, int blockSize, size_t dynamicSMemSize) {
     HOOK_TRACE_PROFILE("cuOccupancyMaxActiveBlocksPerMultiprocessor");
     using func_ptr = CUresult (*)(int *, CUfunction, int, size_t);
@@ -2404,6 +2877,22 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuOccupancyAvailableDynamicSMemPerBlock(siz
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuOccupancyAvailableDynamicSMemPerBlock"));
     HOOK_CHECK(func_entry);
     return func_entry(dynamicSmemSize, func, numBlocks, blockSize);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuOccupancyMaxPotentialClusterSize(int * clusterSize, CUfunction func, const CUlaunchConfig * config) {
+    HOOK_TRACE_PROFILE("cuOccupancyMaxPotentialClusterSize");
+    using func_ptr = CUresult (*)(int *, CUfunction, const CUlaunchConfig *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuOccupancyMaxPotentialClusterSize"));
+    HOOK_CHECK(func_entry);
+    return func_entry(clusterSize, func, config);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuOccupancyMaxActiveClusters(int * numClusters, CUfunction func, const CUlaunchConfig * config) {
+    HOOK_TRACE_PROFILE("cuOccupancyMaxActiveClusters");
+    using func_ptr = CUresult (*)(int *, CUfunction, const CUlaunchConfig *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuOccupancyMaxActiveClusters"));
+    HOOK_CHECK(func_entry);
+    return func_entry(numClusters, func, config);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuTexRefSetArray(CUtexref hTexRef, CUarray hArray, unsigned int Flags) {
@@ -2702,6 +3191,30 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuSurfObjectGetResourceDesc(CUDA_RESOURCE_D
     return func_entry(pResDesc, surfObject);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuTensorMapEncodeTiled(CUtensorMap * tensorMap, CUtensorMapDataType tensorDataType, cuuint32_t tensorRank, void * globalAddress, const cuuint64_t * globalDim, const cuuint64_t * globalStrides, const cuuint32_t * boxDim, const cuuint32_t * elementStrides, CUtensorMapInterleave interleave, CUtensorMapSwizzle swizzle, CUtensorMapL2promotion l2Promotion, CUtensorMapFloatOOBfill oobFill) {
+    HOOK_TRACE_PROFILE("cuTensorMapEncodeTiled");
+    using func_ptr = CUresult (*)(CUtensorMap *, CUtensorMapDataType, cuuint32_t, void *, const cuuint64_t *, const cuuint64_t *, const cuuint32_t *, const cuuint32_t *, CUtensorMapInterleave, CUtensorMapSwizzle, CUtensorMapL2promotion, CUtensorMapFloatOOBfill);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTensorMapEncodeTiled"));
+    HOOK_CHECK(func_entry);
+    return func_entry(tensorMap, tensorDataType, tensorRank, globalAddress, globalDim, globalStrides, boxDim, elementStrides, interleave, swizzle, l2Promotion, oobFill);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuTensorMapEncodeIm2col(CUtensorMap * tensorMap, CUtensorMapDataType tensorDataType, cuuint32_t tensorRank, void * globalAddress, const cuuint64_t * globalDim, const cuuint64_t * globalStrides, const int * pixelBoxLowerCorner, const int * pixelBoxUpperCorner, cuuint32_t channelsPerPixel, cuuint32_t pixelsPerColumn, const cuuint32_t * elementStrides, CUtensorMapInterleave interleave, CUtensorMapSwizzle swizzle, CUtensorMapL2promotion l2Promotion, CUtensorMapFloatOOBfill oobFill) {
+    HOOK_TRACE_PROFILE("cuTensorMapEncodeIm2col");
+    using func_ptr = CUresult (*)(CUtensorMap *, CUtensorMapDataType, cuuint32_t, void *, const cuuint64_t *, const cuuint64_t *, const int *, const int *, cuuint32_t, cuuint32_t, const cuuint32_t *, CUtensorMapInterleave, CUtensorMapSwizzle, CUtensorMapL2promotion, CUtensorMapFloatOOBfill);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTensorMapEncodeIm2col"));
+    HOOK_CHECK(func_entry);
+    return func_entry(tensorMap, tensorDataType, tensorRank, globalAddress, globalDim, globalStrides, pixelBoxLowerCorner, pixelBoxUpperCorner, channelsPerPixel, pixelsPerColumn, elementStrides, interleave, swizzle, l2Promotion, oobFill);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuTensorMapReplaceAddress(CUtensorMap * tensorMap, void * globalAddress) {
+    HOOK_TRACE_PROFILE("cuTensorMapReplaceAddress");
+    using func_ptr = CUresult (*)(CUtensorMap *, void *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTensorMapReplaceAddress"));
+    HOOK_CHECK(func_entry);
+    return func_entry(tensorMap, globalAddress);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceCanAccessPeer(int * canAccessPeer, CUdevice dev, CUdevice peerDev) {
     HOOK_TRACE_PROFILE("cuDeviceCanAccessPeer");
     using func_ptr = CUresult (*)(int *, CUdevice, CUdevice);
@@ -2790,12 +3303,44 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphicsUnmapResources(unsigned int count
     return func_entry(count, resources, hStream);
 }
 
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuGetProcAddress(const char * symbol, void * * pfn, int cudaVersion, cuuint64_t flags) {
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGetProcAddress(const char * symbol, void * * pfn, int cudaVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus) {
     HOOK_TRACE_PROFILE("cuGetProcAddress");
-    using func_ptr = CUresult (*)(const char *, void * *, int, cuuint64_t);
+    using func_ptr = CUresult (*)(const char *, void * *, int, cuuint64_t, CUdriverProcAddressQueryResult *);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGetProcAddress"));
     HOOK_CHECK(func_entry);
-    return func_entry(symbol, pfn, cudaVersion, flags);
+    return func_entry(symbol, pfn, cudaVersion, flags, symbolStatus);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCoredumpGetAttribute(CUcoredumpSettings attrib, void * value, size_t * size) {
+    HOOK_TRACE_PROFILE("cuCoredumpGetAttribute");
+    using func_ptr = CUresult (*)(CUcoredumpSettings, void *, size_t *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCoredumpGetAttribute"));
+    HOOK_CHECK(func_entry);
+    return func_entry(attrib, value, size);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCoredumpGetAttributeGlobal(CUcoredumpSettings attrib, void * value, size_t * size) {
+    HOOK_TRACE_PROFILE("cuCoredumpGetAttributeGlobal");
+    using func_ptr = CUresult (*)(CUcoredumpSettings, void *, size_t *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCoredumpGetAttributeGlobal"));
+    HOOK_CHECK(func_entry);
+    return func_entry(attrib, value, size);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCoredumpSetAttribute(CUcoredumpSettings attrib, void * value, size_t * size) {
+    HOOK_TRACE_PROFILE("cuCoredumpSetAttribute");
+    using func_ptr = CUresult (*)(CUcoredumpSettings, void *, size_t *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCoredumpSetAttribute"));
+    HOOK_CHECK(func_entry);
+    return func_entry(attrib, value, size);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCoredumpSetAttributeGlobal(CUcoredumpSettings attrib, void * value, size_t * size) {
+    HOOK_TRACE_PROFILE("cuCoredumpSetAttributeGlobal");
+    using func_ptr = CUresult (*)(CUcoredumpSettings, void *, size_t *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCoredumpSetAttributeGlobal"));
+    HOOK_CHECK(func_entry);
+    return func_entry(attrib, value, size);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuGetExportTable(const void * * ppExportTable, const CUuuid * pExportTableId) {
@@ -2804,6 +3349,96 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuGetExportTable(const void * * ppExportTab
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGetExportTable"));
     HOOK_CHECK(func_entry);
     return func_entry(ppExportTable, pExportTableId);
+}
+
+
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGreenCtxCreate(CUgreenCtx * phCtx, CUdevResourceDesc desc, CUdevice dev, unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuGreenCtxCreate");
+    using func_ptr = CUresult (*)(CUgreenCtx *, CUdevResourceDesc, CUdevice, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGreenCtxCreate"));
+    HOOK_CHECK(func_entry);
+    return func_entry(phCtx, desc, dev, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGreenCtxDestroy(CUgreenCtx hCtx) {
+    HOOK_TRACE_PROFILE("cuGreenCtxDestroy");
+    using func_ptr = CUresult (*)(CUgreenCtx);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGreenCtxDestroy"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hCtx);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxFromGreenCtx(CUcontext * pContext, CUgreenCtx hCtx) {
+    HOOK_TRACE_PROFILE("cuCtxFromGreenCtx");
+    using func_ptr = CUresult (*)(CUcontext *, CUgreenCtx);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxFromGreenCtx"));
+    HOOK_CHECK(func_entry);
+    return func_entry(pContext, hCtx);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetDevResource(CUdevice device, CUdevResource * resource, CUdevResourceType type) {
+    HOOK_TRACE_PROFILE("cuDeviceGetDevResource");
+    using func_ptr = CUresult (*)(CUdevice, CUdevResource *, CUdevResourceType);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetDevResource"));
+    HOOK_CHECK(func_entry);
+    return func_entry(device, resource, type);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxGetDevResource(CUcontext hCtx, CUdevResource * resource, CUdevResourceType type) {
+    HOOK_TRACE_PROFILE("cuCtxGetDevResource");
+    using func_ptr = CUresult (*)(CUcontext, CUdevResource *, CUdevResourceType);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetDevResource"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hCtx, resource, type);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGreenCtxGetDevResource(CUgreenCtx hCtx, CUdevResource * resource, CUdevResourceType type) {
+    HOOK_TRACE_PROFILE("cuGreenCtxGetDevResource");
+    using func_ptr = CUresult (*)(CUgreenCtx, CUdevResource *, CUdevResourceType);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGreenCtxGetDevResource"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hCtx, resource, type);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuDevSmResourceSplitByCount(CUdevResource * result, unsigned int * nbGroups, const CUdevResource * input, CUdevResource * remaining, unsigned int useFlags, unsigned int minCount) {
+    HOOK_TRACE_PROFILE("cuDevSmResourceSplitByCount");
+    using func_ptr = CUresult (*)(CUdevResource *, unsigned int *, const CUdevResource *, CUdevResource *, unsigned int, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDevSmResourceSplitByCount"));
+    HOOK_CHECK(func_entry);
+    return func_entry(result, nbGroups, input, remaining, useFlags, minCount);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuDevResourceGenerateDesc(CUdevResourceDesc * phDesc, CUdevResource * resources, unsigned int nbResources) {
+    HOOK_TRACE_PROFILE("cuDevResourceGenerateDesc");
+    using func_ptr = CUresult (*)(CUdevResourceDesc *, CUdevResource *, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDevResourceGenerateDesc"));
+    HOOK_CHECK(func_entry);
+    return func_entry(phDesc, resources, nbResources);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGreenCtxRecordEvent(CUgreenCtx hCtx, CUevent hEvent) {
+    HOOK_TRACE_PROFILE("cuGreenCtxRecordEvent");
+    using func_ptr = CUresult (*)(CUgreenCtx, CUevent);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGreenCtxRecordEvent"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hCtx, hEvent);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGreenCtxWaitEvent(CUgreenCtx hCtx, CUevent hEvent) {
+    HOOK_TRACE_PROFILE("cuGreenCtxWaitEvent");
+    using func_ptr = CUresult (*)(CUgreenCtx, CUevent);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGreenCtxWaitEvent"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hCtx, hEvent);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamGetGreenCtx(CUstream hStream, CUgreenCtx * phCtx) {
+    HOOK_TRACE_PROFILE("cuStreamGetGreenCtx");
+    using func_ptr = CUresult (*)(CUstream, CUgreenCtx *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetGreenCtx"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hStream, phCtx);
 }
 
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuTexRefSetAddress2D_v2(CUtexref hTexRef, const CUDA_ARRAY_DESCRIPTOR * desc, CUdeviceptr dptr, size_t Pitch) {
@@ -3006,6 +3641,86 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemsetD2D32_v2(CUdeviceptr dstDevice, siz
     return func_entry(dstDevice, dstPitch, ui, Width, Height);
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamWriteValue32_ptsz(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuStreamWriteValue32_ptsz");
+    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue32_ptsz"));
+    HOOK_CHECK(func_entry);
+    return func_entry(stream, addr, value, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamWaitValue32_ptsz(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuStreamWaitValue32_ptsz");
+    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue32_ptsz"));
+    HOOK_CHECK(func_entry);
+    return func_entry(stream, addr, value, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamWriteValue64_ptsz(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuStreamWriteValue64_ptsz");
+    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue64_ptsz"));
+    HOOK_CHECK(func_entry);
+    return func_entry(stream, addr, value, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamWaitValue64_ptsz(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuStreamWaitValue64_ptsz");
+    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue64_ptsz"));
+    HOOK_CHECK(func_entry);
+    return func_entry(stream, addr, value, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamBatchMemOp_ptsz(CUstream stream, unsigned int count, CUstreamBatchMemOpParams * paramArray, unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuStreamBatchMemOp_ptsz");
+    using func_ptr = CUresult (*)(CUstream, unsigned int, CUstreamBatchMemOpParams *, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBatchMemOp_ptsz"));
+    HOOK_CHECK(func_entry);
+    return func_entry(stream, count, paramArray, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamWriteValue32_v2(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuStreamWriteValue32_v2");
+    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue32_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(stream, addr, value, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamWaitValue32_v2(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuStreamWaitValue32_v2");
+    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue32_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(stream, addr, value, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamWriteValue64_v2(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuStreamWriteValue64_v2");
+    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue64_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(stream, addr, value, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamWaitValue64_v2(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuStreamWaitValue64_v2");
+    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue64_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(stream, addr, value, flags);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamBatchMemOp_v2(CUstream stream, unsigned int count, CUstreamBatchMemOpParams * paramArray, unsigned int flags) {
+    HOOK_TRACE_PROFILE("cuStreamBatchMemOp_v2");
+    using func_ptr = CUresult (*)(CUstream, unsigned int, CUstreamBatchMemOpParams *, unsigned int);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBatchMemOp_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(stream, count, paramArray, flags);
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamBeginCapture_ptsz(CUstream hStream) {
     HOOK_TRACE_PROFILE("cuStreamBeginCapture_ptsz");
     using func_ptr = CUresult (*)(CUstream);
@@ -3022,10 +3737,34 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamBeginCapture_v2(CUstream hStream, C
     return func_entry(hStream, mode);
 }
 
-HOOK_C_API HOOK_DECL_EXPORT static inline CUresult cuGetProcAddress_ptsz(const char * symbol, void * * funcPtr, int driverVersion, cuuint64_t flags) {
-    HOOK_TRACE_PROFILE("cuGetProcAddress_ptsz");
-    using func_ptr = static inline CUresult (*)(const char *, void * *, int, cuuint64_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGetProcAddress_ptsz"));
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamGetCaptureInfo_ptsz(CUstream hStream, CUstreamCaptureStatus * captureStatus_out, cuuint64_t * id_out) {
+    HOOK_TRACE_PROFILE("cuStreamGetCaptureInfo_ptsz");
+    using func_ptr = CUresult (*)(CUstream, CUstreamCaptureStatus *, cuuint64_t *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetCaptureInfo_ptsz"));
     HOOK_CHECK(func_entry);
-    return func_entry(symbol, funcPtr, driverVersion, flags);
+    return func_entry(hStream, captureStatus_out, id_out);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuStreamGetCaptureInfo_v2(CUstream hStream, CUstreamCaptureStatus * captureStatus_out, cuuint64_t * id_out, CUgraph * graph_out, const CUgraphNode * * dependencies_out, size_t * numDependencies_out) {
+    HOOK_TRACE_PROFILE("cuStreamGetCaptureInfo_v2");
+    using func_ptr = CUresult (*)(CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, size_t *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetCaptureInfo_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(hStream, captureStatus_out, id_out, graph_out, dependencies_out, numDependencies_out);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuGraphInstantiate_v2(CUgraphExec * phGraphExec, CUgraph hGraph, CUgraphNode * phErrorNode, char * logBuffer, size_t bufferSize) {
+    HOOK_TRACE_PROFILE("cuGraphInstantiate_v2");
+    using func_ptr = CUresult (*)(CUgraphExec *, CUgraph, CUgraphNode *, char *, size_t);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphInstantiate_v2"));
+    HOOK_CHECK(func_entry);
+    return func_entry(phGraphExec, hGraph, phErrorNode, logBuffer, bufferSize);
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGetProcAddress_v2(const char * symbol, void * * funcPtr, int driverVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus) {
+    HOOK_TRACE_PROFILE("cuGetProcAddress_v2");
+    using func_ptr =  CUresult (*)(const char *, void * *, int, cuuint64_t, CUdriverProcAddressQueryResult *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGetProcAddress_v2_ptsz"));
+    HOOK_CHECK(func_entry);
+    return func_entry(symbol, funcPtr, driverVersion, flags, symbolStatus);
 }
