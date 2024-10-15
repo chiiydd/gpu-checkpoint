@@ -22,3 +22,18 @@
 - [ ] 劫持常用api,能够运行常见GPU程序
 - [ ] Checkpoint& Restore
   
+
+
+## Usage
+
+编译
+```bash
+git clone https://github.com/chiiydd/gpu-checkpoint.git
+cd gpu-checkpoint
+cmake -B build 
+cd build 
+make
+```
+会在build 目录下生成`libhijacker.so`文件
+
+
