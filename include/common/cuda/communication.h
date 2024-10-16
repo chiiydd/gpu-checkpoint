@@ -1,5 +1,6 @@
 #include <cstddef>
-enum cuda_call{
+#include "cuda_subset.h"
+enum class CudaCall{
     CudaMemMalloc,
     CudaMemFree,
     CudaLaunchKernel,
@@ -8,7 +9,7 @@ enum cuda_call{
 
 
 typedef struct {
-    cuda_call op;
+    CudaCall op;
 
     union{
         struct{
