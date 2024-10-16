@@ -6,6 +6,10 @@
 #include "macro_common.h"
 #include "trace_profile.h"
 #include <cstdio>
+#include <cstring>
+#include <unordered_map>
+
+
 
 CUresult cuGetErrorString(CUresult error, const char * * pStr) {
     HOOK_TRACE_PROFILE("cuGetErrorString");
@@ -28,7 +32,11 @@ CUresult cuInit(unsigned int Flags) {
     using func_ptr = CUresult (*)(unsigned int);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuInit"));
     HOOK_CHECK(func_entry);
-    return func_entry(Flags);
+    CUresult result=func_entry(Flags);
+    const char * error_string;
+    cuGetErrorString(result, &error_string);
+    printf("cuInit: %s\n", error_string);
+    return result;
 }
 
 CUresult cuDriverGetVersion(int * driverVersion) {
@@ -260,7 +268,11 @@ CUresult cuCtxSetCurrent(CUcontext ctx) {
     using func_ptr = CUresult (*)(CUcontext);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxSetCurrent"));
     HOOK_CHECK(func_entry);
-    return func_entry(ctx);
+    CUresult result=func_entry(ctx);
+    const char * error_string;
+    cuGetErrorString(result, &error_string);
+    printf("cuCtxSetCurrent: %s\n", error_string);
+    return result;
 }
 
 CUresult cuCtxGetCurrent(CUcontext * pctx) {
@@ -268,7 +280,11 @@ CUresult cuCtxGetCurrent(CUcontext * pctx) {
     using func_ptr = CUresult (*)(CUcontext *);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetCurrent"));
     HOOK_CHECK(func_entry);
-    return func_entry(pctx);
+    CUresult result=func_entry(pctx);
+    const char * error_string;
+    cuGetErrorString(result, &error_string);
+    printf("cuCtxGetCurrent: %s\n", error_string);
+    return result;
 }
 
 CUresult cuCtxGetDevice(CUdevice * device) {
@@ -276,7 +292,11 @@ CUresult cuCtxGetDevice(CUdevice * device) {
     using func_ptr = CUresult (*)(CUdevice *);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetDevice"));
     HOOK_CHECK(func_entry);
-    return func_entry(device);
+    CUresult result=func_entry(device);
+    const char * error_string;
+    cuGetErrorString(result, &error_string);
+    printf("cuCtxGetDevice: %s\n", error_string);
+    return result;
 }
 
 CUresult cuCtxGetFlags(unsigned int * flags) {
@@ -684,7 +704,12 @@ CUresult cuMemAlloc(CUdeviceptr * dptr, size_t bytesize) {
     using func_ptr = CUresult (*)(CUdeviceptr *, size_t);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAlloc"));
     HOOK_CHECK(func_entry);
-    return func_entry(dptr, bytesize);
+    CUresult result=func_entry(dptr, bytesize);
+    const char * error_string;
+    cuGetErrorString(result, &error_string);
+    printf("cuMemAlloc: %s\n", error_string);
+    printf("cuMemAlloc: dptr=%p, bytesize=%lu\n", dptr, bytesize);
+    return result;
 }
 
 CUresult cuMemAllocPitch(CUdeviceptr * dptr, size_t * pPitch, size_t WidthInBytes, size_t Height, unsigned int ElementSizeBytes) {
@@ -692,6 +717,7 @@ CUresult cuMemAllocPitch(CUdeviceptr * dptr, size_t * pPitch, size_t WidthInByte
     using func_ptr = CUresult (*)(CUdeviceptr *, size_t *, size_t, size_t, unsigned int);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAllocPitch"));
     HOOK_CHECK(func_entry);
+    
     return func_entry(dptr, pPitch, WidthInBytes, Height, ElementSizeBytes);
 }
 
@@ -3303,14 +3329,6 @@ CUresult cuGraphicsUnmapResources(unsigned int count, CUgraphicsResource * resou
     return func_entry(count, resources, hStream);
 }
 
-CUresult cuGetProcAddress(const char * symbol, void * * pfn, int cudaVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus) {
-    HOOK_TRACE_PROFILE("cuGetProcAddress");
-    using func_ptr = CUresult (*)(const char *, void * *, int, cuuint64_t, CUdriverProcAddressQueryResult *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGetProcAddress"));
-    HOOK_CHECK(func_entry);
-    return func_entry(symbol, pfn, cudaVersion, flags, symbolStatus);
-}
-
 CUresult cuCoredumpGetAttribute(CUcoredumpSettings attrib, void * value, size_t * size) {
     HOOK_TRACE_PROFILE("cuCoredumpGetAttribute");
     using func_ptr = CUresult (*)(CUcoredumpSettings, void *, size_t *);
@@ -3761,10 +3779,509 @@ CUresult cuGraphInstantiate_v2(CUgraphExec * phGraphExec, CUgraph hGraph, CUgrap
     return func_entry(phGraphExec, hGraph, phErrorNode, logBuffer, bufferSize);
 }
 
- CUresult cuGetProcAddress_v2(const char * symbol, void * * funcPtr, int driverVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus) {
-    HOOK_TRACE_PROFILE("cuGetProcAddress_v2");
-    using func_ptr =  CUresult (*)(const char *, void * *, int, cuuint64_t, CUdriverProcAddressQueryResult *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGetProcAddress_v2_ptsz"));
-    HOOK_CHECK(func_entry);
-    return func_entry(symbol, funcPtr, driverVersion, flags, symbolStatus);
-}
+
+
+struct CStrHash {
+    std::size_t operator()(const char* str) const {
+        return std::hash<std::string>{}(str);  // 使用 std::string 的哈希值
+    }
+};
+
+struct CStrEqual {
+    bool operator()(const char* str1, const char* str2) const {
+        return std::strcmp(str1, str2) == 0;  // 比较字符串内容
+    }
+};
+
+static std::unordered_map<const char *, void *,CStrHash,CStrEqual> functionMap={
+    {"cuGetErrorString", reinterpret_cast<void*>(&cuGetErrorString)},
+    {"cuGetErrorName", reinterpret_cast<void*>(&cuGetErrorName)},
+    {"cuInit", reinterpret_cast<void*>(&cuInit)},
+    {"cuDriverGetVersion", reinterpret_cast<void*>(&cuDriverGetVersion)},
+    {"cuDeviceGet", reinterpret_cast<void*>(&cuDeviceGet)},
+    {"cuDeviceGetCount", reinterpret_cast<void*>(&cuDeviceGetCount)},
+    {"cuDeviceGetName", reinterpret_cast<void*>(&cuDeviceGetName)},
+    {"cuDeviceGetUuid", reinterpret_cast<void*>(&cuDeviceGetUuid)},
+    {"cuDeviceGetUuid_v2", reinterpret_cast<void*>(&cuDeviceGetUuid_v2)},
+    {"cuDeviceGetLuid", reinterpret_cast<void*>(&cuDeviceGetLuid)},
+    {"cuDeviceTotalMem", reinterpret_cast<void*>(&cuDeviceTotalMem)},
+    {"cuDeviceGetTexture1DLinearMaxWidth", reinterpret_cast<void*>(&cuDeviceGetTexture1DLinearMaxWidth)},
+    {"cuDeviceGetAttribute", reinterpret_cast<void*>(&cuDeviceGetAttribute)},
+    {"cuDeviceGetNvSciSyncAttributes", reinterpret_cast<void*>(&cuDeviceGetNvSciSyncAttributes)},
+    {"cuDeviceSetMemPool", reinterpret_cast<void*>(&cuDeviceSetMemPool)},
+    {"cuDeviceGetMemPool", reinterpret_cast<void*>(&cuDeviceGetMemPool)},
+    {"cuDeviceGetDefaultMemPool", reinterpret_cast<void*>(&cuDeviceGetDefaultMemPool)},
+    {"cuDeviceGetExecAffinitySupport", reinterpret_cast<void*>(&cuDeviceGetExecAffinitySupport)},
+    {"cuFlushGPUDirectRDMAWrites", reinterpret_cast<void*>(&cuFlushGPUDirectRDMAWrites)},
+    {"cuDeviceGetProperties", reinterpret_cast<void*>(&cuDeviceGetProperties)},
+    {"cuDeviceComputeCapability", reinterpret_cast<void*>(&cuDeviceComputeCapability)},
+    {"cuDevicePrimaryCtxRetain", reinterpret_cast<void*>(&cuDevicePrimaryCtxRetain)},
+    {"cuDevicePrimaryCtxRelease", reinterpret_cast<void*>(&cuDevicePrimaryCtxRelease)},
+    {"cuDevicePrimaryCtxSetFlags", reinterpret_cast<void*>(&cuDevicePrimaryCtxSetFlags)},
+    {"cuDevicePrimaryCtxGetState", reinterpret_cast<void*>(&cuDevicePrimaryCtxGetState)},
+    {"cuDevicePrimaryCtxReset", reinterpret_cast<void*>(&cuDevicePrimaryCtxReset)},
+    {"cuCtxCreate", reinterpret_cast<void*>(&cuCtxCreate)},
+    {"cuCtxCreate_v3", reinterpret_cast<void*>(&cuCtxCreate_v3)},
+    {"cuCtxDestroy", reinterpret_cast<void*>(&cuCtxDestroy)},
+    {"cuCtxPushCurrent", reinterpret_cast<void*>(&cuCtxPushCurrent)},
+    {"cuCtxPopCurrent", reinterpret_cast<void*>(&cuCtxPopCurrent)},
+    {"cuCtxSetCurrent", reinterpret_cast<void*>(&cuCtxSetCurrent)},
+    {"cuCtxGetCurrent", reinterpret_cast<void*>(&cuCtxGetCurrent)},
+    {"cuCtxGetDevice", reinterpret_cast<void*>(&cuCtxGetDevice)},
+    {"cuCtxGetFlags", reinterpret_cast<void*>(&cuCtxGetFlags)},
+    {"cuCtxSetFlags", reinterpret_cast<void*>(&cuCtxSetFlags)},
+    {"cuCtxGetId", reinterpret_cast<void*>(&cuCtxGetId)},
+    {"cuCtxSynchronize", reinterpret_cast<void*>(&cuCtxSynchronize)},
+    {"cuCtxSetLimit", reinterpret_cast<void*>(&cuCtxSetLimit)},
+    {"cuCtxGetLimit", reinterpret_cast<void*>(&cuCtxGetLimit)},
+    {"cuCtxGetCacheConfig", reinterpret_cast<void*>(&cuCtxGetCacheConfig)},
+    {"cuCtxSetCacheConfig", reinterpret_cast<void*>(&cuCtxSetCacheConfig)},
+    {"cuCtxGetApiVersion", reinterpret_cast<void*>(&cuCtxGetApiVersion)},
+    {"cuCtxGetStreamPriorityRange", reinterpret_cast<void*>(&cuCtxGetStreamPriorityRange)},
+    {"cuCtxResetPersistingL2Cache", reinterpret_cast<void*>(&cuCtxResetPersistingL2Cache)},
+    {"cuCtxGetExecAffinity", reinterpret_cast<void*>(&cuCtxGetExecAffinity)},
+    {"cuCtxAttach", reinterpret_cast<void*>(&cuCtxAttach)},
+    {"cuCtxDetach", reinterpret_cast<void*>(&cuCtxDetach)},
+    {"cuCtxGetSharedMemConfig", reinterpret_cast<void*>(&cuCtxGetSharedMemConfig)},
+    {"cuCtxSetSharedMemConfig", reinterpret_cast<void*>(&cuCtxSetSharedMemConfig)},
+    {"cuModuleLoad", reinterpret_cast<void*>(&cuModuleLoad)},
+    {"cuModuleLoadData", reinterpret_cast<void*>(&cuModuleLoadData)},
+    {"cuModuleLoadDataEx", reinterpret_cast<void*>(&cuModuleLoadDataEx)},
+    {"cuModuleLoadFatBinary", reinterpret_cast<void*>(&cuModuleLoadFatBinary)},
+    {"cuModuleUnload", reinterpret_cast<void*>(&cuModuleUnload)},
+    {"cuModuleGetLoadingMode", reinterpret_cast<void*>(&cuModuleGetLoadingMode)},
+    {"cuModuleGetFunction", reinterpret_cast<void*>(&cuModuleGetFunction)},
+    {"cuModuleGetFunctionCount", reinterpret_cast<void*>(&cuModuleGetFunctionCount)},
+    {"cuModuleEnumerateFunctions", reinterpret_cast<void*>(&cuModuleEnumerateFunctions)},
+    {"cuModuleGetGlobal", reinterpret_cast<void*>(&cuModuleGetGlobal)},
+    {"cuLinkCreate", reinterpret_cast<void*>(&cuLinkCreate)},
+    {"cuLinkAddData", reinterpret_cast<void*>(&cuLinkAddData)},
+    {"cuLinkAddFile", reinterpret_cast<void*>(&cuLinkAddFile)},
+    {"cuLinkComplete", reinterpret_cast<void*>(&cuLinkComplete)},
+    {"cuLinkDestroy", reinterpret_cast<void*>(&cuLinkDestroy)},
+    {"cuModuleGetTexRef", reinterpret_cast<void*>(&cuModuleGetTexRef)},
+    {"cuModuleGetSurfRef", reinterpret_cast<void*>(&cuModuleGetSurfRef)},
+    {"cuLibraryLoadData", reinterpret_cast<void*>(&cuLibraryLoadData)},
+    {"cuLibraryLoadFromFile", reinterpret_cast<void*>(&cuLibraryLoadFromFile)},
+    {"cuLibraryUnload", reinterpret_cast<void*>(&cuLibraryUnload)},
+    {"cuLibraryGetKernel", reinterpret_cast<void*>(&cuLibraryGetKernel)},
+    {"cuLibraryGetKernelCount", reinterpret_cast<void*>(&cuLibraryGetKernelCount)},
+    {"cuLibraryEnumerateKernels", reinterpret_cast<void*>(&cuLibraryEnumerateKernels)},
+    {"cuLibraryGetModule", reinterpret_cast<void*>(&cuLibraryGetModule)},
+    {"cuKernelGetFunction", reinterpret_cast<void*>(&cuKernelGetFunction)},
+    {"cuLibraryGetGlobal", reinterpret_cast<void*>(&cuLibraryGetGlobal)},
+    {"cuLibraryGetManaged", reinterpret_cast<void*>(&cuLibraryGetManaged)},
+    {"cuLibraryGetUnifiedFunction", reinterpret_cast<void*>(&cuLibraryGetUnifiedFunction)},
+    {"cuKernelGetAttribute", reinterpret_cast<void*>(&cuKernelGetAttribute)},
+    {"cuKernelSetAttribute", reinterpret_cast<void*>(&cuKernelSetAttribute)},
+    {"cuKernelSetCacheConfig", reinterpret_cast<void*>(&cuKernelSetCacheConfig)},
+    {"cuKernelGetName", reinterpret_cast<void*>(&cuKernelGetName)},
+    {"cuKernelGetParamInfo", reinterpret_cast<void*>(&cuKernelGetParamInfo)},
+    {"cuMemGetInfo", reinterpret_cast<void*>(&cuMemGetInfo)},
+    {"cuMemAlloc", reinterpret_cast<void*>(&cuMemAlloc)},
+    {"cuMemAllocPitch", reinterpret_cast<void*>(&cuMemAllocPitch)},
+    {"cuMemFree", reinterpret_cast<void*>(&cuMemFree)},
+    {"cuMemGetAddressRange", reinterpret_cast<void*>(&cuMemGetAddressRange)},
+    {"cuMemAllocHost", reinterpret_cast<void*>(&cuMemAllocHost)},
+    {"cuMemFreeHost", reinterpret_cast<void*>(&cuMemFreeHost)},
+    {"cuMemHostAlloc", reinterpret_cast<void*>(&cuMemHostAlloc)},
+    {"cuMemHostGetDevicePointer", reinterpret_cast<void*>(&cuMemHostGetDevicePointer)},
+    {"cuMemHostGetFlags", reinterpret_cast<void*>(&cuMemHostGetFlags)},
+    {"cuMemAllocManaged", reinterpret_cast<void*>(&cuMemAllocManaged)},
+    {"cuDeviceRegisterAsyncNotification", reinterpret_cast<void*>(&cuDeviceRegisterAsyncNotification)},
+    {"cuDeviceUnregisterAsyncNotification", reinterpret_cast<void*>(&cuDeviceUnregisterAsyncNotification)},
+    {"cuDeviceGetByPCIBusId", reinterpret_cast<void*>(&cuDeviceGetByPCIBusId)},
+    {"cuDeviceGetPCIBusId", reinterpret_cast<void*>(&cuDeviceGetPCIBusId)},
+    {"cuIpcGetEventHandle", reinterpret_cast<void*>(&cuIpcGetEventHandle)},
+    {"cuIpcOpenEventHandle", reinterpret_cast<void*>(&cuIpcOpenEventHandle)},
+    {"cuIpcGetMemHandle", reinterpret_cast<void*>(&cuIpcGetMemHandle)},
+    {"cuIpcOpenMemHandle", reinterpret_cast<void*>(&cuIpcOpenMemHandle)},
+    {"cuIpcCloseMemHandle", reinterpret_cast<void*>(&cuIpcCloseMemHandle)},
+    {"cuMemHostRegister", reinterpret_cast<void*>(&cuMemHostRegister)},
+    {"cuMemHostUnregister", reinterpret_cast<void*>(&cuMemHostUnregister)},
+    {"cuMemcpy", reinterpret_cast<void*>(&cuMemcpy)},
+    {"cuMemcpyPeer", reinterpret_cast<void*>(&cuMemcpyPeer)},
+    {"cuMemcpyHtoD", reinterpret_cast<void*>(&cuMemcpyHtoD)},
+    {"cuMemcpyDtoH", reinterpret_cast<void*>(&cuMemcpyDtoH)},
+    {"cuMemcpyDtoD", reinterpret_cast<void*>(&cuMemcpyDtoD)},
+    {"cuMemcpyDtoA", reinterpret_cast<void*>(&cuMemcpyDtoA)},
+    {"cuMemcpyAtoD", reinterpret_cast<void*>(&cuMemcpyAtoD)},
+    {"cuMemcpyHtoA", reinterpret_cast<void*>(&cuMemcpyHtoA)},
+    {"cuMemcpyAtoH", reinterpret_cast<void*>(&cuMemcpyAtoH)},
+    {"cuMemcpyAtoA", reinterpret_cast<void*>(&cuMemcpyAtoA)},
+    {"cuMemcpy2D", reinterpret_cast<void*>(&cuMemcpy2D)},
+    {"cuMemcpy2DUnaligned", reinterpret_cast<void*>(&cuMemcpy2DUnaligned)},
+    {"cuMemcpy3D", reinterpret_cast<void*>(&cuMemcpy3D)},
+    {"cuMemcpy3DPeer", reinterpret_cast<void*>(&cuMemcpy3DPeer)},
+    {"cuMemcpyAsync", reinterpret_cast<void*>(&cuMemcpyAsync)},
+    {"cuMemcpyPeerAsync", reinterpret_cast<void*>(&cuMemcpyPeerAsync)},
+    {"cuMemcpyHtoDAsync", reinterpret_cast<void*>(&cuMemcpyHtoDAsync)},
+    {"cuMemcpyDtoHAsync", reinterpret_cast<void*>(&cuMemcpyDtoHAsync)},
+    {"cuMemcpyDtoDAsync", reinterpret_cast<void*>(&cuMemcpyDtoDAsync)},
+    {"cuMemcpyHtoAAsync", reinterpret_cast<void*>(&cuMemcpyHtoAAsync)},
+    {"cuMemcpyAtoHAsync", reinterpret_cast<void*>(&cuMemcpyAtoHAsync)},
+    {"cuMemcpy2DAsync", reinterpret_cast<void*>(&cuMemcpy2DAsync)},
+    {"cuMemcpy3DAsync", reinterpret_cast<void*>(&cuMemcpy3DAsync)},
+    {"cuMemcpy3DPeerAsync", reinterpret_cast<void*>(&cuMemcpy3DPeerAsync)},
+    {"cuMemsetD8", reinterpret_cast<void*>(&cuMemsetD8)},
+    {"cuMemsetD16", reinterpret_cast<void*>(&cuMemsetD16)},
+    {"cuMemsetD32", reinterpret_cast<void*>(&cuMemsetD32)},
+    {"cuMemsetD2D8", reinterpret_cast<void*>(&cuMemsetD2D8)},
+    {"cuMemsetD2D16", reinterpret_cast<void*>(&cuMemsetD2D16)},
+    {"cuMemsetD2D32", reinterpret_cast<void*>(&cuMemsetD2D32)},
+    {"cuMemsetD8Async", reinterpret_cast<void*>(&cuMemsetD8Async)},
+    {"cuMemsetD16Async", reinterpret_cast<void*>(&cuMemsetD16Async)},
+    {"cuMemsetD32Async", reinterpret_cast<void*>(&cuMemsetD32Async)},
+    {"cuMemsetD2D8Async", reinterpret_cast<void*>(&cuMemsetD2D8Async)},
+    {"cuMemsetD2D16Async", reinterpret_cast<void*>(&cuMemsetD2D16Async)},
+    {"cuMemsetD2D32Async", reinterpret_cast<void*>(&cuMemsetD2D32Async)},
+    {"cuArrayCreate", reinterpret_cast<void*>(&cuArrayCreate)},
+    {"cuArrayGetDescriptor", reinterpret_cast<void*>(&cuArrayGetDescriptor)},
+    {"cuArrayGetSparseProperties", reinterpret_cast<void*>(&cuArrayGetSparseProperties)},
+    {"cuMipmappedArrayGetSparseProperties", reinterpret_cast<void*>(&cuMipmappedArrayGetSparseProperties)},
+    {"cuArrayGetMemoryRequirements", reinterpret_cast<void*>(&cuArrayGetMemoryRequirements)},
+    {"cuMipmappedArrayGetMemoryRequirements", reinterpret_cast<void*>(&cuMipmappedArrayGetMemoryRequirements)},
+    {"cuArrayGetPlane", reinterpret_cast<void*>(&cuArrayGetPlane)},
+    {"cuArrayDestroy", reinterpret_cast<void*>(&cuArrayDestroy)},
+    {"cuArray3DCreate", reinterpret_cast<void*>(&cuArray3DCreate)},
+    {"cuArray3DGetDescriptor", reinterpret_cast<void*>(&cuArray3DGetDescriptor)},
+    {"cuMipmappedArrayCreate", reinterpret_cast<void*>(&cuMipmappedArrayCreate)},
+    {"cuMipmappedArrayGetLevel", reinterpret_cast<void*>(&cuMipmappedArrayGetLevel)},
+    {"cuMipmappedArrayDestroy", reinterpret_cast<void*>(&cuMipmappedArrayDestroy)},
+    {"cuMemGetHandleForAddressRange", reinterpret_cast<void*>(&cuMemGetHandleForAddressRange)},
+    {"cuMemAddressReserve", reinterpret_cast<void*>(&cuMemAddressReserve)},
+    {"cuMemAddressFree", reinterpret_cast<void*>(&cuMemAddressFree)},
+    {"cuMemCreate", reinterpret_cast<void*>(&cuMemCreate)},
+    {"cuMemRelease", reinterpret_cast<void*>(&cuMemRelease)},
+    {"cuMemMap", reinterpret_cast<void*>(&cuMemMap)},
+    {"cuMemMapArrayAsync", reinterpret_cast<void*>(&cuMemMapArrayAsync)},
+    {"cuMemUnmap", reinterpret_cast<void*>(&cuMemUnmap)},
+    {"cuMemSetAccess", reinterpret_cast<void*>(&cuMemSetAccess)},
+    {"cuMemGetAccess", reinterpret_cast<void*>(&cuMemGetAccess)},
+    {"cuMemExportToShareableHandle", reinterpret_cast<void*>(&cuMemExportToShareableHandle)},
+    {"cuMemImportFromShareableHandle", reinterpret_cast<void*>(&cuMemImportFromShareableHandle)},
+    {"cuMemGetAllocationGranularity", reinterpret_cast<void*>(&cuMemGetAllocationGranularity)},
+    {"cuMemGetAllocationPropertiesFromHandle", reinterpret_cast<void*>(&cuMemGetAllocationPropertiesFromHandle)},
+    {"cuMemRetainAllocationHandle", reinterpret_cast<void*>(&cuMemRetainAllocationHandle)},
+    {"cuMemFreeAsync", reinterpret_cast<void*>(&cuMemFreeAsync)},
+    {"cuMemAllocAsync", reinterpret_cast<void*>(&cuMemAllocAsync)},
+    {"cuMemPoolTrimTo", reinterpret_cast<void*>(&cuMemPoolTrimTo)},
+    {"cuMemPoolSetAttribute", reinterpret_cast<void*>(&cuMemPoolSetAttribute)},
+    {"cuMemPoolGetAttribute", reinterpret_cast<void*>(&cuMemPoolGetAttribute)},
+    {"cuMemPoolSetAccess", reinterpret_cast<void*>(&cuMemPoolSetAccess)},
+    {"cuMemPoolGetAccess", reinterpret_cast<void*>(&cuMemPoolGetAccess)},
+    {"cuMemPoolCreate", reinterpret_cast<void*>(&cuMemPoolCreate)},
+    {"cuMemPoolDestroy", reinterpret_cast<void*>(&cuMemPoolDestroy)},
+    {"cuMemAllocFromPoolAsync", reinterpret_cast<void*>(&cuMemAllocFromPoolAsync)},
+    {"cuMemPoolExportToShareableHandle", reinterpret_cast<void*>(&cuMemPoolExportToShareableHandle)},
+    {"cuMemPoolImportFromShareableHandle", reinterpret_cast<void*>(&cuMemPoolImportFromShareableHandle)},
+    {"cuMemPoolExportPointer", reinterpret_cast<void*>(&cuMemPoolExportPointer)},
+    {"cuMemPoolImportPointer", reinterpret_cast<void*>(&cuMemPoolImportPointer)},
+    {"cuMulticastCreate", reinterpret_cast<void*>(&cuMulticastCreate)},
+    {"cuMulticastAddDevice", reinterpret_cast<void*>(&cuMulticastAddDevice)},
+    {"cuMulticastBindMem", reinterpret_cast<void*>(&cuMulticastBindMem)},
+    {"cuMulticastBindAddr", reinterpret_cast<void*>(&cuMulticastBindAddr)},
+    {"cuMulticastUnbind", reinterpret_cast<void*>(&cuMulticastUnbind)},
+    {"cuMulticastGetGranularity", reinterpret_cast<void*>(&cuMulticastGetGranularity)},
+    {"cuPointerGetAttribute", reinterpret_cast<void*>(&cuPointerGetAttribute)},
+    {"cuMemPrefetchAsync", reinterpret_cast<void*>(&cuMemPrefetchAsync)},
+    {"cuMemPrefetchAsync_v2", reinterpret_cast<void*>(&cuMemPrefetchAsync_v2)},
+    {"cuMemAdvise", reinterpret_cast<void*>(&cuMemAdvise)},
+    {"cuMemAdvise_v2", reinterpret_cast<void*>(&cuMemAdvise_v2)},
+    {"cuMemRangeGetAttribute", reinterpret_cast<void*>(&cuMemRangeGetAttribute)},
+    {"cuMemRangeGetAttributes", reinterpret_cast<void*>(&cuMemRangeGetAttributes)},
+    {"cuPointerSetAttribute", reinterpret_cast<void*>(&cuPointerSetAttribute)},
+    {"cuPointerGetAttributes", reinterpret_cast<void*>(&cuPointerGetAttributes)},
+    {"cuStreamCreate", reinterpret_cast<void*>(&cuStreamCreate)},
+    {"cuStreamCreateWithPriority", reinterpret_cast<void*>(&cuStreamCreateWithPriority)},
+    {"cuStreamGetPriority", reinterpret_cast<void*>(&cuStreamGetPriority)},
+    {"cuStreamGetFlags", reinterpret_cast<void*>(&cuStreamGetFlags)},
+    {"cuStreamGetId", reinterpret_cast<void*>(&cuStreamGetId)},
+    {"cuStreamGetCtx", reinterpret_cast<void*>(&cuStreamGetCtx)},
+    {"cuStreamWaitEvent", reinterpret_cast<void*>(&cuStreamWaitEvent)},
+    {"cuStreamAddCallback", reinterpret_cast<void*>(&cuStreamAddCallback)},
+    {"cuStreamBeginCapture", reinterpret_cast<void*>(&cuStreamBeginCapture)},
+    {"cuStreamBeginCaptureToGraph", reinterpret_cast<void*>(&cuStreamBeginCaptureToGraph)},
+    {"cuThreadExchangeStreamCaptureMode", reinterpret_cast<void*>(&cuThreadExchangeStreamCaptureMode)},
+    {"cuStreamEndCapture", reinterpret_cast<void*>(&cuStreamEndCapture)},
+    {"cuStreamIsCapturing", reinterpret_cast<void*>(&cuStreamIsCapturing)},
+    {"cuStreamGetCaptureInfo", reinterpret_cast<void*>(&cuStreamGetCaptureInfo)},
+    {"cuStreamGetCaptureInfo_v3", reinterpret_cast<void*>(&cuStreamGetCaptureInfo_v3)},
+    {"cuStreamUpdateCaptureDependencies", reinterpret_cast<void*>(&cuStreamUpdateCaptureDependencies)},
+    {"cuStreamUpdateCaptureDependencies_v2", reinterpret_cast<void*>(&cuStreamUpdateCaptureDependencies_v2)},
+    {"cuStreamAttachMemAsync", reinterpret_cast<void*>(&cuStreamAttachMemAsync)},
+    {"cuStreamQuery", reinterpret_cast<void*>(&cuStreamQuery)},
+    {"cuStreamSynchronize", reinterpret_cast<void*>(&cuStreamSynchronize)},
+    {"cuStreamDestroy", reinterpret_cast<void*>(&cuStreamDestroy)},
+    {"cuStreamCopyAttributes", reinterpret_cast<void*>(&cuStreamCopyAttributes)},
+    {"cuStreamGetAttribute", reinterpret_cast<void*>(&cuStreamGetAttribute)},
+    {"cuStreamSetAttribute", reinterpret_cast<void*>(&cuStreamSetAttribute)},
+    {"cuEventCreate", reinterpret_cast<void*>(&cuEventCreate)},
+    {"cuEventRecord", reinterpret_cast<void*>(&cuEventRecord)},
+    {"cuEventRecordWithFlags", reinterpret_cast<void*>(&cuEventRecordWithFlags)},
+    {"cuEventQuery", reinterpret_cast<void*>(&cuEventQuery)},
+    {"cuEventSynchronize", reinterpret_cast<void*>(&cuEventSynchronize)},
+    {"cuEventDestroy", reinterpret_cast<void*>(&cuEventDestroy)},
+    {"cuEventElapsedTime", reinterpret_cast<void*>(&cuEventElapsedTime)},
+    {"cuImportExternalMemory", reinterpret_cast<void*>(&cuImportExternalMemory)},
+    {"cuExternalMemoryGetMappedBuffer", reinterpret_cast<void*>(&cuExternalMemoryGetMappedBuffer)},
+    {"cuExternalMemoryGetMappedMipmappedArray", reinterpret_cast<void*>(&cuExternalMemoryGetMappedMipmappedArray)},
+    {"cuDestroyExternalMemory", reinterpret_cast<void*>(&cuDestroyExternalMemory)},
+    {"cuImportExternalSemaphore", reinterpret_cast<void*>(&cuImportExternalSemaphore)},
+    {"cuSignalExternalSemaphoresAsync", reinterpret_cast<void*>(&cuSignalExternalSemaphoresAsync)},
+    {"cuWaitExternalSemaphoresAsync", reinterpret_cast<void*>(&cuWaitExternalSemaphoresAsync)},
+    {"cuDestroyExternalSemaphore", reinterpret_cast<void*>(&cuDestroyExternalSemaphore)},
+    {"cuStreamWaitValue32", reinterpret_cast<void*>(&cuStreamWaitValue32)},
+    {"cuStreamWaitValue64", reinterpret_cast<void*>(&cuStreamWaitValue64)},
+    {"cuStreamWriteValue32", reinterpret_cast<void*>(&cuStreamWriteValue32)},
+    {"cuStreamWriteValue64", reinterpret_cast<void*>(&cuStreamWriteValue64)},
+    {"cuStreamBatchMemOp", reinterpret_cast<void*>(&cuStreamBatchMemOp)},
+    {"cuFuncGetAttribute", reinterpret_cast<void*>(&cuFuncGetAttribute)},
+    {"cuFuncSetAttribute", reinterpret_cast<void*>(&cuFuncSetAttribute)},
+    {"cuFuncSetCacheConfig", reinterpret_cast<void*>(&cuFuncSetCacheConfig)},
+    {"cuFuncGetModule", reinterpret_cast<void*>(&cuFuncGetModule)},
+    {"cuFuncGetName", reinterpret_cast<void*>(&cuFuncGetName)},
+    {"cuFuncGetParamInfo", reinterpret_cast<void*>(&cuFuncGetParamInfo)},
+    {"cuFuncIsLoaded", reinterpret_cast<void*>(&cuFuncIsLoaded)},
+    {"cuFuncLoad", reinterpret_cast<void*>(&cuFuncLoad)},
+    {"cuLaunchKernel", reinterpret_cast<void*>(&cuLaunchKernel)},
+    {"cuLaunchKernelEx", reinterpret_cast<void*>(&cuLaunchKernelEx)},
+    {"cuLaunchCooperativeKernel", reinterpret_cast<void*>(&cuLaunchCooperativeKernel)},
+    {"cuLaunchCooperativeKernelMultiDevice", reinterpret_cast<void*>(&cuLaunchCooperativeKernelMultiDevice)},
+    {"cuLaunchHostFunc", reinterpret_cast<void*>(&cuLaunchHostFunc)},
+    {"cuFuncSetBlockShape", reinterpret_cast<void*>(&cuFuncSetBlockShape)},
+    {"cuFuncSetSharedSize", reinterpret_cast<void*>(&cuFuncSetSharedSize)},
+    {"cuParamSetSize", reinterpret_cast<void*>(&cuParamSetSize)},
+    {"cuParamSeti", reinterpret_cast<void*>(&cuParamSeti)},
+    {"cuParamSetf", reinterpret_cast<void*>(&cuParamSetf)},
+    {"cuParamSetv", reinterpret_cast<void*>(&cuParamSetv)},
+    {"cuLaunch", reinterpret_cast<void*>(&cuLaunch)},
+    {"cuLaunchGrid", reinterpret_cast<void*>(&cuLaunchGrid)},
+    {"cuLaunchGridAsync", reinterpret_cast<void*>(&cuLaunchGridAsync)},
+    {"cuParamSetTexRef", reinterpret_cast<void*>(&cuParamSetTexRef)},
+    {"cuFuncSetSharedMemConfig", reinterpret_cast<void*>(&cuFuncSetSharedMemConfig)},
+    {"cuGraphCreate", reinterpret_cast<void*>(&cuGraphCreate)},
+    {"cuGraphAddKernelNode", reinterpret_cast<void*>(&cuGraphAddKernelNode)},
+    {"cuGraphKernelNodeGetParams", reinterpret_cast<void*>(&cuGraphKernelNodeGetParams)},
+    {"cuGraphKernelNodeSetParams", reinterpret_cast<void*>(&cuGraphKernelNodeSetParams)},
+    {"cuGraphAddMemcpyNode", reinterpret_cast<void*>(&cuGraphAddMemcpyNode)},
+    {"cuGraphMemcpyNodeGetParams", reinterpret_cast<void*>(&cuGraphMemcpyNodeGetParams)},
+    {"cuGraphMemcpyNodeSetParams", reinterpret_cast<void*>(&cuGraphMemcpyNodeSetParams)},
+    {"cuGraphAddMemsetNode", reinterpret_cast<void*>(&cuGraphAddMemsetNode)},
+    {"cuGraphMemsetNodeGetParams", reinterpret_cast<void*>(&cuGraphMemsetNodeGetParams)},
+    {"cuGraphMemsetNodeSetParams", reinterpret_cast<void*>(&cuGraphMemsetNodeSetParams)},
+    {"cuGraphAddHostNode", reinterpret_cast<void*>(&cuGraphAddHostNode)},
+    {"cuGraphHostNodeGetParams", reinterpret_cast<void*>(&cuGraphHostNodeGetParams)},
+    {"cuGraphHostNodeSetParams", reinterpret_cast<void*>(&cuGraphHostNodeSetParams)},
+    {"cuGraphAddChildGraphNode", reinterpret_cast<void*>(&cuGraphAddChildGraphNode)},
+    {"cuGraphChildGraphNodeGetGraph", reinterpret_cast<void*>(&cuGraphChildGraphNodeGetGraph)},
+    {"cuGraphAddEmptyNode", reinterpret_cast<void*>(&cuGraphAddEmptyNode)},
+    {"cuGraphAddEventRecordNode", reinterpret_cast<void*>(&cuGraphAddEventRecordNode)},
+    {"cuGraphEventRecordNodeGetEvent", reinterpret_cast<void*>(&cuGraphEventRecordNodeGetEvent)},
+    {"cuGraphEventRecordNodeSetEvent", reinterpret_cast<void*>(&cuGraphEventRecordNodeSetEvent)},
+    {"cuGraphAddEventWaitNode", reinterpret_cast<void*>(&cuGraphAddEventWaitNode)},
+    {"cuGraphEventWaitNodeGetEvent", reinterpret_cast<void*>(&cuGraphEventWaitNodeGetEvent)},
+    {"cuGraphEventWaitNodeSetEvent", reinterpret_cast<void*>(&cuGraphEventWaitNodeSetEvent)},
+    {"cuGraphAddExternalSemaphoresSignalNode", reinterpret_cast<void*>(&cuGraphAddExternalSemaphoresSignalNode)},
+    {"cuGraphExternalSemaphoresSignalNodeGetParams", reinterpret_cast<void*>(&cuGraphExternalSemaphoresSignalNodeGetParams)},
+    {"cuGraphExternalSemaphoresSignalNodeSetParams", reinterpret_cast<void*>(&cuGraphExternalSemaphoresSignalNodeSetParams)},
+    {"cuGraphAddExternalSemaphoresWaitNode", reinterpret_cast<void*>(&cuGraphAddExternalSemaphoresWaitNode)},
+    {"cuGraphExternalSemaphoresWaitNodeGetParams", reinterpret_cast<void*>(&cuGraphExternalSemaphoresWaitNodeGetParams)},
+    {"cuGraphExternalSemaphoresWaitNodeSetParams", reinterpret_cast<void*>(&cuGraphExternalSemaphoresWaitNodeSetParams)},
+    {"cuGraphAddBatchMemOpNode", reinterpret_cast<void*>(&cuGraphAddBatchMemOpNode)},
+    {"cuGraphBatchMemOpNodeGetParams", reinterpret_cast<void*>(&cuGraphBatchMemOpNodeGetParams)},
+    {"cuGraphBatchMemOpNodeSetParams", reinterpret_cast<void*>(&cuGraphBatchMemOpNodeSetParams)},
+    {"cuGraphExecBatchMemOpNodeSetParams", reinterpret_cast<void*>(&cuGraphExecBatchMemOpNodeSetParams)},
+    {"cuGraphAddMemAllocNode", reinterpret_cast<void*>(&cuGraphAddMemAllocNode)},
+    {"cuGraphMemAllocNodeGetParams", reinterpret_cast<void*>(&cuGraphMemAllocNodeGetParams)},
+    {"cuGraphAddMemFreeNode", reinterpret_cast<void*>(&cuGraphAddMemFreeNode)},
+    {"cuGraphMemFreeNodeGetParams", reinterpret_cast<void*>(&cuGraphMemFreeNodeGetParams)},
+    {"cuDeviceGraphMemTrim", reinterpret_cast<void*>(&cuDeviceGraphMemTrim)},
+    {"cuDeviceGetGraphMemAttribute", reinterpret_cast<void*>(&cuDeviceGetGraphMemAttribute)},
+    {"cuDeviceSetGraphMemAttribute", reinterpret_cast<void*>(&cuDeviceSetGraphMemAttribute)},
+    {"cuGraphClone", reinterpret_cast<void*>(&cuGraphClone)},
+    {"cuGraphNodeFindInClone", reinterpret_cast<void*>(&cuGraphNodeFindInClone)},
+    {"cuGraphNodeGetType", reinterpret_cast<void*>(&cuGraphNodeGetType)},
+    {"cuGraphGetNodes", reinterpret_cast<void*>(&cuGraphGetNodes)},
+    {"cuGraphGetRootNodes", reinterpret_cast<void*>(&cuGraphGetRootNodes)},
+    {"cuGraphGetEdges", reinterpret_cast<void*>(&cuGraphGetEdges)},
+    {"cuGraphGetEdges_v2", reinterpret_cast<void*>(&cuGraphGetEdges_v2)},
+    {"cuGraphNodeGetDependencies", reinterpret_cast<void*>(&cuGraphNodeGetDependencies)},
+    {"cuGraphNodeGetDependencies_v2", reinterpret_cast<void*>(&cuGraphNodeGetDependencies_v2)},
+    {"cuGraphNodeGetDependentNodes", reinterpret_cast<void*>(&cuGraphNodeGetDependentNodes)},
+    {"cuGraphNodeGetDependentNodes_v2", reinterpret_cast<void*>(&cuGraphNodeGetDependentNodes_v2)},
+    {"cuGraphAddDependencies", reinterpret_cast<void*>(&cuGraphAddDependencies)},
+    {"cuGraphAddDependencies_v2", reinterpret_cast<void*>(&cuGraphAddDependencies_v2)},
+    {"cuGraphRemoveDependencies", reinterpret_cast<void*>(&cuGraphRemoveDependencies)},
+    {"cuGraphRemoveDependencies_v2", reinterpret_cast<void*>(&cuGraphRemoveDependencies_v2)},
+    {"cuGraphDestroyNode", reinterpret_cast<void*>(&cuGraphDestroyNode)},
+    {"cuGraphInstantiate", reinterpret_cast<void*>(&cuGraphInstantiate)},
+    {"cuGraphInstantiateWithParams", reinterpret_cast<void*>(&cuGraphInstantiateWithParams)},
+    {"cuGraphExecGetFlags", reinterpret_cast<void*>(&cuGraphExecGetFlags)},
+    {"cuGraphExecKernelNodeSetParams", reinterpret_cast<void*>(&cuGraphExecKernelNodeSetParams)},
+    {"cuGraphExecMemcpyNodeSetParams", reinterpret_cast<void*>(&cuGraphExecMemcpyNodeSetParams)},
+    {"cuGraphExecMemsetNodeSetParams", reinterpret_cast<void*>(&cuGraphExecMemsetNodeSetParams)},
+    {"cuGraphExecHostNodeSetParams", reinterpret_cast<void*>(&cuGraphExecHostNodeSetParams)},
+    {"cuGraphExecChildGraphNodeSetParams", reinterpret_cast<void*>(&cuGraphExecChildGraphNodeSetParams)},
+    {"cuGraphExecEventRecordNodeSetEvent", reinterpret_cast<void*>(&cuGraphExecEventRecordNodeSetEvent)},
+    {"cuGraphExecEventWaitNodeSetEvent", reinterpret_cast<void*>(&cuGraphExecEventWaitNodeSetEvent)},
+    {"cuGraphExecExternalSemaphoresSignalNodeSetParams", reinterpret_cast<void*>(&cuGraphExecExternalSemaphoresSignalNodeSetParams)},
+    {"cuGraphExecExternalSemaphoresWaitNodeSetParams", reinterpret_cast<void*>(&cuGraphExecExternalSemaphoresWaitNodeSetParams)},
+    {"cuGraphNodeSetEnabled", reinterpret_cast<void*>(&cuGraphNodeSetEnabled)},
+    {"cuGraphNodeGetEnabled", reinterpret_cast<void*>(&cuGraphNodeGetEnabled)},
+    {"cuGraphUpload", reinterpret_cast<void*>(&cuGraphUpload)},
+    {"cuGraphLaunch", reinterpret_cast<void*>(&cuGraphLaunch)},
+    {"cuGraphExecDestroy", reinterpret_cast<void*>(&cuGraphExecDestroy)},
+    {"cuGraphDestroy", reinterpret_cast<void*>(&cuGraphDestroy)},
+    {"cuGraphExecUpdate", reinterpret_cast<void*>(&cuGraphExecUpdate)},
+    {"cuGraphKernelNodeCopyAttributes", reinterpret_cast<void*>(&cuGraphKernelNodeCopyAttributes)},
+    {"cuGraphKernelNodeGetAttribute", reinterpret_cast<void*>(&cuGraphKernelNodeGetAttribute)},
+    {"cuGraphKernelNodeSetAttribute", reinterpret_cast<void*>(&cuGraphKernelNodeSetAttribute)},
+    {"cuGraphDebugDotPrint", reinterpret_cast<void*>(&cuGraphDebugDotPrint)},
+    {"cuUserObjectCreate", reinterpret_cast<void*>(&cuUserObjectCreate)},
+    {"cuUserObjectRetain", reinterpret_cast<void*>(&cuUserObjectRetain)},
+    {"cuUserObjectRelease", reinterpret_cast<void*>(&cuUserObjectRelease)},
+    {"cuGraphRetainUserObject", reinterpret_cast<void*>(&cuGraphRetainUserObject)},
+    {"cuGraphReleaseUserObject", reinterpret_cast<void*>(&cuGraphReleaseUserObject)},
+    {"cuGraphAddNode", reinterpret_cast<void*>(&cuGraphAddNode)},
+    {"cuGraphAddNode_v2", reinterpret_cast<void*>(&cuGraphAddNode_v2)},
+    {"cuGraphNodeSetParams", reinterpret_cast<void*>(&cuGraphNodeSetParams)},
+    {"cuGraphExecNodeSetParams", reinterpret_cast<void*>(&cuGraphExecNodeSetParams)},
+    {"cuGraphConditionalHandleCreate", reinterpret_cast<void*>(&cuGraphConditionalHandleCreate)},
+    {"cuOccupancyMaxActiveBlocksPerMultiprocessor", reinterpret_cast<void*>(&cuOccupancyMaxActiveBlocksPerMultiprocessor)},
+    {"cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags", reinterpret_cast<void*>(&cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags)},
+    {"cuOccupancyMaxPotentialBlockSize", reinterpret_cast<void*>(&cuOccupancyMaxPotentialBlockSize)},
+    {"cuOccupancyMaxPotentialBlockSizeWithFlags", reinterpret_cast<void*>(&cuOccupancyMaxPotentialBlockSizeWithFlags)},
+    {"cuOccupancyAvailableDynamicSMemPerBlock", reinterpret_cast<void*>(&cuOccupancyAvailableDynamicSMemPerBlock)},
+    {"cuOccupancyMaxPotentialClusterSize", reinterpret_cast<void*>(&cuOccupancyMaxPotentialClusterSize)},
+    {"cuOccupancyMaxActiveClusters", reinterpret_cast<void*>(&cuOccupancyMaxActiveClusters)},
+    {"cuTexRefSetArray", reinterpret_cast<void*>(&cuTexRefSetArray)},
+    {"cuTexRefSetMipmappedArray", reinterpret_cast<void*>(&cuTexRefSetMipmappedArray)},
+    {"cuTexRefSetAddress", reinterpret_cast<void*>(&cuTexRefSetAddress)},
+    {"cuTexRefSetAddress2D", reinterpret_cast<void*>(&cuTexRefSetAddress2D)},
+    {"cuTexRefSetFormat", reinterpret_cast<void*>(&cuTexRefSetFormat)},
+    {"cuTexRefSetAddressMode", reinterpret_cast<void*>(&cuTexRefSetAddressMode)},
+    {"cuTexRefSetFilterMode", reinterpret_cast<void*>(&cuTexRefSetFilterMode)},
+    {"cuTexRefSetMipmapFilterMode", reinterpret_cast<void*>(&cuTexRefSetMipmapFilterMode)},
+    {"cuTexRefSetMipmapLevelBias", reinterpret_cast<void*>(&cuTexRefSetMipmapLevelBias)},
+    {"cuTexRefSetMipmapLevelClamp", reinterpret_cast<void*>(&cuTexRefSetMipmapLevelClamp)},
+    {"cuTexRefSetMaxAnisotropy", reinterpret_cast<void*>(&cuTexRefSetMaxAnisotropy)},
+    {"cuTexRefSetBorderColor", reinterpret_cast<void*>(&cuTexRefSetBorderColor)},
+    {"cuTexRefSetFlags", reinterpret_cast<void*>(&cuTexRefSetFlags)},
+    {"cuTexRefGetAddress", reinterpret_cast<void*>(&cuTexRefGetAddress)},
+    {"cuTexRefGetArray", reinterpret_cast<void*>(&cuTexRefGetArray)},
+    {"cuTexRefGetMipmappedArray", reinterpret_cast<void*>(&cuTexRefGetMipmappedArray)},
+    {"cuTexRefGetAddressMode", reinterpret_cast<void*>(&cuTexRefGetAddressMode)},
+    {"cuTexRefGetFilterMode", reinterpret_cast<void*>(&cuTexRefGetFilterMode)},
+    {"cuTexRefGetFormat", reinterpret_cast<void*>(&cuTexRefGetFormat)},
+    {"cuTexRefGetMipmapFilterMode", reinterpret_cast<void*>(&cuTexRefGetMipmapFilterMode)},
+    {"cuTexRefGetMipmapLevelBias", reinterpret_cast<void*>(&cuTexRefGetMipmapLevelBias)},
+    {"cuTexRefGetMipmapLevelClamp", reinterpret_cast<void*>(&cuTexRefGetMipmapLevelClamp)},
+    {"cuTexRefGetMaxAnisotropy", reinterpret_cast<void*>(&cuTexRefGetMaxAnisotropy)},
+    {"cuTexRefGetBorderColor", reinterpret_cast<void*>(&cuTexRefGetBorderColor)},
+    {"cuTexRefGetFlags", reinterpret_cast<void*>(&cuTexRefGetFlags)},
+    {"cuTexRefCreate", reinterpret_cast<void*>(&cuTexRefCreate)},
+    {"cuTexRefDestroy", reinterpret_cast<void*>(&cuTexRefDestroy)},
+    {"cuSurfRefSetArray", reinterpret_cast<void*>(&cuSurfRefSetArray)},
+    {"cuSurfRefGetArray", reinterpret_cast<void*>(&cuSurfRefGetArray)},
+    {"cuTexObjectCreate", reinterpret_cast<void*>(&cuTexObjectCreate)},
+    {"cuTexObjectDestroy", reinterpret_cast<void*>(&cuTexObjectDestroy)},
+    {"cuTexObjectGetResourceDesc", reinterpret_cast<void*>(&cuTexObjectGetResourceDesc)},
+    {"cuTexObjectGetTextureDesc", reinterpret_cast<void*>(&cuTexObjectGetTextureDesc)},
+    {"cuTexObjectGetResourceViewDesc", reinterpret_cast<void*>(&cuTexObjectGetResourceViewDesc)},
+    {"cuSurfObjectCreate", reinterpret_cast<void*>(&cuSurfObjectCreate)},
+    {"cuSurfObjectDestroy", reinterpret_cast<void*>(&cuSurfObjectDestroy)},
+    {"cuSurfObjectGetResourceDesc", reinterpret_cast<void*>(&cuSurfObjectGetResourceDesc)},
+    {"cuTensorMapEncodeTiled", reinterpret_cast<void*>(&cuTensorMapEncodeTiled)},
+    {"cuTensorMapEncodeIm2col", reinterpret_cast<void*>(&cuTensorMapEncodeIm2col)},
+    {"cuTensorMapReplaceAddress", reinterpret_cast<void*>(&cuTensorMapReplaceAddress)},
+    {"cuDeviceCanAccessPeer", reinterpret_cast<void*>(&cuDeviceCanAccessPeer)},
+    {"cuCtxEnablePeerAccess", reinterpret_cast<void*>(&cuCtxEnablePeerAccess)},
+    {"cuCtxDisablePeerAccess", reinterpret_cast<void*>(&cuCtxDisablePeerAccess)},
+    {"cuDeviceGetP2PAttribute", reinterpret_cast<void*>(&cuDeviceGetP2PAttribute)},
+    {"cuGraphicsUnregisterResource", reinterpret_cast<void*>(&cuGraphicsUnregisterResource)},
+    {"cuGraphicsSubResourceGetMappedArray", reinterpret_cast<void*>(&cuGraphicsSubResourceGetMappedArray)},
+    {"cuGraphicsResourceGetMappedMipmappedArray", reinterpret_cast<void*>(&cuGraphicsResourceGetMappedMipmappedArray)},
+    {"cuGraphicsResourceGetMappedPointer", reinterpret_cast<void*>(&cuGraphicsResourceGetMappedPointer)},
+    {"cuGraphicsResourceSetMapFlags", reinterpret_cast<void*>(&cuGraphicsResourceSetMapFlags)},
+    {"cuGraphicsMapResources", reinterpret_cast<void*>(&cuGraphicsMapResources)},
+    {"cuGraphicsUnmapResources", reinterpret_cast<void*>(&cuGraphicsUnmapResources)},
+    {"cuCoredumpGetAttribute", reinterpret_cast<void*>(&cuCoredumpGetAttribute)},
+    {"cuCoredumpGetAttributeGlobal", reinterpret_cast<void*>(&cuCoredumpGetAttributeGlobal)},
+    {"cuCoredumpSetAttribute", reinterpret_cast<void*>(&cuCoredumpSetAttribute)},
+    {"cuCoredumpSetAttributeGlobal", reinterpret_cast<void*>(&cuCoredumpSetAttributeGlobal)},
+    {"cuGetExportTable", reinterpret_cast<void*>(&cuGetExportTable)},
+    {"cuGreenCtxCreate", reinterpret_cast<void*>(&cuGreenCtxCreate)},
+    {"cuGreenCtxDestroy", reinterpret_cast<void*>(&cuGreenCtxDestroy)},
+    {"cuCtxFromGreenCtx", reinterpret_cast<void*>(&cuCtxFromGreenCtx)},
+    {"cuDeviceGetDevResource", reinterpret_cast<void*>(&cuDeviceGetDevResource)},
+    {"cuCtxGetDevResource", reinterpret_cast<void*>(&cuCtxGetDevResource)},
+    {"cuGreenCtxGetDevResource", reinterpret_cast<void*>(&cuGreenCtxGetDevResource)},
+    {"cuDevSmResourceSplitByCount", reinterpret_cast<void*>(&cuDevSmResourceSplitByCount)},
+    {"cuDevResourceGenerateDesc", reinterpret_cast<void*>(&cuDevResourceGenerateDesc)},
+    {"cuGreenCtxRecordEvent", reinterpret_cast<void*>(&cuGreenCtxRecordEvent)},
+    {"cuGreenCtxWaitEvent", reinterpret_cast<void*>(&cuGreenCtxWaitEvent)},
+    {"cuStreamGetGreenCtx", reinterpret_cast<void*>(&cuStreamGetGreenCtx)},
+    {"cuTexRefSetAddress2D_v2", reinterpret_cast<void*>(&cuTexRefSetAddress2D_v2)},
+    {"cuMemcpyHtoD_v2", reinterpret_cast<void*>(&cuMemcpyHtoD_v2)},
+    {"cuMemcpyDtoH_v2", reinterpret_cast<void*>(&cuMemcpyDtoH_v2)},
+    {"cuMemcpyDtoD_v2", reinterpret_cast<void*>(&cuMemcpyDtoD_v2)},
+    {"cuMemcpyDtoA_v2", reinterpret_cast<void*>(&cuMemcpyDtoA_v2)},
+    {"cuMemcpyAtoD_v2", reinterpret_cast<void*>(&cuMemcpyAtoD_v2)},
+    {"cuMemcpyHtoA_v2", reinterpret_cast<void*>(&cuMemcpyHtoA_v2)},
+    {"cuMemcpyAtoH_v2", reinterpret_cast<void*>(&cuMemcpyAtoH_v2)},
+    {"cuMemcpyAtoA_v2", reinterpret_cast<void*>(&cuMemcpyAtoA_v2)},
+    {"cuMemcpyHtoAAsync_v2", reinterpret_cast<void*>(&cuMemcpyHtoAAsync_v2)},
+    {"cuMemcpyAtoHAsync_v2", reinterpret_cast<void*>(&cuMemcpyAtoHAsync_v2)},
+    {"cuMemcpy2D_v2", reinterpret_cast<void*>(&cuMemcpy2D_v2)},
+    {"cuMemcpy2DUnaligned_v2", reinterpret_cast<void*>(&cuMemcpy2DUnaligned_v2)},
+    {"cuMemcpy3D_v2", reinterpret_cast<void*>(&cuMemcpy3D_v2)},
+    {"cuMemcpyHtoDAsync_v2", reinterpret_cast<void*>(&cuMemcpyHtoDAsync_v2)},
+    {"cuMemcpyDtoHAsync_v2", reinterpret_cast<void*>(&cuMemcpyDtoHAsync_v2)},
+    {"cuMemcpyDtoDAsync_v2", reinterpret_cast<void*>(&cuMemcpyDtoDAsync_v2)},
+    {"cuMemcpy2DAsync_v2", reinterpret_cast<void*>(&cuMemcpy2DAsync_v2)},
+    {"cuMemcpy3DAsync_v2", reinterpret_cast<void*>(&cuMemcpy3DAsync_v2)},
+    {"cuMemsetD8_v2", reinterpret_cast<void*>(&cuMemsetD8_v2)},
+    {"cuMemsetD16_v2", reinterpret_cast<void*>(&cuMemsetD16_v2)},
+    {"cuMemsetD32_v2", reinterpret_cast<void*>(&cuMemsetD32_v2)},
+    {"cuMemsetD2D8_v2", reinterpret_cast<void*>(&cuMemsetD2D8_v2)},
+    {"cuMemsetD2D16_v2", reinterpret_cast<void*>(&cuMemsetD2D16_v2)},
+    {"cuMemsetD2D32_v2", reinterpret_cast<void*>(&cuMemsetD2D32_v2)},
+    {"cuStreamWriteValue32_ptsz", reinterpret_cast<void*>(&cuStreamWriteValue32_ptsz)},
+    {"cuStreamWaitValue32_ptsz", reinterpret_cast<void*>(&cuStreamWaitValue32_ptsz)},
+    {"cuStreamWriteValue64_ptsz", reinterpret_cast<void*>(&cuStreamWriteValue64_ptsz)},
+    {"cuStreamWaitValue64_ptsz", reinterpret_cast<void*>(&cuStreamWaitValue64_ptsz)},
+    {"cuStreamBatchMemOp_ptsz", reinterpret_cast<void*>(&cuStreamBatchMemOp_ptsz)},
+    {"cuStreamWriteValue32_v2", reinterpret_cast<void*>(&cuStreamWriteValue32_v2)},
+    {"cuStreamWaitValue32_v2", reinterpret_cast<void*>(&cuStreamWaitValue32_v2)},
+    {"cuStreamWriteValue64_v2", reinterpret_cast<void*>(&cuStreamWriteValue64_v2)},
+    {"cuStreamWaitValue64_v2", reinterpret_cast<void*>(&cuStreamWaitValue64_v2)},
+    {"cuStreamBatchMemOp_v2", reinterpret_cast<void*>(&cuStreamBatchMemOp_v2)},
+    {"cuStreamBeginCapture_ptsz", reinterpret_cast<void*>(&cuStreamBeginCapture_ptsz)},
+    {"cuStreamBeginCapture_v2", reinterpret_cast<void*>(&cuStreamBeginCapture_v2)},
+    {"cuStreamGetCaptureInfo_ptsz", reinterpret_cast<void*>(&cuStreamGetCaptureInfo_ptsz)},
+    {"cuStreamGetCaptureInfo_v2", reinterpret_cast<void*>(&cuStreamGetCaptureInfo_v2)},
+    {"cuGraphInstantiate_v2", reinterpret_cast<void*>(&cuGraphInstantiate_v2)},
+};
+
+CUresult cuGetProcAddress(const char * symbol, void * * pfn, int cudaVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus) {
+    HOOK_TRACE_PROFILE("cuGetProcAddress");
+    printf("cuGetProcAddress:request %s,version %d\n",symbol,cudaVersion);
+    if (!strcmp(symbol, "cuGetProcAddress")) {
+        *pfn = reinterpret_cast<void *>(&cuGetProcAddress);
+        printf("%p:%p\n",*pfn,&cuGetProcAddress);
+        return CUDA_SUCCESS;
+    }
+    
+    auto funcIter=functionMap.find(symbol);
+    if (funcIter!=functionMap.end()){
+        printf("hook %s: %p\n",symbol,funcIter->second);
+
+        *pfn=funcIter->second;
+        return CUDA_SUCCESS;
+    }else{
+        printf("failure:%s\n",symbol);
+        return CUDA_ERROR_NOT_FOUND;
+    }
+
+};
