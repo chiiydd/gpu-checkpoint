@@ -1,3 +1,5 @@
+#ifndef COMMUNICATION_H
+#define COMMUNICATION_H
 #include <cstddef>
 #include "cuda_subset.h"
 enum class CuDriverCall{
@@ -132,3 +134,6 @@ struct CuDriverCallReplyStructure{
 
         }returnParams;
 };
+
+
+#endif

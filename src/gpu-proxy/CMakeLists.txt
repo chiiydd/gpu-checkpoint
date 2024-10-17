@@ -9,5 +9,7 @@ if (USE_CUDA)
                                 ${GPU_PROXY_CUDA_SRC_FILES}
                                 ${GPU_PROXY_SRC_FILES})
     set_target_properties(gpu-proxy PROPERTIES CUDA_ARCHITECTURES "75")
-    target_compile_options(gpu-proxy PUBLIC -g -rdynamic)    
+    target_compile_options(gpu-proxy PUBLIC -g -rdynamic )    
+    target_link_libraries(gpu-proxy PUBLIC -lcuda)
+
 endif()

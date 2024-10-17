@@ -41,6 +41,8 @@ int communicate_with_server(const char *socket_name, CuDriverCallStructure *send
         return -1;
     }
 
+    printf("result: %d\n", recv_structure->result);
+
     // 关闭socket
     close(skt_client);
     return 0; // 成功

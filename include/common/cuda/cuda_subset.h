@@ -1,5 +1,5 @@
-#ifndef __CUDA_HOOK_CUDA_SUBSET_H__
-#define __CUDA_HOOK_CUDA_SUBSET_H__
+#ifndef __cuda_cuda_h__
+#define __cuda_cuda_h__
 
 /*
  * Copyright 1993-2023 NVIDIA Corporation.  All rights reserved.

@@ -1,15 +1,16 @@
 
+#include<cuda.h>
 
 #include <cstdlib>
 #include <cstring>
-#include<cuda.h>
 #include<stdio.h>
 #include<communication.h>
 
 #include<sys/socket.h>
 #include<sys/un.h>
 #include <unistd.h>
-const int PORT=8888;
+CUresult proxy_call(CuDriverCallStructure *structure);
+
 int proxy_init(){
     CUresult result;
     const char* errorString;
@@ -29,7 +30,9 @@ int proxy_init(){
     if (result != CUDA_SUCCESS){
         cuGetErrorString(result, &errorString);
         printf("cuCtxCreate failed:%s\n",errorString);
+        return -1;
     }
+    return 0;
 }
 
 void proxy_start(){
@@ -79,6 +82,13 @@ void proxy_start(){
             perror("read");
             exit(EXIT_FAILURE);
         }
+        printf("op:%d\n",structure.op);
+
+        proxy_call(&structure);
+
+        CuDriverCallReplyStructure reply;
+        reply.result=CUDA_ERROR_ASSERT;
+        write(skt_accept, &reply, sizeof(CuDriverCallReplyStructure));
         
     }
 
@@ -131,4 +141,10 @@ CUresult proxy_call(CuDriverCallStructure *structure){
     return CUDA_SUCCESS;
 }
 
+
+int main(){
+    proxy_init();
+    proxy_start();
+    return 0;
+}
 
