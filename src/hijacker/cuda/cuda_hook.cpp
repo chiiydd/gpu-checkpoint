@@ -1,6 +1,7 @@
 
 // auto generate 471 apis
 
+#include "communication.h"
 #include "cuda_subset.h"
 #include "hook.h"
 #include "macro_common.h"
@@ -34,7 +35,7 @@ CUresult cuInit(unsigned int Flags) {
 
     CuDriverCallStructure request={
         .op= CuDriverCall::CuInit,
-        .params={.cuInit{}}
+        .params={.empty{}},
     };
     CuDriverCallReplyStructure reply;
     communicate_with_server(NULL, &request, &reply);
@@ -43,34 +44,56 @@ CUresult cuInit(unsigned int Flags) {
 
 CUresult cuDriverGetVersion(int * driverVersion) {
     HOOK_TRACE_PROFILE("cuDriverGetVersion");
-    using func_ptr = CUresult (*)(int *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDriverGetVersion"));
-    HOOK_CHECK(func_entry);
-    return func_entry(driverVersion);
+    CuDriverCallStructure request={
+        .op=CuDriverCall::CuDriverGetVersion,
+        .params={.empty{}},
+    };
+    CuDriverCallReplyStructure reply;
+
+    communicate_with_server("", &request,&reply);
+    
+    *driverVersion=reply.returnParams.driverVersion;
+    return reply.result;
+
 }
 
 CUresult cuDeviceGet(CUdevice * device, int ordinal) {
     HOOK_TRACE_PROFILE("cuDeviceGet");
-    using func_ptr = CUresult (*)(CUdevice *, int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGet"));
-    HOOK_CHECK(func_entry);
-    return func_entry(device, ordinal);
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDeviceGet,
+        .params={.cuDeviceGet={.ordinal=ordinal}},
+    };
+    CuDriverCallReplyStructure reply;
+    request.op=CuDriverCall::CuDeviceGet;
+    communicate_with_server(nullptr, &request, &reply);
+
+    *device=reply.returnParams.device;
+    return reply.result;
 }
 
 CUresult cuDeviceGetCount(int * count) {
     HOOK_TRACE_PROFILE("cuDeviceGetCount");
-    using func_ptr = CUresult (*)(int *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetCount"));
-    HOOK_CHECK(func_entry);
-    return func_entry(count);
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDeviceGetCount,
+        .params={.empty{}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *count=reply.returnParams.count;
+
+    return reply.result;
 }
 
 CUresult cuDeviceGetName(char * name, int len, CUdevice dev) {
     HOOK_TRACE_PROFILE("cuDeviceGetName");
-    using func_ptr = CUresult (*)(char *, int, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetName"));
-    HOOK_CHECK(func_entry);
-    return func_entry(name, len, dev);
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDeviceGetName,
+        .params={.cuDeviceGetName={.len=len,.device=dev}}
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    strcpy(name, "virtual GPU 0");
+    return reply.result;
 }
 
 CUresult cuDeviceGetUuid(CUuuid * uuid, CUdevice dev) {
@@ -115,10 +138,14 @@ CUresult cuDeviceGetTexture1DLinearMaxWidth(size_t * maxWidthInElements, CUarray
 
 CUresult cuDeviceGetAttribute(int * pi, CUdevice_attribute attrib, CUdevice dev) {
     HOOK_TRACE_PROFILE("cuDeviceGetAttribute");
-    using func_ptr = CUresult (*)(int *, CUdevice_attribute, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pi, attrib, dev);
+    CuDriverCallStructure request={
+        .op=CuDriverCall::CuDeviceGetAttribute,
+        .params={.cuDeviceGetAttribute={.attrib=attrib,.dev=dev}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *pi=reply.returnParams.pi;
+    return reply.result;
 }
 
 CUresult cuDeviceGetNvSciSyncAttributes(void * nvSciSyncAttrList, CUdevice dev, int flags) {
@@ -470,11 +497,12 @@ CUresult cuModuleUnload(CUmodule hmod) {
 }
 
 CUresult cuModuleGetLoadingMode(CUmoduleLoadingMode * mode) {
-    HOOK_TRACE_PROFILE("cuModuleGetLoadingMode");
-    using func_ptr = CUresult (*)(CUmoduleLoadingMode *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleGetLoadingMode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(mode);
+    CuDriverCallStructure request;
+    CuDriverCallReplyStructure reply;
+    
+    communicate_with_server(NULL, &request, &reply);
+    *mode=reply.returnParams.mode;
+    return reply.result;
 }
 
 CUresult cuModuleGetFunction(CUfunction * hfunc, CUmodule hmod, const char * name) {

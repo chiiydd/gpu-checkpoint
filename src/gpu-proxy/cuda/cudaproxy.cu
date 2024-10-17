@@ -1,5 +1,4 @@
-
-#include<cuda.h>
+#include<cuda_original.h>
 
 #include <cstdlib>
 #include <cstring>
@@ -9,8 +8,8 @@
 #include<sys/socket.h>
 #include<sys/un.h>
 #include <unistd.h>
-CUresult proxy_call(CuDriverCallStructure *structure);
 
+CUresult proxy_call(CuDriverCallStructure *request,CuDriverCallReplyStructure * reply);
 int proxy_init(){
     CUresult result;
     const char* errorString;
@@ -76,39 +75,48 @@ void proxy_start(){
     }
 
     
-    CuDriverCallStructure structure;
+    CuDriverCallStructure request;
+    CuDriverCallReplyStructure reply;
     while(1){
-        if(read(skt_accept, &structure, sizeof(CuDriverCallStructure))<0){
+        if(read(skt_accept, &request, sizeof(CuDriverCallStructure))<0){
             perror("read");
             exit(EXIT_FAILURE);
         }
-        printf("op:%d\n",structure.op);
+        printf("op:%d\n",request.op);
 
-        proxy_call(&structure);
+        proxy_call(&request,&reply);
 
-        CuDriverCallReplyStructure reply;
-        reply.result=CUDA_ERROR_ASSERT;
         write(skt_accept, &reply, sizeof(CuDriverCallReplyStructure));
         
     }
 
 }
 
-CUresult proxy_call(CuDriverCallStructure *structure){
+CUresult proxy_call(CuDriverCallStructure *request,CuDriverCallReplyStructure * reply){
     
-    switch (structure->op) {
+    switch (request->op) {
     
-        case CuDriverCall::CuInit:
+        case CuDriverCall::CuDriverGetVersion:
+            reply->result=cuDriverGetVersion(&reply->returnParams.driverVersion);
             break;
-
+        case CuDriverCall::CuInit:
+                reply->result=cuInit(0);
+            break;
+        
+        case CuDriverCall::CuGetExportTable:
+            break;
+        
+        case CuDriverCall::CuModuleGetLoadingMode:
+            reply->result=cuModuleGetLoadingMode(&reply->returnParams.mode);
         case  CuDriverCall::CuMemAlloc:
+        case CuDriverCall::CuDeviceGetCount:
+            reply->result=cuDeviceGetCount(&reply->returnParams.count);
             break;
         case CuDriverCall::CuMemcpyDtoH:
             break;
         case CuDriverCall::CuMemcpyHtoD:
             break;
-        case CuDriverCall::CuGetExportTable:
-            break;
+
         case CuDriverCall::CuCtxGetCurrent:
             break;
         case CuDriverCall::cuCtxPushCurrent:
@@ -127,10 +135,6 @@ CUresult proxy_call(CuDriverCallStructure *structure){
         case CuDriverCall::CuDeviceTotalMem:
             break;
         case CuDriverCall::CuDevicePrimaryCtxRetain:
-            break;
-        case CuDriverCall::CuDeviceGetCount:
-            break;
-        case CuDriverCall::CuDriverGetVersion:
             break;
 
         

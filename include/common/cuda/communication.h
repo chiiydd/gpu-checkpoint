@@ -34,7 +34,7 @@ struct CuDriverCallStructure {
     union{
         struct{
 
-        }cuInit;
+        }empty;
         struct{
             CUdeviceptr *dptr;
             size_t size;
@@ -54,23 +54,15 @@ struct CuDriverCallStructure {
             size_t ByteCount;
         }cuMemcpyDtoH;
 
+
         struct{
-            int * driverVersion;
-        }cuDriverGetVersion;
-        struct{
-            CUdevice * device;
             int ordinal;
         }cuDeviceGet;
         struct{
-            int * count;
-        }cuDeviceGetCount;
-        struct{
-            char * name;
             int len;
             CUdevice device;
         }cuDeviceGetName;
         struct {
-            CUuuid * uuid;
             CUdevice device;
         }cuDeviceGetUuid;
         struct {
@@ -84,7 +76,6 @@ struct CuDriverCallStructure {
             CUdevice dev;
         }cuDeviceTotalMem;
         struct{
-            int * pi;
             CUdevice_attribute attrib;
             CUdevice dev;
         }cuDeviceGetAttribute;
@@ -131,7 +122,13 @@ struct CuDriverCallReplyStructure{
 
 
         union{
+            struct{}empty;
+            int driverVersion;  //cuGetDriverVersion
+            CUmoduleLoadingMode mode; //cuModuleGetLoadingMode
+            int count;
+            CUdevice device;
 
+            int pi;
         }returnParams;
 };
 
