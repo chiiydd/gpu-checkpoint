@@ -26,7 +26,7 @@ enum class CuDriverCall{
 };
 
 
-using CuDriverCallStructure=struct {
+struct CuDriverCallStructure {
     CuDriverCall op;
 
     union{
@@ -123,7 +123,7 @@ using CuDriverCallStructure=struct {
 };
 
 
-using CuDriverCallReplyStructure=struct {
+struct CuDriverCallReplyStructure{
         CuDriverCall op;
         CUresult  result;
 
