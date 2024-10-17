@@ -5,10 +5,11 @@
 #include "hook.h"
 #include "macro_common.h"
 #include "trace_profile.h"
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 #include <unordered_map>
-
+#include "communicator.h"
 
 
 CUresult cuGetErrorString(CUresult error, const char * * pStr) {
@@ -28,15 +29,16 @@ CUresult cuGetErrorName(CUresult error, const char * * pStr) {
 }
 
 CUresult cuInit(unsigned int Flags) {
+    
     HOOK_TRACE_PROFILE("cuInit");
-    using func_ptr = CUresult (*)(unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuInit"));
-    HOOK_CHECK(func_entry);
-    CUresult result=func_entry(Flags);
-    const char * error_string;
-    cuGetErrorString(result, &error_string);
-    printf("cuInit: %s\n", error_string);
-    return result;
+
+    CuDriverCallStructure request={
+        .op= CuDriverCall::CuInit,
+        .params={.cuInit{}}
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(NULL, &request, &reply);
+    return reply.result;
 }
 
 CUresult cuDriverGetVersion(int * driverVersion) {

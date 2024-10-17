@@ -1,39 +1,134 @@
 #include <cstddef>
 #include "cuda_subset.h"
-enum class CudaCall{
-    CudaMemMalloc,
-    CudaMemFree,
-    CudaLaunchKernel,
-    CudaMemcpy,
+enum class CuDriverCall{
+    CuMemAlloc,
+    CuMemFree,
+    CuMemcpyHtoD,
+    CuMemcpyDtoH,
+    CuDriverGetVersion,
+    CuDeviceGet,
+    CuDeviceGetCount,
+    CuDeviceGetName,
+    CuDeviceGetUuid,
+    CuDeviceTotalMem,
+    CuGetExportTable,
+    CuModuleGetLoadingMode,
+    CuDeviceGetAttribute,
+    CuCtxGetCurrent,
+    CuCtxSetCurrent,
+    CuDevicePrimaryCtxRetain,
+    cuLibraryLoadData,
+    cuLibraryUnload,
+    cuDevicePrimaryCtxRelease,
+    cuCtxPushCurrent,
+    CuInit,
+    cuDriverGetVersion,
 };
 
 
-typedef struct {
-    CudaCall op;
+using CuDriverCallStructure=struct {
+    CuDriverCall op;
 
     union{
         struct{
+
+        }cuInit;
+        struct{
             CUdeviceptr *dptr;
             size_t size;
-        }cudaMemMalloc;
+        }cuMemAlloc;
 
         struct{
             CUdeviceptr dptr;
-        }cudaFree;
-        
+        }cuMemFree;
         struct{
-            const void *func;
-            dim3 gridDim;
-            dim3 blockDim;
-            void **args;
-            size_t sharedMem;
-            cudaStream_t stream;
-        }cudaLaunchKernel;
+            CUdeviceptr dstDevice;
+            const void *srcHost;
+            size_t ByteCount;
+        }cuMemcpyHtoD;
         struct{
-            void *dst;
-            const void *src;
-            size_t count;
-            enum cudaMemcpyKind kind;
-        }cudaMemcpy;
+            void * dstHost;
+            CUdeviceptr srcDevice;
+            size_t ByteCount;
+        }cuMemcpyDtoH;
+
+        struct{
+            int * driverVersion;
+        }cuDriverGetVersion;
+        struct{
+            CUdevice * device;
+            int ordinal;
+        }cuDeviceGet;
+        struct{
+            int * count;
+        }cuDeviceGetCount;
+        struct{
+            char * name;
+            int len;
+            CUdevice device;
+        }cuDeviceGetName;
+        struct {
+            CUuuid * uuid;
+            CUdevice device;
+        }cuDeviceGetUuid;
+        struct {
+            const void * * ppExportTable;
+            const CUuuid * pExportTableId;
+        }cuGetExportTable;
+        struct {
+            CUmoduleLoadingMode * mode;
+        }cuModuleGetLoadingMode;
+        struct {
+            CUdevice dev;
+        }cuDeviceTotalMem;
+        struct{
+            int * pi;
+            CUdevice_attribute attrib;
+            CUdevice dev;
+        }cuDeviceGetAttribute;
+        struct{
+
+        }cuCtxGetCurrent;
+        struct{
+            CUcontext ctx;
+        }cuCtxSetCurrent;
+        struct{
+            CUcontext * ptx;
+            CUdevice dev;
+        }cuDevicePrimaryCtxRetain;
+        struct{
+
+        }cuCtxGetDevice;
+        struct{
+            CUlibrary * library;
+            const void * code;
+            CUjit_option * jitOptions;
+             void * * jitOptionsValues;
+             unsigned int numJitOptions;
+             CUlibraryOption * libraryOptions;
+              void * * libraryOptionValues;
+              unsigned int numLibraryOptions;
+        }cuLibraryLoadData;
+        struct{
+            CUcontext ctx;
+        }cuCtxPushCurrent;
+        struct{
+            CUlibrary library;
+        }cuLibraryUnload;
+        struct{
+            CUdevice dev;
+        }cuDevicePrimaryCtxRelease;
+
     }params;
-}cudaCallStructure;
+};
+
+
+using CuDriverCallReplyStructure=struct {
+        CuDriverCall op;
+        CUresult  result;
+
+
+        union{
+
+        }returnParams;
+};

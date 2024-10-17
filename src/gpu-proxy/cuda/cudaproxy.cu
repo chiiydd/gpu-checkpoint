@@ -73,9 +73,9 @@ void proxy_start(){
     }
 
     
-    cudaCallStructure structure;
+    CuDriverCallStructure structure;
     while(1){
-        if(read(skt_accept, &structure, sizeof(cudaCallStructure))<0){
+        if(read(skt_accept, &structure, sizeof(CuDriverCallStructure))<0){
             perror("read");
             exit(EXIT_FAILURE);
         }
@@ -84,20 +84,46 @@ void proxy_start(){
 
 }
 
-CUresult proxy_call(cudaCallStructure *structure){
+CUresult proxy_call(CuDriverCallStructure *structure){
     
     switch (structure->op) {
     
-        case  CudaMalloc:
+        case CuDriverCall::CuInit:
             break;
 
-        case CudaMemcpy:
+        case  CuDriverCall::CuMemAlloc:
             break;
-        case CudaFree:
+        case CuDriverCall::CuMemcpyDtoH:
+            break;
+        case CuDriverCall::CuMemcpyHtoD:
+            break;
+        case CuDriverCall::CuGetExportTable:
+            break;
+        case CuDriverCall::CuCtxGetCurrent:
+            break;
+        case CuDriverCall::cuCtxPushCurrent:
             break;
 
-        case CudaLaunchKernel:
+        case CuDriverCall::CuDeviceGet:
             break;
+        case CuDriverCall::CuDeviceGetAttribute:
+            break;
+        case CuDriverCall::CuDeviceGetName:
+            break;
+        case CuDriverCall::CuDeviceGetUuid:
+            break;
+        case CuDriverCall::cuDevicePrimaryCtxRelease:
+            break;
+        case CuDriverCall::CuDeviceTotalMem:
+            break;
+        case CuDriverCall::CuDevicePrimaryCtxRetain:
+            break;
+        case CuDriverCall::CuDeviceGetCount:
+            break;
+        case CuDriverCall::CuDriverGetVersion:
+            break;
+
+        
         
         default:
             break;
