@@ -1,4 +1,4 @@
-#include<cuda_original.h>
+#include<cuda.h>
 
 #include <cstdlib>
 #include <cstring>
@@ -8,6 +8,7 @@
 #include<sys/socket.h>
 #include<sys/un.h>
 #include <unistd.h>
+
 
 CUresult proxy_call(CuDriverCallStructure *request,CuDriverCallReplyStructure * reply);
 int proxy_init(){
@@ -92,8 +93,9 @@ void proxy_start(){
 
 }
 
-CUresult proxy_call(CuDriverCallStructure *request,CuDriverCallReplyStructure * reply){
+CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCallReplyStructure * reply){
     
+    void * buffer;
     switch (request->op) {
     
         case CuDriverCall::CuDriverGetVersion:
@@ -109,32 +111,59 @@ CUresult proxy_call(CuDriverCallStructure *request,CuDriverCallReplyStructure * 
         case CuDriverCall::CuModuleGetLoadingMode:
             reply->result=cuModuleGetLoadingMode(&reply->returnParams.mode);
         case  CuDriverCall::CuMemAlloc:
+
+            reply->result=cuMemAlloc_v2(&reply->returnParams.dptr, request->params.cuMemAlloc.size);
+            break;
+        case CuDriverCall::CuMemFree:
+            reply->result=cuMemFree_v2(request->params.cuMemFree.dptr);
+            break;
         case CuDriverCall::CuDeviceGetCount:
             reply->result=cuDeviceGetCount(&reply->returnParams.count);
             break;
-        case CuDriverCall::CuMemcpyDtoH:
-            break;
         case CuDriverCall::CuMemcpyHtoD:
+            buffer=malloc(request->params.cuMemcpyHtoD.ByteCount);
+            if(read(socket_handle,buffer,request->params.cuMemcpyHtoD.ByteCount)<0){
+                perror("CuMemcpyDtoH:reading from cilent fails.\n");
+                exit(EXIT_FAILURE);
+            }
+            reply->result=cuMemcpyHtoD_v2(request->params.cuMemcpyHtoD.dstDevice, buffer, request->params.cuMemcpyHtoD.ByteCount);
+            free(buffer);
+            break;
+        case CuDriverCall::CuMemcpyDtoH:
+            buffer=malloc(request->params.cuMemcpyDtoH.ByteCount);
+            reply->result=cuMemcpyDtoH_v2(buffer, request->params.cuMemcpyDtoH.srcDevice, request->params.cuMemcpyDtoH.ByteCount);
+            if(write(socket_handle,buffer,request->params.cuMemcpyDtoH.ByteCount)<0){
+                perror("CuMemcpyDtoH:writing to cilent fails.\n");
+            }
+            free(buffer);
             break;
 
         case CuDriverCall::CuCtxGetCurrent:
+            reply->result=cuCtxGetCurrent(&reply->returnParams.ctx);
             break;
-        case CuDriverCall::cuCtxPushCurrent:
+        case CuDriverCall::CuCtxPushCurrent:
+            reply->result=cuCtxPushCurrent_v2(request->params.cuCtxPushCurrent.ctx);
+
             break;
 
         case CuDriverCall::CuDeviceGet:
+            reply->result=cuDeviceGet(&reply->returnParams.device, request->params.cuDeviceGet.ordinal);
             break;
         case CuDriverCall::CuDeviceGetAttribute:
+            reply->result=cuDeviceGetAttribute(&reply->returnParams.pi, request->params.cuDeviceGetAttribute.attrib, request->params.cuDeviceGetAttribute.dev);
             break;
         case CuDriverCall::CuDeviceGetName:
             break;
         case CuDriverCall::CuDeviceGetUuid:
             break;
-        case CuDriverCall::cuDevicePrimaryCtxRelease:
+        case CuDriverCall::CuDevicePrimaryCtxRelease:
+            reply->result=cuDevicePrimaryCtxRelease(request->params.cuDevicePrimaryCtxRelease.dev);
             break;
         case CuDriverCall::CuDeviceTotalMem:
+            reply->result=cuDeviceTotalMem(&reply->returnParams.bytes, request->params.cuDeviceTotalMem.dev);
             break;
         case CuDriverCall::CuDevicePrimaryCtxRetain:
+            reply->result=cuDevicePrimaryCtxRetain(&reply->returnParams.ctx, request->params.cuDevicePrimaryCtxRetain.dev);
             break;
 
         

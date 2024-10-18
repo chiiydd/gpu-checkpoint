@@ -19,12 +19,11 @@ enum class CuDriverCall{
     CuCtxGetCurrent,
     CuCtxSetCurrent,
     CuDevicePrimaryCtxRetain,
-    cuLibraryLoadData,
-    cuLibraryUnload,
-    cuDevicePrimaryCtxRelease,
-    cuCtxPushCurrent,
+    CuLibraryLoadData,
+    CuLibraryUnload,
+    CuDevicePrimaryCtxRelease,
+    CuCtxPushCurrent,
     CuInit,
-    cuDriverGetVersion,
 };
 
 
@@ -36,7 +35,6 @@ struct CuDriverCallStructure {
 
         }empty;
         struct{
-            CUdeviceptr *dptr;
             size_t size;
         }cuMemAlloc;
 
@@ -44,8 +42,8 @@ struct CuDriverCallStructure {
             CUdeviceptr dptr;
         }cuMemFree;
         struct{
+            const void * srcHost;
             CUdeviceptr dstDevice;
-            const void *srcHost;
             size_t ByteCount;
         }cuMemcpyHtoD;
         struct{
@@ -86,7 +84,6 @@ struct CuDriverCallStructure {
             CUcontext ctx;
         }cuCtxSetCurrent;
         struct{
-            CUcontext * ptx;
             CUdevice dev;
         }cuDevicePrimaryCtxRetain;
         struct{
@@ -127,8 +124,12 @@ struct CuDriverCallReplyStructure{
             CUmoduleLoadingMode mode; //cuModuleGetLoadingMode
             int count;
             CUdevice device;
-
+            CUdeviceptr dptr;
             int pi;
+
+            CUcontext ctx;
+
+            size_t  bytes;
         }returnParams;
 };
 

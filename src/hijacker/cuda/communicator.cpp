@@ -1,5 +1,7 @@
 #include "communicator.h"
+#include "communication.h"
 #include <stdio.h>
+#include <unistd.h>
 int communicate_with_server(const char *socket_name, CuDriverCallStructure *send_structure, CuDriverCallReplyStructure *recv_structure) {
     int skt_client;
     struct sockaddr_un sa_client;
@@ -33,7 +35,21 @@ int communicate_with_server(const char *socket_name, CuDriverCallStructure *send
         close(skt_client);
         return -1;
     }
+    if (send_structure->op==CuDriverCall::CuMemcpyHtoD){
+        if (write(skt_client, send_structure->params.cuMemcpyHtoD.srcHost, send_structure->params.cuMemcpyHtoD.ByteCount) < 0) {
+            perror("write");
+            close(skt_client);
+            return -1;
+        }
+    }
 
+    if (send_structure->op==CuDriverCall::CuMemcpyDtoH){
+        if(read(skt_client,send_structure->params.cuMemcpyDtoH.dstHost,send_structure->params.cuMemcpyDtoH.ByteCount)<0){
+            perror("read from gpu-proxy fails");
+            close(skt_client);
+            return -1;
+        }
+    }
     // 接收来自服务端的响应
     if (read(skt_client, recv_structure, sizeof(CuDriverCallStructure)) < 0) {
         perror("read");

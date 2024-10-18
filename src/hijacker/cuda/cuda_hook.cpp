@@ -214,18 +214,25 @@ CUresult cuDeviceComputeCapability(int * major, int * minor, CUdevice dev) {
 
 CUresult cuDevicePrimaryCtxRetain(CUcontext * pctx, CUdevice dev) {
     HOOK_TRACE_PROFILE("cuDevicePrimaryCtxRetain");
-    using func_ptr = CUresult (*)(CUcontext *, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDevicePrimaryCtxRetain"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pctx, dev);
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDevicePrimaryCtxRetain,
+        .params={.cuDevicePrimaryCtxRetain={.dev=dev}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *pctx=reply.returnParams.ctx;
+    return reply.result;
 }
 
 CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
     HOOK_TRACE_PROFILE("cuDevicePrimaryCtxRelease");
-    using func_ptr = CUresult (*)(CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDevicePrimaryCtxRelease"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dev);
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDevicePrimaryCtxRelease,
+        .params={.cuDevicePrimaryCtxRelease={.dev=dev}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    return reply.result;
 }
 
 CUresult cuDevicePrimaryCtxSetFlags(CUdevice dev, unsigned int flags) {
@@ -278,10 +285,13 @@ CUresult cuCtxDestroy(CUcontext ctx) {
 
 CUresult cuCtxPushCurrent(CUcontext ctx) {
     HOOK_TRACE_PROFILE("cuCtxPushCurrent");
-    using func_ptr = CUresult (*)(CUcontext);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxPushCurrent"));
-    HOOK_CHECK(func_entry);
-    return func_entry(ctx);
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuCtxPushCurrent,
+        .params={.cuCtxPushCurrent={.ctx=ctx}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    return reply.result;
 }
 
 CUresult cuCtxPopCurrent(CUcontext * pctx) {
@@ -294,26 +304,25 @@ CUresult cuCtxPopCurrent(CUcontext * pctx) {
 
 CUresult cuCtxSetCurrent(CUcontext ctx) {
     HOOK_TRACE_PROFILE("cuCtxSetCurrent");
-    using func_ptr = CUresult (*)(CUcontext);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxSetCurrent"));
-    HOOK_CHECK(func_entry);
-    CUresult result=func_entry(ctx);
-    const char * error_string;
-    cuGetErrorString(result, &error_string);
-    printf("cuCtxSetCurrent: %s\n", error_string);
-    return result;
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuCtxSetCurrent,
+        .params={.cuCtxSetCurrent={.ctx=ctx}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    return reply.result;
 }
 
 CUresult cuCtxGetCurrent(CUcontext * pctx) {
     HOOK_TRACE_PROFILE("cuCtxGetCurrent");
-    using func_ptr = CUresult (*)(CUcontext *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetCurrent"));
-    HOOK_CHECK(func_entry);
-    CUresult result=func_entry(pctx);
-    const char * error_string;
-    cuGetErrorString(result, &error_string);
-    printf("cuCtxGetCurrent: %s\n", error_string);
-    return result;
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuCtxGetCurrent,
+        .params={.empty{}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *pctx=reply.returnParams.ctx;
+    return reply.result;
 }
 
 CUresult cuCtxGetDevice(CUdevice * device) {
@@ -731,15 +740,16 @@ CUresult cuMemGetInfo(size_t * free, size_t * total) {
 
 CUresult cuMemAlloc(CUdeviceptr * dptr, size_t bytesize) {
     HOOK_TRACE_PROFILE("cuMemAlloc");
-    using func_ptr = CUresult (*)(CUdeviceptr *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAlloc"));
-    HOOK_CHECK(func_entry);
-    CUresult result=func_entry(dptr, bytesize);
-    const char * error_string;
-    cuGetErrorString(result, &error_string);
-    printf("cuMemAlloc: %s\n", error_string);
     printf("cuMemAlloc: dptr=%p, bytesize=%lu\n", dptr, bytesize);
-    return result;
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuMemAlloc,
+        .params={.cuMemAlloc={
+                    .size=bytesize}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *dptr=reply.returnParams.dptr;
+    return reply.result;
 }
 
 CUresult cuMemAllocPitch(CUdeviceptr * dptr, size_t * pPitch, size_t WidthInBytes, size_t Height, unsigned int ElementSizeBytes) {
@@ -753,10 +763,14 @@ CUresult cuMemAllocPitch(CUdeviceptr * dptr, size_t * pPitch, size_t WidthInByte
 
 CUresult cuMemFree(CUdeviceptr dptr) {
     HOOK_TRACE_PROFILE("cuMemFree");
-    using func_ptr = CUresult (*)(CUdeviceptr);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemFree"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dptr);
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuMemFree,
+        .params={.cuMemFree={
+                    .dptr=dptr}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    return reply.result;
 }
 
 CUresult cuMemGetAddressRange(CUdeviceptr * pbase, size_t * psize, CUdeviceptr dptr) {
@@ -766,7 +780,6 @@ CUresult cuMemGetAddressRange(CUdeviceptr * pbase, size_t * psize, CUdeviceptr d
     HOOK_CHECK(func_entry);
     return func_entry(pbase, psize, dptr);
 }
-
 CUresult cuMemAllocHost(void * * pp, size_t bytesize) {
     HOOK_TRACE_PROFILE("cuMemAllocHost");
     using func_ptr = CUresult (*)(void * *, size_t);
@@ -921,18 +934,36 @@ CUresult cuMemcpyPeer(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr s
 
 CUresult cuMemcpyHtoD(CUdeviceptr dstDevice, const void * srcHost, size_t ByteCount) {
     HOOK_TRACE_PROFILE("cuMemcpyHtoD");
-    using func_ptr = CUresult (*)(CUdeviceptr, const void *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoD"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, srcHost, ByteCount);
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuMemcpyHtoD,
+        .params={
+            .cuMemcpyHtoD{
+                .srcHost=srcHost,
+                .dstDevice=dstDevice,
+                .ByteCount=ByteCount,
+            }
+        },
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    return reply.result;
+
 }
 
 CUresult cuMemcpyDtoH(void * dstHost, CUdeviceptr srcDevice, size_t ByteCount) {
     HOOK_TRACE_PROFILE("cuMemcpyDtoH");
-    using func_ptr = CUresult (*)(void *, CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoH"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstHost, srcDevice, ByteCount);
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuMemcpyDtoH,
+        .params={
+            .cuMemcpyDtoH{
+                .srcDevice=srcDevice,
+                .ByteCount=ByteCount,
+            }
+        },
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    return reply.result;
 }
 
 CUresult cuMemcpyDtoD(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t ByteCount) {
