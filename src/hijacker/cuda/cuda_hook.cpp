@@ -3425,10 +3425,11 @@ CUresult cuCoredumpSetAttributeGlobal(CUcoredumpSettings attrib, void * value, s
 
 CUresult cuGetExportTable(const void * * ppExportTable, const CUuuid * pExportTableId) {
     HOOK_TRACE_PROFILE("cuGetExportTable");
-    using func_ptr = CUresult (*)(const void * *, const CUuuid *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGetExportTable"));
-    HOOK_CHECK(func_entry);
-    return func_entry(ppExportTable, pExportTableId);
+    // using func_ptr = CUresult (*)(const void * *, const CUuuid *);
+    // static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGetExportTable"));
+    // HOOK_CHECK(func_entry);
+    // return func_entry(ppExportTable, pExportTableId);
+    return CUDA_ERROR_NOT_SUPPORTED;
 }
 
 

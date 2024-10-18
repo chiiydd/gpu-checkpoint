@@ -169,6 +169,8 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
 
         case CuDriverCall::CuCtxGetCurrent:
             reply->result=cuCtxGetCurrent(&reply->returnParams.ctx);
+        case CuDriverCall::CuCtxSetCurrent:
+            reply->result=cuCtxSetCurrent(request->params.cuCtxSetCurrent.ctx);
             break;
         case CuDriverCall::CuCtxPushCurrent:
             reply->result=cuCtxPushCurrent_v2(request->params.cuCtxPushCurrent.ctx);
@@ -195,7 +197,9 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
             reply->result=cuDevicePrimaryCtxRetain(&reply->returnParams.ctx, request->params.cuDevicePrimaryCtxRetain.dev);
             break;
 
-        
+        case CuDriverCall::CuLibraryLoadData:
+            
+            break;
         
         default:
             break;
