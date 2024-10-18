@@ -50,9 +50,10 @@ CUresult cuDriverGetVersion(int * driverVersion) {
     };
     CuDriverCallReplyStructure reply;
 
-    communicate_with_server("", &request,&reply);
+    communicate_with_server(NULL, &request,&reply);
     
     *driverVersion=reply.returnParams.driverVersion;
+    printf("driverVersion: %d\n", *driverVersion);
     return reply.result;
 
 }

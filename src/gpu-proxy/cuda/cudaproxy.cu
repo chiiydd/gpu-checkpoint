@@ -9,8 +9,35 @@
 #include<sys/un.h>
 #include <unistd.h>
 
+#include <string>
 
-CUresult proxy_call(CuDriverCallStructure *request,CuDriverCallReplyStructure * reply);
+std::string to_string(CuDriverCall call) {
+    switch (call) {
+        case CuDriverCall::CuMemAlloc: return "CuMemAlloc";
+        case CuDriverCall::CuMemFree: return "CuMemFree";
+        case CuDriverCall::CuMemcpyHtoD: return "CuMemcpyHtoD";
+        case CuDriverCall::CuMemcpyDtoH: return "CuMemcpyDtoH";
+        case CuDriverCall::CuDriverGetVersion: return "CuDriverGetVersion";
+        case CuDriverCall::CuDeviceGet: return "CuDeviceGet";
+        case CuDriverCall::CuDeviceGetCount: return "CuDeviceGetCount";
+        case CuDriverCall::CuDeviceGetName: return "CuDeviceGetName";
+        case CuDriverCall::CuDeviceGetUuid: return "CuDeviceGetUuid";
+        case CuDriverCall::CuDeviceTotalMem: return "CuDeviceTotalMem";
+        case CuDriverCall::CuGetExportTable: return "CuGetExportTable";
+        case CuDriverCall::CuModuleGetLoadingMode: return "CuModuleGetLoadingMode";
+        case CuDriverCall::CuDeviceGetAttribute: return "CuDeviceGetAttribute";
+        case CuDriverCall::CuCtxGetCurrent: return "CuCtxGetCurrent";
+        case CuDriverCall::CuCtxSetCurrent: return "CuCtxSetCurrent";
+        case CuDriverCall::CuDevicePrimaryCtxRetain: return "CuDevicePrimaryCtxRetain";
+        case CuDriverCall::CuLibraryLoadData: return "CuLibraryLoadData";
+        case CuDriverCall::CuLibraryUnload: return "CuLibraryUnload";
+        case CuDriverCall::CuDevicePrimaryCtxRelease: return "CuDevicePrimaryCtxRelease";
+        case CuDriverCall::CuCtxPushCurrent: return "CuCtxPushCurrent";
+        case CuDriverCall::CuInit: return "CuInit";
+        default: return "Unknown";
+    }
+}
+CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCallReplyStructure * reply);
 int proxy_init(){
     CUresult result;
     const char* errorString;
@@ -65,29 +92,31 @@ void proxy_start(){
         exit(EXIT_FAILURE);
     }
     
-    if (listen(skt_proxy, 5)<0){
+    if (listen(skt_proxy, 100)<0){
         perror("listen");
         exit(EXIT_FAILURE);
     }
 
-    if ((skt_accept=accept(skt_proxy, NULL, NULL))<0){
-        perror("accept");
-        exit(EXIT_FAILURE);
-    }
 
     
     CuDriverCallStructure request;
     CuDriverCallReplyStructure reply;
     while(1){
+        if ((skt_accept=accept(skt_proxy, NULL, NULL))<0){
+            perror("accept");
+            continue;
+        }
+
         if(read(skt_accept, &request, sizeof(CuDriverCallStructure))<0){
             perror("read");
             exit(EXIT_FAILURE);
         }
-        printf("op:%d\n",request.op);
+        printf("op:%s\n",to_string(request.op).c_str());
 
-        proxy_call(&request,&reply);
+        proxy_call(skt_accept,&request,&reply);
 
         write(skt_accept, &reply, sizeof(CuDriverCallReplyStructure));
+        close(skt_accept);
         
     }
 
