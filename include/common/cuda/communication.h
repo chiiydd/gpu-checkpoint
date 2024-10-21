@@ -57,6 +57,7 @@ struct CuDriverCallStructure {
             int ordinal;
         }cuDeviceGet;
         struct{
+            char * name;
             int len;
             CUdevice device;
         }cuDeviceGetName;

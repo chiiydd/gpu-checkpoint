@@ -89,11 +89,10 @@ CUresult cuDeviceGetName(char * name, int len, CUdevice dev) {
     HOOK_TRACE_PROFILE("cuDeviceGetName");
     CuDriverCallStructure request{
         .op=CuDriverCall::CuDeviceGetName,
-        .params={.cuDeviceGetName={.len=len,.device=dev}}
+        .params={.cuDeviceGetName={.name=name,.len=len,.device=dev}}
     };
     CuDriverCallReplyStructure reply;
     communicate_with_server(nullptr, &request, &reply);
-    strcpy(name, "virtual GPU 0");
     return reply.result;
 }
 
