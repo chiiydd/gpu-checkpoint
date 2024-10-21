@@ -185,8 +185,8 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
             break;
         case CuDriverCall::CuDeviceGetName:
             buffer=malloc(request->params.cuDeviceGetName.len);
-            reply->result=cuDeviceGetName(buffer, request->params.cuDeviceGetName.len, request->params.cuDeviceGetName.dev);
-            if(write(socket_handle,, buffer, sizeof(buffer))<0){
+            reply->result=cuDeviceGetName((char *)buffer, request->params.cuDeviceGetName.len, request->params.cuDeviceGetName.device);
+            if(write(socket_handle, buffer, sizeof(buffer))<0){
                 perror("CuDeviceGetName:writing to cilent fails.\n");
             }
             break;
