@@ -11,7 +11,14 @@
 
 ## Design
 
+### Architecture
 
+![](images/Architecture.png)
+
+
+### GPU-Proxy
+
+![](images/inceptor.png)
 ## Roadmap
 
 ### 第一阶段
