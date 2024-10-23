@@ -24,6 +24,7 @@ enum class CuDriverCall{
     CuDevicePrimaryCtxRelease,
     CuCtxPushCurrent,
     CuInit,
+    CuCtxCreate,
 };
 
 
@@ -34,6 +35,9 @@ struct CuDriverCallStructure {
         struct{
 
         }empty;
+        struct{
+            unsigned int flags;
+        }cuInit;
         struct{
             size_t size;
         }cuMemAlloc;
@@ -84,6 +88,10 @@ struct CuDriverCallStructure {
         struct{
             CUcontext ctx;
         }cuCtxSetCurrent;
+        struct{
+            unsigned int flags;
+            CUdevice dev;
+        }cuCtxCreate;
         struct{
             CUdevice dev;
         }cuDevicePrimaryCtxRetain;

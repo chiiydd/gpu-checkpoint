@@ -6,6 +6,7 @@ int communicate_with_server(const char *socket_name, CuDriverCallStructure *send
     int skt_client;
     struct sockaddr_un sa_client;
 
+    printf("Sending OP:%d\n",send_structure->op);
     // 如果没有指定socket_name，使用默认值
     if (!socket_name) {
         socket_name = "CUDA_PROXY_SOCKET";

@@ -35,9 +35,10 @@ CUresult cuInit(unsigned int Flags) {
 
     CuDriverCallStructure request={
         .op= CuDriverCall::CuInit,
-        .params={.empty{}},
+        .params={.cuInit{.flags=Flags}},
     };
     CuDriverCallReplyStructure reply;
+    printf("cuInit flags:%u\n",Flags);
     communicate_with_server(NULL, &request, &reply);
     return reply.result;
 }
@@ -261,18 +262,26 @@ CUresult cuDevicePrimaryCtxReset(CUdevice dev) {
 
 CUresult cuCtxCreate(CUcontext * pctx, unsigned int flags, CUdevice dev) {
     HOOK_TRACE_PROFILE("cuCtxCreate");
-    using func_ptr = CUresult (*)(CUcontext *, unsigned int, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pctx, flags, dev);
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuCtxCreate,
+        .params={.cuCtxCreate={.flags=flags,.dev=dev}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *pctx=reply.returnParams.ctx;
+    return reply.result;
 }
 
 CUresult cuCtxCreate_v3(CUcontext * pctx, CUexecAffinityParam * paramsArray, int numParams, unsigned int flags, CUdevice dev) {
     HOOK_TRACE_PROFILE("cuCtxCreate_v3");
-    using func_ptr = CUresult (*)(CUcontext *, CUexecAffinityParam *, int, unsigned int, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxCreate_v3"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pctx, paramsArray, numParams, flags, dev);
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuCtxCreate,
+        .params={.cuCtxCreate={.flags=flags,.dev=dev}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *pctx=reply.returnParams.ctx;
+    return reply.result;
 }
 
 CUresult cuCtxDestroy(CUcontext ctx) {
@@ -506,7 +515,9 @@ CUresult cuModuleUnload(CUmodule hmod) {
 }
 
 CUresult cuModuleGetLoadingMode(CUmoduleLoadingMode * mode) {
-    CuDriverCallStructure request;
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuModuleGetLoadingMode,
+    };
     CuDriverCallReplyStructure reply;
     
     communicate_with_server(NULL, &request, &reply);
@@ -607,6 +618,7 @@ CUresult cuLibraryLoadData(CUlibrary * library, const void * code, CUjit_option 
     using func_ptr = CUresult (*)(CUlibrary *, const void *, CUjit_option *, void * *, unsigned int, CUlibraryOption *, void * *, unsigned int);
     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryLoadData"));
     HOOK_CHECK(func_entry);
+    printf("cuLibraryLoadData code:%s\n",code);
     return func_entry(library, code, jitOptions, jitOptionsValues, numJitOptions, libraryOptions, libraryOptionValues, numLibraryOptions);
 }
 
@@ -3424,11 +3436,29 @@ CUresult cuCoredumpSetAttributeGlobal(CUcoredumpSettings attrib, void * value, s
 
 CUresult cuGetExportTable(const void * * ppExportTable, const CUuuid * pExportTableId) {
     HOOK_TRACE_PROFILE("cuGetExportTable");
-    // using func_ptr = CUresult (*)(const void * *, const CUuuid *);
-    // static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGetExportTable"));
-    // HOOK_CHECK(func_entry);
-    // return func_entry(ppExportTable, pExportTableId);
-    return CUDA_ERROR_NOT_SUPPORTED;
+
+    using func_ptr = CUresult (*)(const void * *, const CUuuid *);
+    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGetExportTable"));
+    HOOK_CHECK(func_entry);
+    CUresult result= func_entry(ppExportTable, pExportTableId);
+     CUuuid uuid=*pExportTableId;
+    printf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x\n",
+        (unsigned char)uuid.bytes[0], (unsigned char)uuid.bytes[1], 
+        (unsigned char)uuid.bytes[2], (unsigned char)uuid.bytes[3],
+        (unsigned char)uuid.bytes[4], (unsigned char)uuid.bytes[5],
+        (unsigned char)uuid.bytes[6], (unsigned char)uuid.bytes[7],
+        (unsigned char)uuid.bytes[8], (unsigned char)uuid.bytes[9],
+        (unsigned char)uuid.bytes[10], (unsigned char)uuid.bytes[11],
+        (unsigned char)uuid.bytes[12], (unsigned char)uuid.bytes[13],
+        (unsigned char)uuid.bytes[14], (unsigned char)uuid.bytes[15]
+    );
+    unsigned int index=0;
+    while(ppExportTable[index]!=nullptr){
+        printf("%d:%p\n",index,ppExportTable[index]);
+        index++;
+    }
+    
+    return result;
 }
 
 
@@ -3521,205 +3551,205 @@ CUresult cuStreamGetGreenCtx(CUstream hStream, CUgreenCtx * phCtx) {
     return func_entry(hStream, phCtx);
 }
 
-CUresult cuTexRefSetAddress2D_v2(CUtexref hTexRef, const CUDA_ARRAY_DESCRIPTOR * desc, CUdeviceptr dptr, size_t Pitch) {
-    HOOK_TRACE_PROFILE("cuTexRefSetAddress2D_v2");
-    using func_ptr = CUresult (*)(CUtexref, const CUDA_ARRAY_DESCRIPTOR *, CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetAddress2D_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef, desc, dptr, Pitch);
-}
+// CUresult cuTexRefSetAddress2D_v2(CUtexref hTexRef, const CUDA_ARRAY_DESCRIPTOR * desc, CUdeviceptr dptr, size_t Pitch) {
+//     HOOK_TRACE_PROFILE("cuTexRefSetAddress2D_v2");
+//     using func_ptr = CUresult (*)(CUtexref, const CUDA_ARRAY_DESCRIPTOR *, CUdeviceptr, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetAddress2D_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(hTexRef, desc, dptr, Pitch);
+// }
 
-CUresult cuMemcpyHtoD_v2(CUdeviceptr dstDevice, const void * srcHost, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyHtoD_v2");
-    using func_ptr = CUresult (*)(CUdeviceptr, const void *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoD_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, srcHost, ByteCount);
-}
+// CUresult cuMemcpyHtoD_v2(CUdeviceptr dstDevice, const void * srcHost, size_t ByteCount) {
+//     HOOK_TRACE_PROFILE("cuMemcpyHtoD_v2");
+//     using func_ptr = CUresult (*)(CUdeviceptr, const void *, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoD_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstDevice, srcHost, ByteCount);
+// }
 
-CUresult cuMemcpyDtoH_v2(void * dstHost, CUdeviceptr srcDevice, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyDtoH_v2");
-    using func_ptr = CUresult (*)(void *, CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoH_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstHost, srcDevice, ByteCount);
-}
+// CUresult cuMemcpyDtoH_v2(void * dstHost, CUdeviceptr srcDevice, size_t ByteCount) {
+//     HOOK_TRACE_PROFILE("cuMemcpyDtoH_v2");
+//     using func_ptr = CUresult (*)(void *, CUdeviceptr, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoH_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstHost, srcDevice, ByteCount);
+// }
 
-CUresult cuMemcpyDtoD_v2(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyDtoD_v2");
-    using func_ptr = CUresult (*)(CUdeviceptr, CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoD_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, srcDevice, ByteCount);
-}
+// CUresult cuMemcpyDtoD_v2(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t ByteCount) {
+//     HOOK_TRACE_PROFILE("cuMemcpyDtoD_v2");
+//     using func_ptr = CUresult (*)(CUdeviceptr, CUdeviceptr, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoD_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstDevice, srcDevice, ByteCount);
+// }
 
-CUresult cuMemcpyDtoA_v2(CUarray dstArray, size_t dstOffset, CUdeviceptr srcDevice, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyDtoA_v2");
-    using func_ptr = CUresult (*)(CUarray, size_t, CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoA_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstArray, dstOffset, srcDevice, ByteCount);
-}
+// CUresult cuMemcpyDtoA_v2(CUarray dstArray, size_t dstOffset, CUdeviceptr srcDevice, size_t ByteCount) {
+//     HOOK_TRACE_PROFILE("cuMemcpyDtoA_v2");
+//     using func_ptr = CUresult (*)(CUarray, size_t, CUdeviceptr, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoA_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstArray, dstOffset, srcDevice, ByteCount);
+// }
 
-CUresult cuMemcpyAtoD_v2(CUdeviceptr dstDevice, CUarray srcArray, size_t srcOffset, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyAtoD_v2");
-    using func_ptr = CUresult (*)(CUdeviceptr, CUarray, size_t, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoD_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, srcArray, srcOffset, ByteCount);
-}
+// CUresult cuMemcpyAtoD_v2(CUdeviceptr dstDevice, CUarray srcArray, size_t srcOffset, size_t ByteCount) {
+//     HOOK_TRACE_PROFILE("cuMemcpyAtoD_v2");
+//     using func_ptr = CUresult (*)(CUdeviceptr, CUarray, size_t, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoD_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstDevice, srcArray, srcOffset, ByteCount);
+// }
 
-CUresult cuMemcpyHtoA_v2(CUarray dstArray, size_t dstOffset, const void * srcHost, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyHtoA_v2");
-    using func_ptr = CUresult (*)(CUarray, size_t, const void *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoA_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstArray, dstOffset, srcHost, ByteCount);
-}
+// CUresult cuMemcpyHtoA_v2(CUarray dstArray, size_t dstOffset, const void * srcHost, size_t ByteCount) {
+//     HOOK_TRACE_PROFILE("cuMemcpyHtoA_v2");
+//     using func_ptr = CUresult (*)(CUarray, size_t, const void *, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoA_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstArray, dstOffset, srcHost, ByteCount);
+// }
 
-CUresult cuMemcpyAtoH_v2(void * dstHost, CUarray srcArray, size_t srcOffset, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyAtoH_v2");
-    using func_ptr = CUresult (*)(void *, CUarray, size_t, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoH_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstHost, srcArray, srcOffset, ByteCount);
-}
+// CUresult cuMemcpyAtoH_v2(void * dstHost, CUarray srcArray, size_t srcOffset, size_t ByteCount) {
+//     HOOK_TRACE_PROFILE("cuMemcpyAtoH_v2");
+//     using func_ptr = CUresult (*)(void *, CUarray, size_t, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoH_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstHost, srcArray, srcOffset, ByteCount);
+// }
 
-CUresult cuMemcpyAtoA_v2(CUarray dstArray, size_t dstOffset, CUarray srcArray, size_t srcOffset, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyAtoA_v2");
-    using func_ptr = CUresult (*)(CUarray, size_t, CUarray, size_t, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoA_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstArray, dstOffset, srcArray, srcOffset, ByteCount);
-}
+// CUresult cuMemcpyAtoA_v2(CUarray dstArray, size_t dstOffset, CUarray srcArray, size_t srcOffset, size_t ByteCount) {
+//     HOOK_TRACE_PROFILE("cuMemcpyAtoA_v2");
+//     using func_ptr = CUresult (*)(CUarray, size_t, CUarray, size_t, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoA_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstArray, dstOffset, srcArray, srcOffset, ByteCount);
+// }
 
-CUresult cuMemcpyHtoAAsync_v2(CUarray dstArray, size_t dstOffset, const void * srcHost, size_t ByteCount, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpyHtoAAsync_v2");
-    using func_ptr = CUresult (*)(CUarray, size_t, const void *, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoAAsync_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstArray, dstOffset, srcHost, ByteCount, hStream);
-}
+// CUresult cuMemcpyHtoAAsync_v2(CUarray dstArray, size_t dstOffset, const void * srcHost, size_t ByteCount, CUstream hStream) {
+//     HOOK_TRACE_PROFILE("cuMemcpyHtoAAsync_v2");
+//     using func_ptr = CUresult (*)(CUarray, size_t, const void *, size_t, CUstream);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoAAsync_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstArray, dstOffset, srcHost, ByteCount, hStream);
+// }
 
-CUresult cuMemcpyAtoHAsync_v2(void * dstHost, CUarray srcArray, size_t srcOffset, size_t ByteCount, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpyAtoHAsync_v2");
-    using func_ptr = CUresult (*)(void *, CUarray, size_t, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoHAsync_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstHost, srcArray, srcOffset, ByteCount, hStream);
-}
+// CUresult cuMemcpyAtoHAsync_v2(void * dstHost, CUarray srcArray, size_t srcOffset, size_t ByteCount, CUstream hStream) {
+//     HOOK_TRACE_PROFILE("cuMemcpyAtoHAsync_v2");
+//     using func_ptr = CUresult (*)(void *, CUarray, size_t, size_t, CUstream);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoHAsync_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstHost, srcArray, srcOffset, ByteCount, hStream);
+// }
 
-CUresult cuMemcpy2D_v2(const CUDA_MEMCPY2D * pCopy) {
-    HOOK_TRACE_PROFILE("cuMemcpy2D_v2");
-    using func_ptr = CUresult (*)(const CUDA_MEMCPY2D *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy2D_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pCopy);
-}
+// CUresult cuMemcpy2D_v2(const CUDA_MEMCPY2D * pCopy) {
+//     HOOK_TRACE_PROFILE("cuMemcpy2D_v2");
+//     using func_ptr = CUresult (*)(const CUDA_MEMCPY2D *);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy2D_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(pCopy);
+// }
 
-CUresult cuMemcpy2DUnaligned_v2(const CUDA_MEMCPY2D * pCopy) {
-    HOOK_TRACE_PROFILE("cuMemcpy2DUnaligned_v2");
-    using func_ptr = CUresult (*)(const CUDA_MEMCPY2D *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy2DUnaligned_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pCopy);
-}
+// CUresult cuMemcpy2DUnaligned_v2(const CUDA_MEMCPY2D * pCopy) {
+//     HOOK_TRACE_PROFILE("cuMemcpy2DUnaligned_v2");
+//     using func_ptr = CUresult (*)(const CUDA_MEMCPY2D *);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy2DUnaligned_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(pCopy);
+// }
 
-CUresult cuMemcpy3D_v2(const CUDA_MEMCPY3D * pCopy) {
-    HOOK_TRACE_PROFILE("cuMemcpy3D_v2");
-    using func_ptr = CUresult (*)(const CUDA_MEMCPY3D *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy3D_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pCopy);
-}
+// CUresult cuMemcpy3D_v2(const CUDA_MEMCPY3D * pCopy) {
+//     HOOK_TRACE_PROFILE("cuMemcpy3D_v2");
+//     using func_ptr = CUresult (*)(const CUDA_MEMCPY3D *);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy3D_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(pCopy);
+// }
 
-CUresult cuMemcpyHtoDAsync_v2(CUdeviceptr dstDevice, const void * srcHost, size_t ByteCount, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpyHtoDAsync_v2");
-    using func_ptr = CUresult (*)(CUdeviceptr, const void *, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoDAsync_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, srcHost, ByteCount, hStream);
-}
+// CUresult cuMemcpyHtoDAsync_v2(CUdeviceptr dstDevice, const void * srcHost, size_t ByteCount, CUstream hStream) {
+//     HOOK_TRACE_PROFILE("cuMemcpyHtoDAsync_v2");
+//     using func_ptr = CUresult (*)(CUdeviceptr, const void *, size_t, CUstream);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoDAsync_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstDevice, srcHost, ByteCount, hStream);
+// }
 
-CUresult cuMemcpyDtoHAsync_v2(void * dstHost, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpyDtoHAsync_v2");
-    using func_ptr = CUresult (*)(void *, CUdeviceptr, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoHAsync_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstHost, srcDevice, ByteCount, hStream);
-}
+// CUresult cuMemcpyDtoHAsync_v2(void * dstHost, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream) {
+//     HOOK_TRACE_PROFILE("cuMemcpyDtoHAsync_v2");
+//     using func_ptr = CUresult (*)(void *, CUdeviceptr, size_t, CUstream);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoHAsync_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstHost, srcDevice, ByteCount, hStream);
+// }
 
-CUresult cuMemcpyDtoDAsync_v2(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpyDtoDAsync_v2");
-    using func_ptr = CUresult (*)(CUdeviceptr, CUdeviceptr, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoDAsync_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, srcDevice, ByteCount, hStream);
-}
+// CUresult cuMemcpyDtoDAsync_v2(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream) {
+//     HOOK_TRACE_PROFILE("cuMemcpyDtoDAsync_v2");
+//     using func_ptr = CUresult (*)(CUdeviceptr, CUdeviceptr, size_t, CUstream);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoDAsync_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstDevice, srcDevice, ByteCount, hStream);
+// }
 
-CUresult cuMemcpy2DAsync_v2(const CUDA_MEMCPY2D * pCopy, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpy2DAsync_v2");
-    using func_ptr = CUresult (*)(const CUDA_MEMCPY2D *, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy2DAsync_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pCopy, hStream);
-}
+// CUresult cuMemcpy2DAsync_v2(const CUDA_MEMCPY2D * pCopy, CUstream hStream) {
+//     HOOK_TRACE_PROFILE("cuMemcpy2DAsync_v2");
+//     using func_ptr = CUresult (*)(const CUDA_MEMCPY2D *, CUstream);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy2DAsync_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(pCopy, hStream);
+// }
 
-CUresult cuMemcpy3DAsync_v2(const CUDA_MEMCPY3D * pCopy, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpy3DAsync_v2");
-    using func_ptr = CUresult (*)(const CUDA_MEMCPY3D *, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy3DAsync_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pCopy, hStream);
-}
+// CUresult cuMemcpy3DAsync_v2(const CUDA_MEMCPY3D * pCopy, CUstream hStream) {
+//     HOOK_TRACE_PROFILE("cuMemcpy3DAsync_v2");
+//     using func_ptr = CUresult (*)(const CUDA_MEMCPY3D *, CUstream);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy3DAsync_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(pCopy, hStream);
+// }
 
-CUresult cuMemsetD8_v2(CUdeviceptr dstDevice, unsigned char uc, size_t N) {
-    HOOK_TRACE_PROFILE("cuMemsetD8_v2");
-    using func_ptr = CUresult (*)(CUdeviceptr, unsigned char, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD8_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, uc, N);
-}
+// CUresult cuMemsetD8_v2(CUdeviceptr dstDevice, unsigned char uc, size_t N) {
+//     HOOK_TRACE_PROFILE("cuMemsetD8_v2");
+//     using func_ptr = CUresult (*)(CUdeviceptr, unsigned char, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD8_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstDevice, uc, N);
+// }
 
-CUresult cuMemsetD16_v2(CUdeviceptr dstDevice, unsigned short us, size_t N) {
-    HOOK_TRACE_PROFILE("cuMemsetD16_v2");
-    using func_ptr = CUresult (*)(CUdeviceptr, unsigned short, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD16_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, us, N);
-}
+// CUresult cuMemsetD16_v2(CUdeviceptr dstDevice, unsigned short us, size_t N) {
+//     HOOK_TRACE_PROFILE("cuMemsetD16_v2");
+//     using func_ptr = CUresult (*)(CUdeviceptr, unsigned short, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD16_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstDevice, us, N);
+// }
 
-CUresult cuMemsetD32_v2(CUdeviceptr dstDevice, unsigned int ui, size_t N) {
-    HOOK_TRACE_PROFILE("cuMemsetD32_v2");
-    using func_ptr = CUresult (*)(CUdeviceptr, unsigned int, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD32_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, ui, N);
-}
+// CUresult cuMemsetD32_v2(CUdeviceptr dstDevice, unsigned int ui, size_t N) {
+//     HOOK_TRACE_PROFILE("cuMemsetD32_v2");
+//     using func_ptr = CUresult (*)(CUdeviceptr, unsigned int, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD32_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstDevice, ui, N);
+// }
 
-CUresult cuMemsetD2D8_v2(CUdeviceptr dstDevice, size_t dstPitch, unsigned char uc, size_t Width, size_t Height) {
-    HOOK_TRACE_PROFILE("cuMemsetD2D8_v2");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned char, size_t, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D8_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, dstPitch, uc, Width, Height);
-}
+// CUresult cuMemsetD2D8_v2(CUdeviceptr dstDevice, size_t dstPitch, unsigned char uc, size_t Width, size_t Height) {
+//     HOOK_TRACE_PROFILE("cuMemsetD2D8_v2");
+//     using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned char, size_t, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D8_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstDevice, dstPitch, uc, Width, Height);
+// }
 
-CUresult cuMemsetD2D16_v2(CUdeviceptr dstDevice, size_t dstPitch, unsigned short us, size_t Width, size_t Height) {
-    HOOK_TRACE_PROFILE("cuMemsetD2D16_v2");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned short, size_t, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D16_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, dstPitch, us, Width, Height);
-}
+// CUresult cuMemsetD2D16_v2(CUdeviceptr dstDevice, size_t dstPitch, unsigned short us, size_t Width, size_t Height) {
+//     HOOK_TRACE_PROFILE("cuMemsetD2D16_v2");
+//     using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned short, size_t, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D16_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstDevice, dstPitch, us, Width, Height);
+// }
 
-CUresult cuMemsetD2D32_v2(CUdeviceptr dstDevice, size_t dstPitch, unsigned int ui, size_t Width, size_t Height) {
-    HOOK_TRACE_PROFILE("cuMemsetD2D32_v2");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned int, size_t, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D32_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, dstPitch, ui, Width, Height);
-}
+// CUresult cuMemsetD2D32_v2(CUdeviceptr dstDevice, size_t dstPitch, unsigned int ui, size_t Width, size_t Height) {
+//     HOOK_TRACE_PROFILE("cuMemsetD2D32_v2");
+//     using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned int, size_t, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D32_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(dstDevice, dstPitch, ui, Width, Height);
+// }
 
 CUresult cuStreamWriteValue32_ptsz(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
     HOOK_TRACE_PROFILE("cuStreamWriteValue32_ptsz");
@@ -3761,45 +3791,45 @@ CUresult cuStreamBatchMemOp_ptsz(CUstream stream, unsigned int count, CUstreamBa
     return func_entry(stream, count, paramArray, flags);
 }
 
-CUresult cuStreamWriteValue32_v2(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamWriteValue32_v2");
-    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue32_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, addr, value, flags);
-}
+// CUresult cuStreamWriteValue32_v2(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
+//     HOOK_TRACE_PROFILE("cuStreamWriteValue32_v2");
+//     using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue32_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(stream, addr, value, flags);
+// }
 
-CUresult cuStreamWaitValue32_v2(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamWaitValue32_v2");
-    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue32_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, addr, value, flags);
-}
+// CUresult cuStreamWaitValue32_v2(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
+//     HOOK_TRACE_PROFILE("cuStreamWaitValue32_v2");
+//     using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue32_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(stream, addr, value, flags);
+// }
 
-CUresult cuStreamWriteValue64_v2(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamWriteValue64_v2");
-    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue64_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, addr, value, flags);
-}
+// CUresult cuStreamWriteValue64_v2(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
+//     HOOK_TRACE_PROFILE("cuStreamWriteValue64_v2");
+//     using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue64_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(stream, addr, value, flags);
+// }
 
-CUresult cuStreamWaitValue64_v2(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamWaitValue64_v2");
-    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue64_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, addr, value, flags);
-}
+// CUresult cuStreamWaitValue64_v2(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
+//     HOOK_TRACE_PROFILE("cuStreamWaitValue64_v2");
+//     using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue64_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(stream, addr, value, flags);
+// }
 
-CUresult cuStreamBatchMemOp_v2(CUstream stream, unsigned int count, CUstreamBatchMemOpParams * paramArray, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamBatchMemOp_v2");
-    using func_ptr = CUresult (*)(CUstream, unsigned int, CUstreamBatchMemOpParams *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBatchMemOp_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, count, paramArray, flags);
-}
+// CUresult cuStreamBatchMemOp_v2(CUstream stream, unsigned int count, CUstreamBatchMemOpParams * paramArray, unsigned int flags) {
+//     HOOK_TRACE_PROFILE("cuStreamBatchMemOp_v2");
+//     using func_ptr = CUresult (*)(CUstream, unsigned int, CUstreamBatchMemOpParams *, unsigned int);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBatchMemOp_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(stream, count, paramArray, flags);
+// }
 
 CUresult cuStreamBeginCapture_ptsz(CUstream hStream) {
     HOOK_TRACE_PROFILE("cuStreamBeginCapture_ptsz");
@@ -3809,13 +3839,13 @@ CUresult cuStreamBeginCapture_ptsz(CUstream hStream) {
     return func_entry(hStream);
 }
 
-CUresult cuStreamBeginCapture_v2(CUstream hStream, CUstreamCaptureMode mode) {
-    HOOK_TRACE_PROFILE("cuStreamBeginCapture_v2");
-    using func_ptr = CUresult (*)(CUstream, CUstreamCaptureMode);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBeginCapture_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, mode);
-}
+// CUresult cuStreamBeginCapture_v2(CUstream hStream, CUstreamCaptureMode mode) {
+//     HOOK_TRACE_PROFILE("cuStreamBeginCapture_v2");
+//     using func_ptr = CUresult (*)(CUstream, CUstreamCaptureMode);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBeginCapture_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(hStream, mode);
+// }
 
 CUresult cuStreamGetCaptureInfo_ptsz(CUstream hStream, CUstreamCaptureStatus * captureStatus_out, cuuint64_t * id_out) {
     HOOK_TRACE_PROFILE("cuStreamGetCaptureInfo_ptsz");
@@ -3825,21 +3855,21 @@ CUresult cuStreamGetCaptureInfo_ptsz(CUstream hStream, CUstreamCaptureStatus * c
     return func_entry(hStream, captureStatus_out, id_out);
 }
 
-CUresult cuStreamGetCaptureInfo_v2(CUstream hStream, CUstreamCaptureStatus * captureStatus_out, cuuint64_t * id_out, CUgraph * graph_out, const CUgraphNode * * dependencies_out, size_t * numDependencies_out) {
-    HOOK_TRACE_PROFILE("cuStreamGetCaptureInfo_v2");
-    using func_ptr = CUresult (*)(CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetCaptureInfo_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, captureStatus_out, id_out, graph_out, dependencies_out, numDependencies_out);
-}
+// CUresult cuStreamGetCaptureInfo_v2(CUstream hStream, CUstreamCaptureStatus * captureStatus_out, cuuint64_t * id_out, CUgraph * graph_out, const CUgraphNode * * dependencies_out, size_t * numDependencies_out) {
+//     HOOK_TRACE_PROFILE("cuStreamGetCaptureInfo_v2");
+//     using func_ptr = CUresult (*)(CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, size_t *);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetCaptureInfo_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(hStream, captureStatus_out, id_out, graph_out, dependencies_out, numDependencies_out);
+// }
 
-CUresult cuGraphInstantiate_v2(CUgraphExec * phGraphExec, CUgraph hGraph, CUgraphNode * phErrorNode, char * logBuffer, size_t bufferSize) {
-    HOOK_TRACE_PROFILE("cuGraphInstantiate_v2");
-    using func_ptr = CUresult (*)(CUgraphExec *, CUgraph, CUgraphNode *, char *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphInstantiate_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphExec, hGraph, phErrorNode, logBuffer, bufferSize);
-}
+// CUresult cuGraphInstantiate_v2(CUgraphExec * phGraphExec, CUgraph hGraph, CUgraphNode * phErrorNode, char * logBuffer, size_t bufferSize) {
+//     HOOK_TRACE_PROFILE("cuGraphInstantiate_v2");
+//     using func_ptr = CUresult (*)(CUgraphExec *, CUgraph, CUgraphNode *, char *, size_t);
+//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphInstantiate_v2"));
+//     HOOK_CHECK(func_entry);
+//     return func_entry(phGraphExec, hGraph, phErrorNode, logBuffer, bufferSize);
+// }
 
 
 
@@ -3864,7 +3894,7 @@ static std::unordered_map<const char *, void *,CStrHash,CStrEqual> functionMap={
     {"cuDeviceGetCount", reinterpret_cast<void*>(&cuDeviceGetCount)},
     {"cuDeviceGetName", reinterpret_cast<void*>(&cuDeviceGetName)},
     {"cuDeviceGetUuid", reinterpret_cast<void*>(&cuDeviceGetUuid)},
-    {"cuDeviceGetUuid_v2", reinterpret_cast<void*>(&cuDeviceGetUuid_v2)},
+    // {"cuDeviceGetUuid_v2", reinterpret_cast<void*>(&cuDeviceGetUuid_v2)},
     {"cuDeviceGetLuid", reinterpret_cast<void*>(&cuDeviceGetLuid)},
     {"cuDeviceTotalMem", reinterpret_cast<void*>(&cuDeviceTotalMem)},
     {"cuDeviceGetTexture1DLinearMaxWidth", reinterpret_cast<void*>(&cuDeviceGetTexture1DLinearMaxWidth)},
@@ -4167,15 +4197,15 @@ static std::unordered_map<const char *, void *,CStrHash,CStrEqual> functionMap={
     {"cuGraphGetNodes", reinterpret_cast<void*>(&cuGraphGetNodes)},
     {"cuGraphGetRootNodes", reinterpret_cast<void*>(&cuGraphGetRootNodes)},
     {"cuGraphGetEdges", reinterpret_cast<void*>(&cuGraphGetEdges)},
-    {"cuGraphGetEdges_v2", reinterpret_cast<void*>(&cuGraphGetEdges_v2)},
+    // {"cuGraphGetEdges_v2", reinterpret_cast<void*>(&cuGraphGetEdges_v2)},
     {"cuGraphNodeGetDependencies", reinterpret_cast<void*>(&cuGraphNodeGetDependencies)},
-    {"cuGraphNodeGetDependencies_v2", reinterpret_cast<void*>(&cuGraphNodeGetDependencies_v2)},
+    // {"cuGraphNodeGetDependencies_v2", reinterpret_cast<void*>(&cuGraphNodeGetDependencies_v2)},
     {"cuGraphNodeGetDependentNodes", reinterpret_cast<void*>(&cuGraphNodeGetDependentNodes)},
-    {"cuGraphNodeGetDependentNodes_v2", reinterpret_cast<void*>(&cuGraphNodeGetDependentNodes_v2)},
+    // {"cuGraphNodeGetDependentNodes_v2", reinterpret_cast<void*>(&cuGraphNodeGetDependentNodes_v2)},
     {"cuGraphAddDependencies", reinterpret_cast<void*>(&cuGraphAddDependencies)},
-    {"cuGraphAddDependencies_v2", reinterpret_cast<void*>(&cuGraphAddDependencies_v2)},
+    // {"cuGraphAddDependencies_v2", reinterpret_cast<void*>(&cuGraphAddDependencies_v2)},
     {"cuGraphRemoveDependencies", reinterpret_cast<void*>(&cuGraphRemoveDependencies)},
-    {"cuGraphRemoveDependencies_v2", reinterpret_cast<void*>(&cuGraphRemoveDependencies_v2)},
+    // {"cuGraphRemoveDependencies_v2", reinterpret_cast<void*>(&cuGraphRemoveDependencies_v2)},
     {"cuGraphDestroyNode", reinterpret_cast<void*>(&cuGraphDestroyNode)},
     {"cuGraphInstantiate", reinterpret_cast<void*>(&cuGraphInstantiate)},
     {"cuGraphInstantiateWithParams", reinterpret_cast<void*>(&cuGraphInstantiateWithParams)},
@@ -4206,7 +4236,7 @@ static std::unordered_map<const char *, void *,CStrHash,CStrEqual> functionMap={
     {"cuGraphRetainUserObject", reinterpret_cast<void*>(&cuGraphRetainUserObject)},
     {"cuGraphReleaseUserObject", reinterpret_cast<void*>(&cuGraphReleaseUserObject)},
     {"cuGraphAddNode", reinterpret_cast<void*>(&cuGraphAddNode)},
-    {"cuGraphAddNode_v2", reinterpret_cast<void*>(&cuGraphAddNode_v2)},
+    // {"cuGraphAddNode_v2", reinterpret_cast<void*>(&cuGraphAddNode_v2)},
     {"cuGraphNodeSetParams", reinterpret_cast<void*>(&cuGraphNodeSetParams)},
     {"cuGraphExecNodeSetParams", reinterpret_cast<void*>(&cuGraphExecNodeSetParams)},
     {"cuGraphConditionalHandleCreate", reinterpret_cast<void*>(&cuGraphConditionalHandleCreate)},
@@ -4284,46 +4314,46 @@ static std::unordered_map<const char *, void *,CStrHash,CStrEqual> functionMap={
     {"cuGreenCtxRecordEvent", reinterpret_cast<void*>(&cuGreenCtxRecordEvent)},
     {"cuGreenCtxWaitEvent", reinterpret_cast<void*>(&cuGreenCtxWaitEvent)},
     {"cuStreamGetGreenCtx", reinterpret_cast<void*>(&cuStreamGetGreenCtx)},
-    {"cuTexRefSetAddress2D_v2", reinterpret_cast<void*>(&cuTexRefSetAddress2D_v2)},
-    {"cuMemcpyHtoD_v2", reinterpret_cast<void*>(&cuMemcpyHtoD_v2)},
-    {"cuMemcpyDtoH_v2", reinterpret_cast<void*>(&cuMemcpyDtoH_v2)},
-    {"cuMemcpyDtoD_v2", reinterpret_cast<void*>(&cuMemcpyDtoD_v2)},
-    {"cuMemcpyDtoA_v2", reinterpret_cast<void*>(&cuMemcpyDtoA_v2)},
-    {"cuMemcpyAtoD_v2", reinterpret_cast<void*>(&cuMemcpyAtoD_v2)},
-    {"cuMemcpyHtoA_v2", reinterpret_cast<void*>(&cuMemcpyHtoA_v2)},
-    {"cuMemcpyAtoH_v2", reinterpret_cast<void*>(&cuMemcpyAtoH_v2)},
-    {"cuMemcpyAtoA_v2", reinterpret_cast<void*>(&cuMemcpyAtoA_v2)},
-    {"cuMemcpyHtoAAsync_v2", reinterpret_cast<void*>(&cuMemcpyHtoAAsync_v2)},
-    {"cuMemcpyAtoHAsync_v2", reinterpret_cast<void*>(&cuMemcpyAtoHAsync_v2)},
-    {"cuMemcpy2D_v2", reinterpret_cast<void*>(&cuMemcpy2D_v2)},
-    {"cuMemcpy2DUnaligned_v2", reinterpret_cast<void*>(&cuMemcpy2DUnaligned_v2)},
-    {"cuMemcpy3D_v2", reinterpret_cast<void*>(&cuMemcpy3D_v2)},
-    {"cuMemcpyHtoDAsync_v2", reinterpret_cast<void*>(&cuMemcpyHtoDAsync_v2)},
-    {"cuMemcpyDtoHAsync_v2", reinterpret_cast<void*>(&cuMemcpyDtoHAsync_v2)},
-    {"cuMemcpyDtoDAsync_v2", reinterpret_cast<void*>(&cuMemcpyDtoDAsync_v2)},
-    {"cuMemcpy2DAsync_v2", reinterpret_cast<void*>(&cuMemcpy2DAsync_v2)},
-    {"cuMemcpy3DAsync_v2", reinterpret_cast<void*>(&cuMemcpy3DAsync_v2)},
-    {"cuMemsetD8_v2", reinterpret_cast<void*>(&cuMemsetD8_v2)},
-    {"cuMemsetD16_v2", reinterpret_cast<void*>(&cuMemsetD16_v2)},
-    {"cuMemsetD32_v2", reinterpret_cast<void*>(&cuMemsetD32_v2)},
-    {"cuMemsetD2D8_v2", reinterpret_cast<void*>(&cuMemsetD2D8_v2)},
-    {"cuMemsetD2D16_v2", reinterpret_cast<void*>(&cuMemsetD2D16_v2)},
-    {"cuMemsetD2D32_v2", reinterpret_cast<void*>(&cuMemsetD2D32_v2)},
+    // {"cuTexRefSetAddress2D_v2", reinterpret_cast<void*>(&cuTexRefSetAddress2D_v2)},
+    // {"cuMemcpyHtoD_v2", reinterpret_cast<void*>(&cuMemcpyHtoD_v2)},
+    // {"cuMemcpyDtoH_v2", reinterpret_cast<void*>(&cuMemcpyDtoH_v2)},
+    // {"cuMemcpyDtoD_v2", reinterpret_cast<void*>(&cuMemcpyDtoD_v2)},
+    // {"cuMemcpyDtoA_v2", reinterpret_cast<void*>(&cuMemcpyDtoA_v2)},
+    // {"cuMemcpyAtoD_v2", reinterpret_cast<void*>(&cuMemcpyAtoD_v2)},
+    // {"cuMemcpyHtoA_v2", reinterpret_cast<void*>(&cuMemcpyHtoA_v2)},
+    // {"cuMemcpyAtoH_v2", reinterpret_cast<void*>(&cuMemcpyAtoH_v2)},
+    // {"cuMemcpyAtoA_v2", reinterpret_cast<void*>(&cuMemcpyAtoA_v2)},
+    // {"cuMemcpyHtoAAsync_v2", reinterpret_cast<void*>(&cuMemcpyHtoAAsync_v2)},
+    // {"cuMemcpyAtoHAsync_v2", reinterpret_cast<void*>(&cuMemcpyAtoHAsync_v2)},
+    // {"cuMemcpy2D_v2", reinterpret_cast<void*>(&cuMemcpy2D_v2)},
+    // {"cuMemcpy2DUnaligned_v2", reinterpret_cast<void*>(&cuMemcpy2DUnaligned_v2)},
+    // {"cuMemcpy3D_v2", reinterpret_cast<void*>(&cuMemcpy3D_v2)},
+    // {"cuMemcpyHtoDAsync_v2", reinterpret_cast<void*>(&cuMemcpyHtoDAsync_v2)},
+    // {"cuMemcpyDtoHAsync_v2", reinterpret_cast<void*>(&cuMemcpyDtoHAsync_v2)},
+    // {"cuMemcpyDtoDAsync_v2", reinterpret_cast<void*>(&cuMemcpyDtoDAsync_v2)},
+    // {"cuMemcpy2DAsync_v2", reinterpret_cast<void*>(&cuMemcpy2DAsync_v2)},
+    // {"cuMemcpy3DAsync_v2", reinterpret_cast<void*>(&cuMemcpy3DAsync_v2)},
+    // {"cuMemsetD8_v2", reinterpret_cast<void*>(&cuMemsetD8_v2)},
+    // {"cuMemsetD16_v2", reinterpret_cast<void*>(&cuMemsetD16_v2)},
+    // {"cuMemsetD32_v2", reinterpret_cast<void*>(&cuMemsetD32_v2)},
+    // {"cuMemsetD2D8_v2", reinterpret_cast<void*>(&cuMemsetD2D8_v2)},
+    // {"cuMemsetD2D16_v2", reinterpret_cast<void*>(&cuMemsetD2D16_v2)},
+    // {"cuMemsetD2D32_v2", reinterpret_cast<void*>(&cuMemsetD2D32_v2)},
     {"cuStreamWriteValue32_ptsz", reinterpret_cast<void*>(&cuStreamWriteValue32_ptsz)},
     {"cuStreamWaitValue32_ptsz", reinterpret_cast<void*>(&cuStreamWaitValue32_ptsz)},
     {"cuStreamWriteValue64_ptsz", reinterpret_cast<void*>(&cuStreamWriteValue64_ptsz)},
     {"cuStreamWaitValue64_ptsz", reinterpret_cast<void*>(&cuStreamWaitValue64_ptsz)},
     {"cuStreamBatchMemOp_ptsz", reinterpret_cast<void*>(&cuStreamBatchMemOp_ptsz)},
-    {"cuStreamWriteValue32_v2", reinterpret_cast<void*>(&cuStreamWriteValue32_v2)},
-    {"cuStreamWaitValue32_v2", reinterpret_cast<void*>(&cuStreamWaitValue32_v2)},
-    {"cuStreamWriteValue64_v2", reinterpret_cast<void*>(&cuStreamWriteValue64_v2)},
-    {"cuStreamWaitValue64_v2", reinterpret_cast<void*>(&cuStreamWaitValue64_v2)},
-    {"cuStreamBatchMemOp_v2", reinterpret_cast<void*>(&cuStreamBatchMemOp_v2)},
+    // {"cuStreamWriteValue32_v2", reinterpret_cast<void*>(&cuStreamWriteValue32_v2)},
+    // {"cuStreamWaitValue32_v2", reinterpret_cast<void*>(&cuStreamWaitValue32_v2)},
+    // {"cuStreamWriteValue64_v2", reinterpret_cast<void*>(&cuStreamWriteValue64_v2)},
+    // {"cuStreamWaitValue64_v2", reinterpret_cast<void*>(&cuStreamWaitValue64_v2)},
+    // {"cuStreamBatchMemOp_v2", reinterpret_cast<void*>(&cuStreamBatchMemOp_v2)},
     {"cuStreamBeginCapture_ptsz", reinterpret_cast<void*>(&cuStreamBeginCapture_ptsz)},
-    {"cuStreamBeginCapture_v2", reinterpret_cast<void*>(&cuStreamBeginCapture_v2)},
+    // {"cuStreamBeginCapture_v2", reinterpret_cast<void*>(&cuStreamBeginCapture_v2)},
     {"cuStreamGetCaptureInfo_ptsz", reinterpret_cast<void*>(&cuStreamGetCaptureInfo_ptsz)},
-    {"cuStreamGetCaptureInfo_v2", reinterpret_cast<void*>(&cuStreamGetCaptureInfo_v2)},
-    {"cuGraphInstantiate_v2", reinterpret_cast<void*>(&cuGraphInstantiate_v2)},
+    // {"cuStreamGetCaptureInfo_v2", reinterpret_cast<void*>(&cuStreamGetCaptureInfo_v2)},
+    // {"cuGraphInstantiate_v2", reinterpret_cast<void*>(&cuGraphInstantiate_v2)},
 };
 
 CUresult cuGetProcAddress(const char * symbol, void * * pfn, int cudaVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus) {

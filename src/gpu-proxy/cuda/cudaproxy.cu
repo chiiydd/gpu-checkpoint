@@ -39,26 +39,26 @@ std::string to_string(CuDriverCall call) {
 }
 CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCallReplyStructure * reply);
 int proxy_init(){
-    CUresult result;
-    const char* errorString;
-    // 初始化 CUDA
-    result=cuInit(0);
-    if (result != CUDA_SUCCESS){
-        cuGetErrorString(result, &errorString);
+    // CUresult result;
+    // const char* errorString;
+    // // 初始化 CUDA
+    // result=cuInit(0);
+    // if (result != CUDA_SUCCESS){
+    //     cuGetErrorString(result, &errorString);
 
-        printf("cuInit failed:%s\n",errorString);
-        return 1;
-    }
-    CUcontext context;
-    CUdevice cuDevice;
-    cuDeviceGet(&cuDevice, 0);
-    result=cuCtxCreate(&context, 0, cuDevice);
+    //     printf("cuInit failed:%s\n",errorString);
+    //     return 1;
+    // }
+    // CUcontext context;
+    // CUdevice cuDevice;
+    // cuDeviceGet(&cuDevice, 0);
+    // result=cuCtxCreate(&context, 0, cuDevice);
 
-    if (result != CUDA_SUCCESS){
-        cuGetErrorString(result, &errorString);
-        printf("cuCtxCreate failed:%s\n",errorString);
-        return -1;
-    }
+    // if (result != CUDA_SUCCESS){
+    //     cuGetErrorString(result, &errorString);
+    //     printf("cuCtxCreate failed:%s\n",errorString);
+    //     return -1;
+    // }
     return 0;
 }
 
@@ -131,7 +131,7 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
             reply->result=cuDriverGetVersion(&reply->returnParams.driverVersion);
             break;
         case CuDriverCall::CuInit:
-                reply->result=cuInit(0);
+                reply->result=cuInit(request->params.cuInit.flags);
             break;
         
         case CuDriverCall::CuGetExportTable:
@@ -167,6 +167,8 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
             free(buffer);
             break;
 
+        case CuDriverCall::CuCtxCreate:
+            reply->result=cuCtxCreate(&reply->returnParams.ctx,request->params.cuCtxCreate.flags,request->params.cuCtxCreate.dev);
         case CuDriverCall::CuCtxGetCurrent:
             reply->result=cuCtxGetCurrent(&reply->returnParams.ctx);
         case CuDriverCall::CuCtxSetCurrent:
