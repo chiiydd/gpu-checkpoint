@@ -12,6 +12,8 @@
 
 #include "macro_common.h"
 
+#define HOOK_BUILD_DEBUG
+
 class TraceProfile {
 public:
     TraceProfile(const std::string &name) : m_name(name), m_start(std::chrono::steady_clock::now()) {

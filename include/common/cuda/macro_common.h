@@ -56,6 +56,12 @@ inline long int get_tid() {
         }                                 \
     } while (0)
 
+#define RESULT_CHECK(x) \
+    do {    \
+        if(x!=0){ \
+            HLOG("RESULT CHECK FAILED: %d", x); \
+        }\
+    } while(0)
 #define HOOK_DISALLOW_COPY_AND_ASSIGN(TypeName) \
     TypeName(const TypeName &) = delete;        \
     void operator=(const TypeName &) = delete;
