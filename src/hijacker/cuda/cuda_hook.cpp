@@ -1,4379 +1,887 @@
-
-// auto generate 471 apis
-
-#include "communication.h"
-#include "cuda.h"
-#include "hook.h"
-#include "macro_common.h"
-#include "trace_profile.h"
-#include <cstddef>
-#include <cstdio>
 #include <cstring>
+#include <cuda_original.h>
+#include <cstdio>
+#include "cuda_hook.h"
+
+#include <string>
 #include <unordered_map>
-#include "communicator.h"
+#include "macro_common.h"
 
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGetErrorString(CUresult error, const char * * pStr) {
-    HOOK_TRACE_PROFILE("cuGetErrorString");
-    using func_ptr = CUresult (*)(CUresult, const char * *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGetErrorString"));
-    HOOK_CHECK(func_entry);
-    return func_entry(error, pStr);
-}
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGetErrorName(CUresult error, const char * * pStr) {
-    HOOK_TRACE_PROFILE("cuGetErrorName");
-    using func_ptr = CUresult (*)(CUresult, const char * *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGetErrorName"));
-    HOOK_CHECK(func_entry);
-    return func_entry(error, pStr);
-}
+std::unordered_map<std::string, CuDriverFunction> cuDriverFunctionTable;
+// 定义一个普通函数指针来存储 cuInit 的拦截实现
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuInit(unsigned int Flags) {
-    
-    HOOK_TRACE_PROFILE("cuInit");
+DEF_FN(CUresult,cuGetErrorString ,CUresult,error,const char * *,pStr);
+DEF_FN(CUresult,cuGetErrorName ,CUresult,error,const char * *,pStr);
+DEF_FN(CUresult,cuInit ,unsigned int,Flags);
+DEF_FN(CUresult,cuDriverGetVersion ,int *,driverVersion);
+DEF_FN(CUresult,cuDeviceGet ,CUdevice *,device,int,ordinal);
+DEF_FN(CUresult,cuDeviceGetCount ,int *,count);
+DEF_FN(CUresult,cuDeviceGetName ,char *,name,int,len,CUdevice,dev);
+DEF_FN(CUresult,cuDeviceGetUuid ,CUuuid *,uuid,CUdevice,dev);
+DEF_FN(CUresult,cuDeviceGetUuid_v2 ,CUuuid *,uuid,CUdevice,dev);
+DEF_FN(CUresult,cuDeviceGetLuid ,char *,luid,unsigned int *,deviceNodeMask,CUdevice,dev);
+DEF_FN(CUresult,cuDeviceTotalMem_v2 ,size_t *,bytes,CUdevice,dev);
+DEF_FN(CUresult,cuDeviceGetTexture1DLinearMaxWidth ,size_t *,maxWidthInElements,CUarray_format,format,unsigned,numChannels,CUdevice,dev);
+DEF_FN(CUresult,cuDeviceGetAttribute ,int *,pi,CUdevice_attribute,attrib,CUdevice,dev);
+DEF_FN(CUresult,cuDeviceGetNvSciSyncAttributes ,void *,nvSciSyncAttrList,CUdevice,dev,int,flags);
+DEF_FN(CUresult,cuDeviceSetMemPool ,CUdevice,dev,CUmemoryPool,pool);
+DEF_FN(CUresult,cuDeviceGetMemPool ,CUmemoryPool *,pool,CUdevice,dev);
+DEF_FN(CUresult,cuDeviceGetDefaultMemPool ,CUmemoryPool *,pool_out,CUdevice,dev);
+DEF_FN(CUresult,cuDeviceGetExecAffinitySupport ,int *,pi,CUexecAffinityType,type,CUdevice,dev);
+DEF_FN(CUresult,cuFlushGPUDirectRDMAWrites ,CUflushGPUDirectRDMAWritesTarget,target,CUflushGPUDirectRDMAWritesScope,scope);
+DEF_FN(CUresult,cuDeviceGetProperties ,CUdevprop *,prop,CUdevice,dev);
+DEF_FN(CUresult,cuDeviceComputeCapability ,int *,major,int *,minor,CUdevice,dev);
+DEF_FN(CUresult,cuDevicePrimaryCtxRetain ,CUcontext *,pctx,CUdevice,dev);
+DEF_FN(CUresult,cuDevicePrimaryCtxRelease_v2 ,CUdevice,dev);
+DEF_FN(CUresult,cuDevicePrimaryCtxSetFlags_v2 ,CUdevice,dev,unsigned int,flags);
+DEF_FN(CUresult,cuDevicePrimaryCtxGetState ,CUdevice,dev,unsigned int *,flags,int *,active);
+DEF_FN(CUresult,cuDevicePrimaryCtxReset_v2 ,CUdevice,dev);
+DEF_FN(CUresult,cuCtxCreate_v2 ,CUcontext *,pctx,unsigned int,flags,CUdevice,dev);
+DEF_FN(CUresult,cuCtxCreate_v3 ,CUcontext *,pctx,CUexecAffinityParam *,paramsArray,int,numParams,unsigned int,flags,CUdevice,dev);
+DEF_FN(CUresult,cuCtxDestroy_v2 ,CUcontext,ctx);
+DEF_FN(CUresult,cuCtxPushCurrent_v2 ,CUcontext,ctx);
+DEF_FN(CUresult,cuCtxPopCurrent_v2 ,CUcontext *,pctx);
+DEF_FN(CUresult,cuCtxSetCurrent ,CUcontext,ctx);
+DEF_FN(CUresult,cuCtxGetCurrent ,CUcontext *,pctx);
+DEF_FN(CUresult,cuCtxGetDevice ,CUdevice *,device);
+DEF_FN(CUresult,cuCtxGetFlags ,unsigned int *,flags);
+DEF_FN(CUresult,cuCtxSetFlags ,unsigned int,flags);
+DEF_FN(CUresult,cuCtxGetId ,CUcontext,ctx,unsigned long long *,ctxId);
+DEF_FN(CUresult,cuCtxSynchronize ,void,);
+DEF_FN(CUresult,cuCtxSetLimit ,CUlimit,limit,size_t,value);
+DEF_FN(CUresult,cuCtxGetLimit ,size_t *,pvalue,CUlimit,limit);
+DEF_FN(CUresult,cuCtxGetCacheConfig ,CUfunc_cache *,pconfig);
+DEF_FN(CUresult,cuCtxSetCacheConfig ,CUfunc_cache,config);
+DEF_FN(CUresult,cuCtxGetApiVersion ,CUcontext,ctx,unsigned int *,version);
+DEF_FN(CUresult,cuCtxGetStreamPriorityRange ,int *,leastPriority,int *,greatestPriority);
+DEF_FN(CUresult,cuCtxResetPersistingL2Cache ,void,);
+DEF_FN(CUresult,cuCtxGetExecAffinity ,CUexecAffinityParam *,pExecAffinity,CUexecAffinityType,type);
+DEF_FN(CUresult,cuCtxAttach ,CUcontext *,pctx,unsigned int,flags);
+DEF_FN(CUresult,cuCtxDetach ,CUcontext,ctx);
+DEF_FN(CUresult,cuCtxGetSharedMemConfig ,CUsharedconfig *,pConfig);
+DEF_FN(CUresult,cuCtxSetSharedMemConfig ,CUsharedconfig,config);
+DEF_FN(CUresult,cuModuleLoad ,CUmodule *,module,const char *,fname);
+DEF_FN(CUresult,cuModuleLoadData ,CUmodule *,module,const void *,image);
+DEF_FN(CUresult,cuModuleLoadDataEx ,CUmodule *,module,const void *,image,unsigned int,numOptions,CUjit_option *,options,void * *,optionValues);
+DEF_FN(CUresult,cuModuleLoadFatBinary ,CUmodule *,module,const void *,fatCubin);
+DEF_FN(CUresult,cuModuleUnload ,CUmodule,hmod);
+DEF_FN(CUresult,cuModuleGetLoadingMode ,CUmoduleLoadingMode *,mode);
+DEF_FN(CUresult,cuModuleGetFunction ,CUfunction *,hfunc,CUmodule,hmod,const char *,name);
+DEF_FN(CUresult,cuModuleGetFunctionCount ,unsigned int *,count,CUmodule,mod);
+DEF_FN(CUresult,cuModuleEnumerateFunctions ,CUfunction *,functions,unsigned int,numFunctions,CUmodule,mod);
+DEF_FN(CUresult,cuModuleGetGlobal_v2 ,CUdeviceptr *,dptr,size_t *,bytes,CUmodule,hmod,const char *,name);
+DEF_FN(CUresult,cuLinkCreate_v2 ,unsigned int,numOptions,CUjit_option *,options,void * *,optionValues,CUlinkState *,stateOut);
+DEF_FN(CUresult,cuLinkAddData_v2 ,CUlinkState,state,CUjitInputType,type,void *,data,size_t,size,const char *,name,unsigned int,numOptions,CUjit_option *,options,void * *,optionValues);
+DEF_FN(CUresult,cuLinkAddFile_v2 ,CUlinkState,state,CUjitInputType,type,const char *,path,unsigned int,numOptions,CUjit_option *,options,void * *,optionValues);
+DEF_FN(CUresult,cuLinkComplete ,CUlinkState,state,void * *,cubinOut,size_t *,sizeOut);
+DEF_FN(CUresult,cuLinkDestroy ,CUlinkState,state);
+DEF_FN(CUresult,cuModuleGetTexRef ,CUtexref *,pTexRef,CUmodule,hmod,const char *,name);
+DEF_FN(CUresult,cuModuleGetSurfRef ,CUsurfref *,pSurfRef,CUmodule,hmod,const char *,name);
+DEF_FN(CUresult,cuLibraryLoadData ,CUlibrary *,library,const void *,code,CUjit_option *,jitOptions,void * *,jitOptionsValues,unsigned int,numJitOptions,CUlibraryOption *,libraryOptions,void * *,libraryOptionValues,unsigned int,numLibraryOptions);
+DEF_FN(CUresult,cuLibraryLoadFromFile ,CUlibrary *,library,const char *,fileName,CUjit_option *,jitOptions,void * *,jitOptionsValues,unsigned int,numJitOptions,CUlibraryOption *,libraryOptions,void * *,libraryOptionValues,unsigned int,numLibraryOptions);
+DEF_FN(CUresult,cuLibraryUnload ,CUlibrary,library);
+DEF_FN(CUresult,cuLibraryGetKernel ,CUkernel *,pKernel,CUlibrary,library,const char *,name);
+DEF_FN(CUresult,cuLibraryGetKernelCount ,unsigned int *,count,CUlibrary,lib);
+DEF_FN(CUresult,cuLibraryEnumerateKernels ,CUkernel *,kernels,unsigned int,numKernels,CUlibrary,lib);
+DEF_FN(CUresult,cuLibraryGetModule ,CUmodule *,pMod,CUlibrary,library);
+DEF_FN(CUresult,cuKernelGetFunction ,CUfunction *,pFunc,CUkernel,kernel);
+DEF_FN(CUresult,cuLibraryGetGlobal ,CUdeviceptr *,dptr,size_t *,bytes,CUlibrary,library,const char *,name);
+DEF_FN(CUresult,cuLibraryGetManaged ,CUdeviceptr *,dptr,size_t *,bytes,CUlibrary,library,const char *,name);
+DEF_FN(CUresult,cuLibraryGetUnifiedFunction ,void * *,fptr,CUlibrary,library,const char *,symbol);
+DEF_FN(CUresult,cuKernelGetAttribute ,int *,pi,CUfunction_attribute,attrib,CUkernel,kernel,CUdevice,dev);
+DEF_FN(CUresult,cuKernelSetAttribute ,CUfunction_attribute,attrib,int,val,CUkernel,kernel,CUdevice,dev);
+DEF_FN(CUresult,cuKernelSetCacheConfig ,CUkernel,kernel,CUfunc_cache,config,CUdevice,dev);
+DEF_FN(CUresult,cuKernelGetName ,const char * *,name,CUkernel,hfunc);
+DEF_FN(CUresult,cuKernelGetParamInfo ,CUkernel,kernel,size_t,paramIndex,size_t *,paramOffset,size_t *,paramSize);
+DEF_FN(CUresult,cuMemGetInfo_v2 ,size_t *,free,size_t *,total);
+DEF_FN(CUresult,cuMemAlloc_v2 ,CUdeviceptr *,dptr,size_t,bytesize);
+DEF_FN(CUresult,cuMemAllocPitch_v2 ,CUdeviceptr *,dptr,size_t *,pPitch,size_t,WidthInBytes,size_t,Height,unsigned int,ElementSizeBytes);
+DEF_FN(CUresult,cuMemFree_v2 ,CUdeviceptr,dptr);
+DEF_FN(CUresult,cuMemGetAddressRange_v2 ,CUdeviceptr *,pbase,size_t *,psize,CUdeviceptr,dptr);
+DEF_FN(CUresult,cuMemAllocHost_v2 ,void * *,pp,size_t,bytesize);
+DEF_FN(CUresult,cuMemFreeHost ,void *,p);
+DEF_FN(CUresult,cuMemHostAlloc ,void * *,pp,size_t,bytesize,unsigned int,Flags);
+DEF_FN(CUresult,cuMemHostGetDevicePointer_v2 ,CUdeviceptr *,pdptr,void *,p,unsigned int,Flags);
+DEF_FN(CUresult,cuMemHostGetFlags ,unsigned int *,pFlags,void *,p);
+DEF_FN(CUresult,cuMemAllocManaged ,CUdeviceptr *,dptr,size_t,bytesize,unsigned int,flags);
+DEF_FN(CUresult,cuDeviceRegisterAsyncNotification ,CUdevice,device,CUasyncCallback,callbackFunc,void *,userData,CUasyncCallbackHandle *,callback);
+DEF_FN(CUresult,cuDeviceUnregisterAsyncNotification ,CUdevice,device,CUasyncCallbackHandle,callback);
+DEF_FN(CUresult,cuDeviceGetByPCIBusId ,CUdevice *,dev,const char *,pciBusId);
+DEF_FN(CUresult,cuDeviceGetPCIBusId ,char *,pciBusId,int,len,CUdevice,dev);
+DEF_FN(CUresult,cuIpcGetEventHandle ,CUipcEventHandle *,pHandle,CUevent,event);
+DEF_FN(CUresult,cuIpcOpenEventHandle ,CUevent *,phEvent,CUipcEventHandle,handle);
+DEF_FN(CUresult,cuIpcGetMemHandle ,CUipcMemHandle *,pHandle,CUdeviceptr,dptr);
+DEF_FN(CUresult,cuIpcOpenMemHandle_v2 ,CUdeviceptr *,pdptr,CUipcMemHandle,handle,unsigned int,Flags);
+DEF_FN(CUresult,cuIpcCloseMemHandle ,CUdeviceptr,dptr);
+DEF_FN(CUresult,cuMemHostRegister_v2 ,void *,p,size_t,bytesize,unsigned int,Flags);
+DEF_FN(CUresult,cuMemHostUnregister ,void *,p);
+DEF_FN(CUresult,cuMemcpy ,CUdeviceptr,dst,CUdeviceptr,src,size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyPeer ,CUdeviceptr,dstDevice,CUcontext,dstContext,CUdeviceptr,srcDevice,CUcontext,srcContext,size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyHtoD_v2 ,CUdeviceptr,dstDevice,const void *,srcHost,size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyDtoH_v2 ,void *,dstHost,CUdeviceptr,srcDevice,size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyDtoD_v2 ,CUdeviceptr,dstDevice,CUdeviceptr,srcDevice,size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyDtoA_v2 ,CUarray,dstArray,size_t,dstOffset,CUdeviceptr,srcDevice,size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyAtoD_v2 ,CUdeviceptr,dstDevice,CUarray,srcArray,size_t,srcOffset,size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyHtoA_v2 ,CUarray,dstArray,size_t,dstOffset,const void *,srcHost,size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyAtoH_v2 ,void *,dstHost,CUarray,srcArray,size_t,srcOffset,size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyAtoA_v2 ,CUarray,dstArray,size_t,dstOffset,CUarray,srcArray,size_t,srcOffset,size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpy2D_v2 ,const CUDA_MEMCPY2D *,pCopy);
+DEF_FN(CUresult,cuMemcpy2DUnaligned_v2 ,const CUDA_MEMCPY2D *,pCopy);
+DEF_FN(CUresult,cuMemcpy3D_v2 ,const CUDA_MEMCPY3D *,pCopy);
+DEF_FN(CUresult,cuMemcpy3DPeer ,const CUDA_MEMCPY3D_PEER *,pCopy);
+DEF_FN(CUresult,cuMemcpyAsync ,CUdeviceptr,dst,CUdeviceptr,src,size_t,ByteCount,CUstream,hStream);
+DEF_FN(CUresult,cuMemcpyPeerAsync ,CUdeviceptr,dstDevice,CUcontext,dstContext,CUdeviceptr,srcDevice,CUcontext,srcContext,size_t,ByteCount,CUstream,hStream);
+DEF_FN(CUresult,cuMemcpyHtoDAsync_v2 ,CUdeviceptr,dstDevice,const void *,srcHost,size_t,ByteCount,CUstream,hStream);
+DEF_FN(CUresult,cuMemcpyDtoHAsync_v2 ,void *,dstHost,CUdeviceptr,srcDevice,size_t,ByteCount,CUstream,hStream);
+DEF_FN(CUresult,cuMemcpyDtoDAsync_v2 ,CUdeviceptr,dstDevice,CUdeviceptr,srcDevice,size_t,ByteCount,CUstream,hStream);
+DEF_FN(CUresult,cuMemcpyHtoAAsync_v2 ,CUarray,dstArray,size_t,dstOffset,const void *,srcHost,size_t,ByteCount,CUstream,hStream);
+DEF_FN(CUresult,cuMemcpyAtoHAsync_v2 ,void *,dstHost,CUarray,srcArray,size_t,srcOffset,size_t,ByteCount,CUstream,hStream);
+DEF_FN(CUresult,cuMemcpy2DAsync_v2 ,const CUDA_MEMCPY2D *,pCopy,CUstream,hStream);
+DEF_FN(CUresult,cuMemcpy3DAsync_v2 ,const CUDA_MEMCPY3D *,pCopy,CUstream,hStream);
+DEF_FN(CUresult,cuMemcpy3DPeerAsync ,const CUDA_MEMCPY3D_PEER *,pCopy,CUstream,hStream);
+DEF_FN(CUresult,cuMemsetD8_v2 ,CUdeviceptr,dstDevice,unsigned char,uc,size_t,N);
+DEF_FN(CUresult,cuMemsetD16_v2 ,CUdeviceptr,dstDevice,unsigned short,us,size_t,N);
+DEF_FN(CUresult,cuMemsetD32_v2 ,CUdeviceptr,dstDevice,unsigned int,ui,size_t,N);
+DEF_FN(CUresult,cuMemsetD2D8_v2 ,CUdeviceptr,dstDevice,size_t,dstPitch,unsigned char,uc,size_t,Width,size_t,Height);
+DEF_FN(CUresult,cuMemsetD2D16_v2 ,CUdeviceptr,dstDevice,size_t,dstPitch,unsigned short,us,size_t,Width,size_t,Height);
+DEF_FN(CUresult,cuMemsetD2D32_v2 ,CUdeviceptr,dstDevice,size_t,dstPitch,unsigned int,ui,size_t,Width,size_t,Height);
+DEF_FN(CUresult,cuMemsetD8Async ,CUdeviceptr,dstDevice,unsigned char,uc,size_t,N,CUstream,hStream);
+DEF_FN(CUresult,cuMemsetD16Async ,CUdeviceptr,dstDevice,unsigned short,us,size_t,N,CUstream,hStream);
+DEF_FN(CUresult,cuMemsetD32Async ,CUdeviceptr,dstDevice,unsigned int,ui,size_t,N,CUstream,hStream);
+DEF_FN(CUresult,cuMemsetD2D8Async ,CUdeviceptr,dstDevice,size_t,dstPitch,unsigned char,uc,size_t,Width,size_t,Height,CUstream,hStream);
+DEF_FN(CUresult,cuMemsetD2D16Async ,CUdeviceptr,dstDevice,size_t,dstPitch,unsigned short,us,size_t,Width,size_t,Height,CUstream,hStream);
+DEF_FN(CUresult,cuMemsetD2D32Async ,CUdeviceptr,dstDevice,size_t,dstPitch,unsigned int,ui,size_t,Width,size_t,Height,CUstream,hStream);
+DEF_FN(CUresult,cuArrayCreate_v2 ,CUarray *,pHandle,const CUDA_ARRAY_DESCRIPTOR *,pAllocateArray);
+DEF_FN(CUresult,cuArrayGetDescriptor_v2 ,CUDA_ARRAY_DESCRIPTOR *,pArrayDescriptor,CUarray,hArray);
+DEF_FN(CUresult,cuArrayGetSparseProperties ,CUDA_ARRAY_SPARSE_PROPERTIES *,sparseProperties,CUarray,array);
+DEF_FN(CUresult,cuMipmappedArrayGetSparseProperties ,CUDA_ARRAY_SPARSE_PROPERTIES *,sparseProperties,CUmipmappedArray,mipmap);
+DEF_FN(CUresult,cuArrayGetMemoryRequirements ,CUDA_ARRAY_MEMORY_REQUIREMENTS *,memoryRequirements,CUarray,array,CUdevice,device);
+DEF_FN(CUresult,cuMipmappedArrayGetMemoryRequirements ,CUDA_ARRAY_MEMORY_REQUIREMENTS *,memoryRequirements,CUmipmappedArray,mipmap,CUdevice,device);
+DEF_FN(CUresult,cuArrayGetPlane ,CUarray *,pPlaneArray,CUarray,hArray,unsigned int,planeIdx);
+DEF_FN(CUresult,cuArrayDestroy ,CUarray,hArray);
+DEF_FN(CUresult,cuArray3DCreate_v2 ,CUarray *,pHandle,const CUDA_ARRAY3D_DESCRIPTOR *,pAllocateArray);
+DEF_FN(CUresult,cuArray3DGetDescriptor_v2 ,CUDA_ARRAY3D_DESCRIPTOR *,pArrayDescriptor,CUarray,hArray);
+DEF_FN(CUresult,cuMipmappedArrayCreate ,CUmipmappedArray *,pHandle,const CUDA_ARRAY3D_DESCRIPTOR *,pMipmappedArrayDesc,unsigned int,numMipmapLevels);
+DEF_FN(CUresult,cuMipmappedArrayGetLevel ,CUarray *,pLevelArray,CUmipmappedArray,hMipmappedArray,unsigned int,level);
+DEF_FN(CUresult,cuMipmappedArrayDestroy ,CUmipmappedArray,hMipmappedArray);
+DEF_FN(CUresult,cuMemGetHandleForAddressRange ,void *,handle,CUdeviceptr,dptr,size_t,size,CUmemRangeHandleType,handleType,unsigned long long,flags);
+DEF_FN(CUresult,cuMemAddressReserve ,CUdeviceptr *,ptr,size_t,size,size_t,alignment,CUdeviceptr,addr,unsigned long long,flags);
+DEF_FN(CUresult,cuMemAddressFree ,CUdeviceptr,ptr,size_t,size);
+DEF_FN(CUresult,cuMemCreate ,CUmemGenericAllocationHandle *,handle,size_t,size,const CUmemAllocationProp *,prop,unsigned long long,flags);
+DEF_FN(CUresult,cuMemRelease ,CUmemGenericAllocationHandle,handle);
+DEF_FN(CUresult,cuMemMap ,CUdeviceptr,ptr,size_t,size,size_t,offset,CUmemGenericAllocationHandle,handle,unsigned long long,flags);
+DEF_FN(CUresult,cuMemMapArrayAsync ,CUarrayMapInfo *,mapInfoList,unsigned int,count,CUstream,hStream);
+DEF_FN(CUresult,cuMemUnmap ,CUdeviceptr,ptr,size_t,size);
+DEF_FN(CUresult,cuMemSetAccess ,CUdeviceptr,ptr,size_t,size,const CUmemAccessDesc *,desc,size_t,count);
+DEF_FN(CUresult,cuMemGetAccess ,unsigned long long *,flags,const CUmemLocation *,location,CUdeviceptr,ptr);
+DEF_FN(CUresult,cuMemExportToShareableHandle ,void *,shareableHandle,CUmemGenericAllocationHandle,handle,CUmemAllocationHandleType,handleType,unsigned long long,flags);
+DEF_FN(CUresult,cuMemImportFromShareableHandle ,CUmemGenericAllocationHandle *,handle,void *,osHandle,CUmemAllocationHandleType,shHandleType);
+DEF_FN(CUresult,cuMemGetAllocationGranularity ,size_t *,granularity,const CUmemAllocationProp *,prop,CUmemAllocationGranularity_flags,option);
+DEF_FN(CUresult,cuMemGetAllocationPropertiesFromHandle ,CUmemAllocationProp *,prop,CUmemGenericAllocationHandle,handle);
+DEF_FN(CUresult,cuMemRetainAllocationHandle ,CUmemGenericAllocationHandle *,handle,void *,addr);
+DEF_FN(CUresult,cuMemFreeAsync ,CUdeviceptr,dptr,CUstream,hStream);
+DEF_FN(CUresult,cuMemAllocAsync ,CUdeviceptr *,dptr,size_t,bytesize,CUstream,hStream);
+DEF_FN(CUresult,cuMemPoolTrimTo ,CUmemoryPool,pool,size_t,minBytesToKeep);
+DEF_FN(CUresult,cuMemPoolSetAttribute ,CUmemoryPool,pool,CUmemPool_attribute,attr,void *,value);
+DEF_FN(CUresult,cuMemPoolGetAttribute ,CUmemoryPool,pool,CUmemPool_attribute,attr,void *,value);
+DEF_FN(CUresult,cuMemPoolSetAccess ,CUmemoryPool,pool,const CUmemAccessDesc *,map,size_t,count);
+DEF_FN(CUresult,cuMemPoolGetAccess ,CUmemAccess_flags *,flags,CUmemoryPool,memPool,CUmemLocation *,location);
+DEF_FN(CUresult,cuMemPoolCreate ,CUmemoryPool *,pool,const CUmemPoolProps *,poolProps);
+DEF_FN(CUresult,cuMemPoolDestroy ,CUmemoryPool,pool);
+DEF_FN(CUresult,cuMemAllocFromPoolAsync ,CUdeviceptr *,dptr,size_t,bytesize,CUmemoryPool,pool,CUstream,hStream);
+DEF_FN(CUresult,cuMemPoolExportToShareableHandle ,void *,handle_out,CUmemoryPool,pool,CUmemAllocationHandleType,handleType,unsigned long long,flags);
+DEF_FN(CUresult,cuMemPoolImportFromShareableHandle ,CUmemoryPool *,pool_out,void *,handle,CUmemAllocationHandleType,handleType,unsigned long long,flags);
+DEF_FN(CUresult,cuMemPoolExportPointer ,CUmemPoolPtrExportData *,shareData_out,CUdeviceptr,ptr);
+DEF_FN(CUresult,cuMemPoolImportPointer ,CUdeviceptr *,ptr_out,CUmemoryPool,pool,CUmemPoolPtrExportData *,shareData);
+DEF_FN(CUresult,cuMulticastCreate ,CUmemGenericAllocationHandle *,mcHandle,const CUmulticastObjectProp *,prop);
+DEF_FN(CUresult,cuMulticastAddDevice ,CUmemGenericAllocationHandle,mcHandle,CUdevice,dev);
+DEF_FN(CUresult,cuMulticastBindMem ,CUmemGenericAllocationHandle,mcHandle,size_t,mcOffset,CUmemGenericAllocationHandle,memHandle,size_t,memOffset,size_t,size,unsigned long long,flags);
+DEF_FN(CUresult,cuMulticastBindAddr ,CUmemGenericAllocationHandle,mcHandle,size_t,mcOffset,CUdeviceptr,memptr,size_t,size,unsigned long long,flags);
+DEF_FN(CUresult,cuMulticastUnbind ,CUmemGenericAllocationHandle,mcHandle,CUdevice,dev,size_t,mcOffset,size_t,size);
+DEF_FN(CUresult,cuMulticastGetGranularity ,size_t *,granularity,const CUmulticastObjectProp *,prop,CUmulticastGranularity_flags,option);
+DEF_FN(CUresult,cuPointerGetAttribute ,void *,data,CUpointer_attribute,attribute,CUdeviceptr,ptr);
+DEF_FN(CUresult,cuMemPrefetchAsync ,CUdeviceptr,devPtr,size_t,count,CUdevice,dstDevice,CUstream,hStream);
+DEF_FN(CUresult,cuMemPrefetchAsync_v2 ,CUdeviceptr,devPtr,size_t,count,CUmemLocation,location,unsigned int,flags,CUstream,hStream);
+DEF_FN(CUresult,cuMemAdvise ,CUdeviceptr,devPtr,size_t,count,CUmem_advise,advice,CUdevice,device);
+DEF_FN(CUresult,cuMemAdvise_v2 ,CUdeviceptr,devPtr,size_t,count,CUmem_advise,advice,CUmemLocation,location);
+DEF_FN(CUresult,cuMemRangeGetAttribute ,void *,data,size_t,dataSize,CUmem_range_attribute,attribute,CUdeviceptr,devPtr,size_t,count);
+DEF_FN(CUresult,cuMemRangeGetAttributes ,void * *,data,size_t *,dataSizes,CUmem_range_attribute *,attributes,size_t,numAttributes,CUdeviceptr,devPtr,size_t,count);
+DEF_FN(CUresult,cuPointerSetAttribute ,const void *,value,CUpointer_attribute,attribute,CUdeviceptr,ptr);
+DEF_FN(CUresult,cuPointerGetAttributes ,unsigned int,numAttributes,CUpointer_attribute *,attributes,void * *,data,CUdeviceptr,ptr);
+DEF_FN(CUresult,cuStreamCreate ,CUstream *,phStream,unsigned int,Flags);
+DEF_FN(CUresult,cuStreamCreateWithPriority ,CUstream *,phStream,unsigned int,flags,int,priority);
+DEF_FN(CUresult,cuStreamGetPriority ,CUstream,hStream,int *,priority);
+DEF_FN(CUresult,cuStreamGetFlags ,CUstream,hStream,unsigned int *,flags);
+DEF_FN(CUresult,cuStreamGetId ,CUstream,hStream,unsigned long long *,streamId);
+DEF_FN(CUresult,cuStreamGetCtx ,CUstream,hStream,CUcontext *,pctx);
+DEF_FN(CUresult,cuStreamWaitEvent ,CUstream,hStream,CUevent,hEvent,unsigned int,Flags);
+DEF_FN(CUresult,cuStreamAddCallback ,CUstream,hStream,CUstreamCallback,callback,void *,userData,unsigned int,flags);
+DEF_FN(CUresult,cuStreamBeginCapture_v2 ,CUstream,hStream,CUstreamCaptureMode,mode);
+DEF_FN(CUresult,cuStreamBeginCaptureToGraph ,CUstream,hStream,CUgraph,hGraph,const CUgraphNode *,dependencies,const CUgraphEdgeData *,dependencyData,size_t,numDependencies,CUstreamCaptureMode,mode);
+DEF_FN(CUresult,cuThreadExchangeStreamCaptureMode ,CUstreamCaptureMode *,mode);
+DEF_FN(CUresult,cuStreamEndCapture ,CUstream,hStream,CUgraph *,phGraph);
+DEF_FN(CUresult,cuStreamIsCapturing ,CUstream,hStream,CUstreamCaptureStatus *,captureStatus);
+DEF_FN(CUresult,cuStreamGetCaptureInfo_v2 ,CUstream,hStream,CUstreamCaptureStatus *,captureStatus_out,cuuint64_t *,id_out,CUgraph *,graph_out,const CUgraphNode * *,dependencies_out,size_t *,numDependencies_out);
+DEF_FN(CUresult,cuStreamGetCaptureInfo_v3 ,CUstream,hStream,CUstreamCaptureStatus *,captureStatus_out,cuuint64_t *,id_out,CUgraph *,graph_out,const CUgraphNode * *,dependencies_out,const CUgraphEdgeData * *,edgeData_out,size_t *,numDependencies_out);
+DEF_FN(CUresult,cuStreamUpdateCaptureDependencies ,CUstream,hStream,CUgraphNode *,dependencies,size_t,numDependencies,unsigned int,flags);
+DEF_FN(CUresult,cuStreamUpdateCaptureDependencies_v2 ,CUstream,hStream,CUgraphNode *,dependencies,const CUgraphEdgeData *,dependencyData,size_t,numDependencies,unsigned int,flags);
+DEF_FN(CUresult,cuStreamAttachMemAsync ,CUstream,hStream,CUdeviceptr,dptr,size_t,length,unsigned int,flags);
+DEF_FN(CUresult,cuStreamQuery ,CUstream,hStream);
+DEF_FN(CUresult,cuStreamSynchronize ,CUstream,hStream);
+DEF_FN(CUresult,cuStreamDestroy_v2 ,CUstream,hStream);
+DEF_FN(CUresult,cuStreamCopyAttributes ,CUstream,dst,CUstream,src);
+DEF_FN(CUresult,cuStreamGetAttribute ,CUstream,hStream,CUstreamAttrID,attr,CUstreamAttrValue *,value_out);
+DEF_FN(CUresult,cuStreamSetAttribute ,CUstream,hStream,CUstreamAttrID,attr,const CUstreamAttrValue *,value);
+DEF_FN(CUresult,cuEventCreate ,CUevent *,phEvent,unsigned int,Flags);
+DEF_FN(CUresult,cuEventRecord ,CUevent,hEvent,CUstream,hStream);
+DEF_FN(CUresult,cuEventRecordWithFlags ,CUevent,hEvent,CUstream,hStream,unsigned int,flags);
+DEF_FN(CUresult,cuEventQuery ,CUevent,hEvent);
+DEF_FN(CUresult,cuEventSynchronize ,CUevent,hEvent);
+DEF_FN(CUresult,cuEventDestroy_v2 ,CUevent,hEvent);
+DEF_FN(CUresult,cuEventElapsedTime ,float *,pMilliseconds,CUevent,hStart,CUevent,hEnd);
+DEF_FN(CUresult,cuImportExternalMemory ,CUexternalMemory *,extMem_out,const CUDA_EXTERNAL_MEMORY_HANDLE_DESC *,memHandleDesc);
+DEF_FN(CUresult,cuExternalMemoryGetMappedBuffer ,CUdeviceptr *,devPtr,CUexternalMemory,extMem,const CUDA_EXTERNAL_MEMORY_BUFFER_DESC *,bufferDesc);
+DEF_FN(CUresult,cuExternalMemoryGetMappedMipmappedArray ,CUmipmappedArray *,mipmap,CUexternalMemory,extMem,const CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC *,mipmapDesc);
+DEF_FN(CUresult,cuDestroyExternalMemory ,CUexternalMemory,extMem);
+DEF_FN(CUresult,cuImportExternalSemaphore ,CUexternalSemaphore *,extSem_out,const CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC *,semHandleDesc);
+DEF_FN(CUresult,cuSignalExternalSemaphoresAsync ,const CUexternalSemaphore *,extSemArray,const CUDA_EXTERNAL_SEMAPHORE_SIGNAL_PARAMS *,paramsArray,unsigned int,numExtSems,CUstream,stream);
+DEF_FN(CUresult,cuWaitExternalSemaphoresAsync ,const CUexternalSemaphore *,extSemArray,const CUDA_EXTERNAL_SEMAPHORE_WAIT_PARAMS *,paramsArray,unsigned int,numExtSems,CUstream,stream);
+DEF_FN(CUresult,cuDestroyExternalSemaphore ,CUexternalSemaphore,extSem);
+DEF_FN(CUresult,cuStreamWaitValue32_v2 ,CUstream,stream,CUdeviceptr,addr,cuuint32_t,value,unsigned int,flags);
+DEF_FN(CUresult,cuStreamWaitValue64_v2 ,CUstream,stream,CUdeviceptr,addr,cuuint64_t,value,unsigned int,flags);
+DEF_FN(CUresult,cuStreamWriteValue32_v2 ,CUstream,stream,CUdeviceptr,addr,cuuint32_t,value,unsigned int,flags);
+DEF_FN(CUresult,cuStreamWriteValue64_v2 ,CUstream,stream,CUdeviceptr,addr,cuuint64_t,value,unsigned int,flags);
+DEF_FN(CUresult,cuStreamBatchMemOp_v2 ,CUstream,stream,unsigned int,count,CUstreamBatchMemOpParams *,paramArray,unsigned int,flags);
+DEF_FN(CUresult,cuFuncGetAttribute ,int *,pi,CUfunction_attribute,attrib,CUfunction,hfunc);
+DEF_FN(CUresult,cuFuncSetAttribute ,CUfunction,hfunc,CUfunction_attribute,attrib,int,value);
+DEF_FN(CUresult,cuFuncSetCacheConfig ,CUfunction,hfunc,CUfunc_cache,config);
+DEF_FN(CUresult,cuFuncGetModule ,CUmodule *,hmod,CUfunction,hfunc);
+DEF_FN(CUresult,cuFuncGetName ,const char * *,name,CUfunction,hfunc);
+DEF_FN(CUresult,cuFuncGetParamInfo ,CUfunction,func,size_t,paramIndex,size_t *,paramOffset,size_t *,paramSize);
+DEF_FN(CUresult,cuFuncIsLoaded ,CUfunctionLoadingState *,state,CUfunction,function);
+DEF_FN(CUresult,cuFuncLoad ,CUfunction,function);
+DEF_FN(CUresult,cuLaunchKernel ,CUfunction,f,unsigned int,gridDimX,unsigned int,gridDimY,unsigned int,gridDimZ,unsigned int,blockDimX,unsigned int,blockDimY,unsigned int,blockDimZ,unsigned int,sharedMemBytes,CUstream,hStream,void * *,kernelParams,void * *,extra);
+DEF_FN(CUresult,cuLaunchKernelEx ,const CUlaunchConfig *,config,CUfunction,f,void * *,kernelParams,void * *,extra);
+DEF_FN(CUresult,cuLaunchCooperativeKernel ,CUfunction,f,unsigned int,gridDimX,unsigned int,gridDimY,unsigned int,gridDimZ,unsigned int,blockDimX,unsigned int,blockDimY,unsigned int,blockDimZ,unsigned int,sharedMemBytes,CUstream,hStream,void * *,kernelParams);
+DEF_FN(CUresult,cuLaunchCooperativeKernelMultiDevice ,CUDA_LAUNCH_PARAMS *,launchParamsList,unsigned int,numDevices,unsigned int,flags);
+DEF_FN(CUresult,cuLaunchHostFunc ,CUstream,hStream,CUhostFn,fn,void *,userData);
+DEF_FN(CUresult,cuFuncSetBlockShape ,CUfunction,hfunc,int,x,int,y,int,z);
+DEF_FN(CUresult,cuFuncSetSharedSize ,CUfunction,hfunc,unsigned int,bytes);
+DEF_FN(CUresult,cuParamSetSize ,CUfunction,hfunc,unsigned int,numbytes);
+DEF_FN(CUresult,cuParamSeti ,CUfunction,hfunc,int,offset,unsigned int,value);
+DEF_FN(CUresult,cuParamSetf ,CUfunction,hfunc,int,offset,float,value);
+DEF_FN(CUresult,cuParamSetv ,CUfunction,hfunc,int,offset,void *,ptr,unsigned int,numbytes);
+DEF_FN(CUresult,cuLaunch ,CUfunction,f);
+DEF_FN(CUresult,cuLaunchGrid ,CUfunction,f,int,grid_width,int,grid_height);
+DEF_FN(CUresult,cuLaunchGridAsync ,CUfunction,f,int,grid_width,int,grid_height,CUstream,hStream);
+DEF_FN(CUresult,cuParamSetTexRef ,CUfunction,hfunc,int,texunit,CUtexref,hTexRef);
+DEF_FN(CUresult,cuFuncSetSharedMemConfig ,CUfunction,hfunc,CUsharedconfig,config);
+DEF_FN(CUresult,cuGraphCreate ,CUgraph *,phGraph,unsigned int,flags);
+DEF_FN(CUresult,cuGraphAddKernelNode_v2 ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies,const CUDA_KERNEL_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphKernelNodeGetParams_v2 ,CUgraphNode,hNode,CUDA_KERNEL_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphKernelNodeSetParams_v2 ,CUgraphNode,hNode,const CUDA_KERNEL_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphAddMemcpyNode ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies,const CUDA_MEMCPY3D *,copyParams,CUcontext,ctx);
+DEF_FN(CUresult,cuGraphMemcpyNodeGetParams ,CUgraphNode,hNode,CUDA_MEMCPY3D *,nodeParams);
+DEF_FN(CUresult,cuGraphMemcpyNodeSetParams ,CUgraphNode,hNode,const CUDA_MEMCPY3D *,nodeParams);
+DEF_FN(CUresult,cuGraphAddMemsetNode ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies,const CUDA_MEMSET_NODE_PARAMS *,memsetParams,CUcontext,ctx);
+DEF_FN(CUresult,cuGraphMemsetNodeGetParams ,CUgraphNode,hNode,CUDA_MEMSET_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphMemsetNodeSetParams ,CUgraphNode,hNode,const CUDA_MEMSET_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphAddHostNode ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies,const CUDA_HOST_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphHostNodeGetParams ,CUgraphNode,hNode,CUDA_HOST_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphHostNodeSetParams ,CUgraphNode,hNode,const CUDA_HOST_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphAddChildGraphNode ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies,CUgraph,childGraph);
+DEF_FN(CUresult,cuGraphChildGraphNodeGetGraph ,CUgraphNode,hNode,CUgraph *,phGraph);
+DEF_FN(CUresult,cuGraphAddEmptyNode ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies);
+DEF_FN(CUresult,cuGraphAddEventRecordNode ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies,CUevent,event);
+DEF_FN(CUresult,cuGraphEventRecordNodeGetEvent ,CUgraphNode,hNode,CUevent *,event_out);
+DEF_FN(CUresult,cuGraphEventRecordNodeSetEvent ,CUgraphNode,hNode,CUevent,event);
+DEF_FN(CUresult,cuGraphAddEventWaitNode ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies,CUevent,event);
+DEF_FN(CUresult,cuGraphEventWaitNodeGetEvent ,CUgraphNode,hNode,CUevent *,event_out);
+DEF_FN(CUresult,cuGraphEventWaitNodeSetEvent ,CUgraphNode,hNode,CUevent,event);
+DEF_FN(CUresult,cuGraphAddExternalSemaphoresSignalNode ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies,const CUDA_EXT_SEM_SIGNAL_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphExternalSemaphoresSignalNodeGetParams ,CUgraphNode,hNode,CUDA_EXT_SEM_SIGNAL_NODE_PARAMS *,params_out);
+DEF_FN(CUresult,cuGraphExternalSemaphoresSignalNodeSetParams ,CUgraphNode,hNode,const CUDA_EXT_SEM_SIGNAL_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphAddExternalSemaphoresWaitNode ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies,const CUDA_EXT_SEM_WAIT_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphExternalSemaphoresWaitNodeGetParams ,CUgraphNode,hNode,CUDA_EXT_SEM_WAIT_NODE_PARAMS *,params_out);
+DEF_FN(CUresult,cuGraphExternalSemaphoresWaitNodeSetParams ,CUgraphNode,hNode,const CUDA_EXT_SEM_WAIT_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphAddBatchMemOpNode ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies,const CUDA_BATCH_MEM_OP_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphBatchMemOpNodeGetParams ,CUgraphNode,hNode,CUDA_BATCH_MEM_OP_NODE_PARAMS *,nodeParams_out);
+DEF_FN(CUresult,cuGraphBatchMemOpNodeSetParams ,CUgraphNode,hNode,const CUDA_BATCH_MEM_OP_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphExecBatchMemOpNodeSetParams ,CUgraphExec,hGraphExec,CUgraphNode,hNode,const CUDA_BATCH_MEM_OP_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphAddMemAllocNode ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies,CUDA_MEM_ALLOC_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphMemAllocNodeGetParams ,CUgraphNode,hNode,CUDA_MEM_ALLOC_NODE_PARAMS *,params_out);
+DEF_FN(CUresult,cuGraphAddMemFreeNode ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies,CUdeviceptr,dptr);
+DEF_FN(CUresult,cuGraphMemFreeNodeGetParams ,CUgraphNode,hNode,CUdeviceptr *,dptr_out);
+DEF_FN(CUresult,cuDeviceGraphMemTrim ,CUdevice,device);
+DEF_FN(CUresult,cuDeviceGetGraphMemAttribute ,CUdevice,device,CUgraphMem_attribute,attr,void *,value);
+DEF_FN(CUresult,cuDeviceSetGraphMemAttribute ,CUdevice,device,CUgraphMem_attribute,attr,void *,value);
+DEF_FN(CUresult,cuGraphClone ,CUgraph *,phGraphClone,CUgraph,originalGraph);
+DEF_FN(CUresult,cuGraphNodeFindInClone ,CUgraphNode *,phNode,CUgraphNode,hOriginalNode,CUgraph,hClonedGraph);
+DEF_FN(CUresult,cuGraphNodeGetType ,CUgraphNode,hNode,CUgraphNodeType *,type);
+DEF_FN(CUresult,cuGraphGetNodes ,CUgraph,hGraph,CUgraphNode *,nodes,size_t *,numNodes);
+DEF_FN(CUresult,cuGraphGetRootNodes ,CUgraph,hGraph,CUgraphNode *,rootNodes,size_t *,numRootNodes);
+DEF_FN(CUresult,cuGraphGetEdges ,CUgraph,hGraph,CUgraphNode *,from,CUgraphNode *,to,size_t *,numEdges);
+DEF_FN(CUresult,cuGraphGetEdges_v2 ,CUgraph,hGraph,CUgraphNode *,from,CUgraphNode *,to,CUgraphEdgeData *,edgeData,size_t *,numEdges);
+DEF_FN(CUresult,cuGraphNodeGetDependencies ,CUgraphNode,hNode,CUgraphNode *,dependencies,size_t *,numDependencies);
+DEF_FN(CUresult,cuGraphNodeGetDependencies_v2 ,CUgraphNode,hNode,CUgraphNode *,dependencies,CUgraphEdgeData *,edgeData,size_t *,numDependencies);
+DEF_FN(CUresult,cuGraphNodeGetDependentNodes ,CUgraphNode,hNode,CUgraphNode *,dependentNodes,size_t *,numDependentNodes);
+DEF_FN(CUresult,cuGraphNodeGetDependentNodes_v2 ,CUgraphNode,hNode,CUgraphNode *,dependentNodes,CUgraphEdgeData *,edgeData,size_t *,numDependentNodes);
+DEF_FN(CUresult,cuGraphAddDependencies ,CUgraph,hGraph,const CUgraphNode *,from,const CUgraphNode *,to,size_t,numDependencies);
+DEF_FN(CUresult,cuGraphAddDependencies_v2 ,CUgraph,hGraph,const CUgraphNode *,from,const CUgraphNode *,to,const CUgraphEdgeData *,edgeData,size_t,numDependencies);
+DEF_FN(CUresult,cuGraphRemoveDependencies ,CUgraph,hGraph,const CUgraphNode *,from,const CUgraphNode *,to,size_t,numDependencies);
+DEF_FN(CUresult,cuGraphRemoveDependencies_v2 ,CUgraph,hGraph,const CUgraphNode *,from,const CUgraphNode *,to,const CUgraphEdgeData *,edgeData,size_t,numDependencies);
+DEF_FN(CUresult,cuGraphDestroyNode ,CUgraphNode,hNode);
+DEF_FN(CUresult,cuGraphInstantiateWithFlags ,CUgraphExec *,phGraphExec,CUgraph,hGraph,unsigned long long,flags);
+DEF_FN(CUresult,cuGraphInstantiateWithParams ,CUgraphExec *,phGraphExec,CUgraph,hGraph,CUDA_GRAPH_INSTANTIATE_PARAMS *,instantiateParams);
+DEF_FN(CUresult,cuGraphExecGetFlags ,CUgraphExec,hGraphExec,cuuint64_t *,flags);
+DEF_FN(CUresult,cuGraphExecKernelNodeSetParams_v2 ,CUgraphExec,hGraphExec,CUgraphNode,hNode,const CUDA_KERNEL_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphExecMemcpyNodeSetParams ,CUgraphExec,hGraphExec,CUgraphNode,hNode,const CUDA_MEMCPY3D *,copyParams,CUcontext,ctx);
+DEF_FN(CUresult,cuGraphExecMemsetNodeSetParams ,CUgraphExec,hGraphExec,CUgraphNode,hNode,const CUDA_MEMSET_NODE_PARAMS *,memsetParams,CUcontext,ctx);
+DEF_FN(CUresult,cuGraphExecHostNodeSetParams ,CUgraphExec,hGraphExec,CUgraphNode,hNode,const CUDA_HOST_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphExecChildGraphNodeSetParams ,CUgraphExec,hGraphExec,CUgraphNode,hNode,CUgraph,childGraph);
+DEF_FN(CUresult,cuGraphExecEventRecordNodeSetEvent ,CUgraphExec,hGraphExec,CUgraphNode,hNode,CUevent,event);
+DEF_FN(CUresult,cuGraphExecEventWaitNodeSetEvent ,CUgraphExec,hGraphExec,CUgraphNode,hNode,CUevent,event);
+DEF_FN(CUresult,cuGraphExecExternalSemaphoresSignalNodeSetParams ,CUgraphExec,hGraphExec,CUgraphNode,hNode,const CUDA_EXT_SEM_SIGNAL_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphExecExternalSemaphoresWaitNodeSetParams ,CUgraphExec,hGraphExec,CUgraphNode,hNode,const CUDA_EXT_SEM_WAIT_NODE_PARAMS *,nodeParams);
+DEF_FN(CUresult,cuGraphNodeSetEnabled ,CUgraphExec,hGraphExec,CUgraphNode,hNode,unsigned int,isEnabled);
+DEF_FN(CUresult,cuGraphNodeGetEnabled ,CUgraphExec,hGraphExec,CUgraphNode,hNode,unsigned int *,isEnabled);
+DEF_FN(CUresult,cuGraphUpload ,CUgraphExec,hGraphExec,CUstream,hStream);
+DEF_FN(CUresult,cuGraphLaunch ,CUgraphExec,hGraphExec,CUstream,hStream);
+DEF_FN(CUresult,cuGraphExecDestroy ,CUgraphExec,hGraphExec);
+DEF_FN(CUresult,cuGraphDestroy ,CUgraph,hGraph);
+DEF_FN(CUresult,cuGraphExecUpdate_v2 ,CUgraphExec,hGraphExec,CUgraph,hGraph,CUgraphExecUpdateResultInfo *,resultInfo);
+DEF_FN(CUresult,cuGraphKernelNodeCopyAttributes ,CUgraphNode,dst,CUgraphNode,src);
+DEF_FN(CUresult,cuGraphKernelNodeGetAttribute ,CUgraphNode,hNode,CUkernelNodeAttrID,attr,CUkernelNodeAttrValue *,value_out);
+DEF_FN(CUresult,cuGraphKernelNodeSetAttribute ,CUgraphNode,hNode,CUkernelNodeAttrID,attr,const CUkernelNodeAttrValue *,value);
+DEF_FN(CUresult,cuGraphDebugDotPrint ,CUgraph,hGraph,const char *,path,unsigned int,flags);
+DEF_FN(CUresult,cuUserObjectCreate ,CUuserObject *,object_out,void *,ptr,CUhostFn,destroy,unsigned int,initialRefcount,unsigned int,flags);
+DEF_FN(CUresult,cuUserObjectRetain ,CUuserObject,object,unsigned int,count);
+DEF_FN(CUresult,cuUserObjectRelease ,CUuserObject,object,unsigned int,count);
+DEF_FN(CUresult,cuGraphRetainUserObject ,CUgraph,graph,CUuserObject,object,unsigned int,count,unsigned int,flags);
+DEF_FN(CUresult,cuGraphReleaseUserObject ,CUgraph,graph,CUuserObject,object,unsigned int,count);
+DEF_FN(CUresult,cuGraphAddNode ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,size_t,numDependencies,CUgraphNodeParams *,nodeParams);
+DEF_FN(CUresult,cuGraphAddNode_v2 ,CUgraphNode *,phGraphNode,CUgraph,hGraph,const CUgraphNode *,dependencies,const CUgraphEdgeData *,dependencyData,size_t,numDependencies,CUgraphNodeParams *,nodeParams);
+DEF_FN(CUresult,cuGraphNodeSetParams ,CUgraphNode,hNode,CUgraphNodeParams *,nodeParams);
+DEF_FN(CUresult,cuGraphExecNodeSetParams ,CUgraphExec,hGraphExec,CUgraphNode,hNode,CUgraphNodeParams *,nodeParams);
+DEF_FN(CUresult,cuGraphConditionalHandleCreate ,CUgraphConditionalHandle *,pHandle_out,CUgraph,hGraph,CUcontext,ctx,unsigned int,defaultLaunchValue,unsigned int,flags);
+DEF_FN(CUresult,cuOccupancyMaxActiveBlocksPerMultiprocessor ,int *,numBlocks,CUfunction,func,int,blockSize,size_t,dynamicSMemSize);
+DEF_FN(CUresult,cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags ,int *,numBlocks,CUfunction,func,int,blockSize,size_t,dynamicSMemSize,unsigned int,flags);
+DEF_FN(CUresult,cuOccupancyMaxPotentialBlockSize ,int *,minGridSize,int *,blockSize,CUfunction,func,CUoccupancyB2DSize,blockSizeToDynamicSMemSize,size_t,dynamicSMemSize,int,blockSizeLimit);
+DEF_FN(CUresult,cuOccupancyMaxPotentialBlockSizeWithFlags ,int *,minGridSize,int *,blockSize,CUfunction,func,CUoccupancyB2DSize,blockSizeToDynamicSMemSize,size_t,dynamicSMemSize,int,blockSizeLimit,unsigned int,flags);
+DEF_FN(CUresult,cuOccupancyAvailableDynamicSMemPerBlock ,size_t *,dynamicSmemSize,CUfunction,func,int,numBlocks,int,blockSize);
+DEF_FN(CUresult,cuOccupancyMaxPotentialClusterSize ,int *,clusterSize,CUfunction,func,const CUlaunchConfig *,config);
+DEF_FN(CUresult,cuOccupancyMaxActiveClusters ,int *,numClusters,CUfunction,func,const CUlaunchConfig *,config);
+DEF_FN(CUresult,cuTexRefSetArray ,CUtexref,hTexRef,CUarray,hArray,unsigned int,Flags);
+DEF_FN(CUresult,cuTexRefSetMipmappedArray ,CUtexref,hTexRef,CUmipmappedArray,hMipmappedArray,unsigned int,Flags);
+DEF_FN(CUresult,cuTexRefSetAddress_v2 ,size_t *,ByteOffset,CUtexref,hTexRef,CUdeviceptr,dptr,size_t,bytes);
+DEF_FN(CUresult,cuTexRefSetAddress2D_v3 ,CUtexref,hTexRef,const CUDA_ARRAY_DESCRIPTOR *,desc,CUdeviceptr,dptr,size_t,Pitch);
+DEF_FN(CUresult,cuTexRefSetFormat ,CUtexref,hTexRef,CUarray_format,fmt,int,NumPackedComponents);
+DEF_FN(CUresult,cuTexRefSetAddressMode ,CUtexref,hTexRef,int,dim,CUaddress_mode,am);
+DEF_FN(CUresult,cuTexRefSetFilterMode ,CUtexref,hTexRef,CUfilter_mode,fm);
+DEF_FN(CUresult,cuTexRefSetMipmapFilterMode ,CUtexref,hTexRef,CUfilter_mode,fm);
+DEF_FN(CUresult,cuTexRefSetMipmapLevelBias ,CUtexref,hTexRef,float,bias);
+DEF_FN(CUresult,cuTexRefSetMipmapLevelClamp ,CUtexref,hTexRef,float,minMipmapLevelClamp,float,maxMipmapLevelClamp);
+DEF_FN(CUresult,cuTexRefSetMaxAnisotropy ,CUtexref,hTexRef,unsigned int,maxAniso);
+DEF_FN(CUresult,cuTexRefSetBorderColor ,CUtexref,hTexRef,float *,pBorderColor);
+DEF_FN(CUresult,cuTexRefSetFlags ,CUtexref,hTexRef,unsigned int,Flags);
+DEF_FN(CUresult,cuTexRefGetAddress_v2 ,CUdeviceptr *,pdptr,CUtexref,hTexRef);
+DEF_FN(CUresult,cuTexRefGetArray ,CUarray *,phArray,CUtexref,hTexRef);
+DEF_FN(CUresult,cuTexRefGetMipmappedArray ,CUmipmappedArray *,phMipmappedArray,CUtexref,hTexRef);
+DEF_FN(CUresult,cuTexRefGetAddressMode ,CUaddress_mode *,pam,CUtexref,hTexRef,int,dim);
+DEF_FN(CUresult,cuTexRefGetFilterMode ,CUfilter_mode *,pfm,CUtexref,hTexRef);
+DEF_FN(CUresult,cuTexRefGetFormat ,CUarray_format *,pFormat,int *,pNumChannels,CUtexref,hTexRef);
+DEF_FN(CUresult,cuTexRefGetMipmapFilterMode ,CUfilter_mode *,pfm,CUtexref,hTexRef);
+DEF_FN(CUresult,cuTexRefGetMipmapLevelBias ,float *,pbias,CUtexref,hTexRef);
+DEF_FN(CUresult,cuTexRefGetMipmapLevelClamp ,float *,pminMipmapLevelClamp,float *,pmaxMipmapLevelClamp,CUtexref,hTexRef);
+DEF_FN(CUresult,cuTexRefGetMaxAnisotropy ,int *,pmaxAniso,CUtexref,hTexRef);
+DEF_FN(CUresult,cuTexRefGetBorderColor ,float *,pBorderColor,CUtexref,hTexRef);
+DEF_FN(CUresult,cuTexRefGetFlags ,unsigned int *,pFlags,CUtexref,hTexRef);
+DEF_FN(CUresult,cuTexRefCreate ,CUtexref *,pTexRef);
+DEF_FN(CUresult,cuTexRefDestroy ,CUtexref,hTexRef);
+DEF_FN(CUresult,cuSurfRefSetArray ,CUsurfref,hSurfRef,CUarray,hArray,unsigned int,Flags);
+DEF_FN(CUresult,cuSurfRefGetArray ,CUarray *,phArray,CUsurfref,hSurfRef);
+DEF_FN(CUresult,cuTexObjectCreate ,CUtexObject *,pTexObject,const CUDA_RESOURCE_DESC *,pResDesc,const CUDA_TEXTURE_DESC *,pTexDesc,const CUDA_RESOURCE_VIEW_DESC *,pResViewDesc);
+DEF_FN(CUresult,cuTexObjectDestroy ,CUtexObject,texObject);
+DEF_FN(CUresult,cuTexObjectGetResourceDesc ,CUDA_RESOURCE_DESC *,pResDesc,CUtexObject,texObject);
+DEF_FN(CUresult,cuTexObjectGetTextureDesc ,CUDA_TEXTURE_DESC *,pTexDesc,CUtexObject,texObject);
+DEF_FN(CUresult,cuTexObjectGetResourceViewDesc ,CUDA_RESOURCE_VIEW_DESC *,pResViewDesc,CUtexObject,texObject);
+DEF_FN(CUresult,cuSurfObjectCreate ,CUsurfObject *,pSurfObject,const CUDA_RESOURCE_DESC *,pResDesc);
+DEF_FN(CUresult,cuSurfObjectDestroy ,CUsurfObject,surfObject);
+DEF_FN(CUresult,cuSurfObjectGetResourceDesc ,CUDA_RESOURCE_DESC *,pResDesc,CUsurfObject,surfObject);
+DEF_FN(CUresult,cuTensorMapEncodeTiled ,CUtensorMap *,tensorMap,CUtensorMapDataType,tensorDataType,cuuint32_t,tensorRank,void *,globalAddress,const cuuint64_t *,globalDim,const cuuint64_t *,globalStrides,const cuuint32_t *,boxDim,const cuuint32_t *,elementStrides,CUtensorMapInterleave,interleave,CUtensorMapSwizzle,swizzle,CUtensorMapL2promotion,l2Promotion,CUtensorMapFloatOOBfill,oobFill);
+DEF_FN(CUresult,cuTensorMapEncodeIm2col ,CUtensorMap *,tensorMap,CUtensorMapDataType,tensorDataType,cuuint32_t,tensorRank,void *,globalAddress,const cuuint64_t *,globalDim,const cuuint64_t *,globalStrides,const int *,pixelBoxLowerCorner,const int *,pixelBoxUpperCorner,cuuint32_t,channelsPerPixel,cuuint32_t,pixelsPerColumn,const cuuint32_t *,elementStrides,CUtensorMapInterleave,interleave,CUtensorMapSwizzle,swizzle,CUtensorMapL2promotion,l2Promotion,CUtensorMapFloatOOBfill,oobFill);
+DEF_FN(CUresult,cuTensorMapReplaceAddress ,CUtensorMap *,tensorMap,void *,globalAddress);
+DEF_FN(CUresult,cuDeviceCanAccessPeer ,int *,canAccessPeer,CUdevice,dev,CUdevice,peerDev);
+DEF_FN(CUresult,cuCtxEnablePeerAccess ,CUcontext,peerContext,unsigned int,Flags);
+DEF_FN(CUresult,cuCtxDisablePeerAccess ,CUcontext,peerContext);
+DEF_FN(CUresult,cuDeviceGetP2PAttribute ,int *,value,CUdevice_P2PAttribute,attrib,CUdevice,srcDevice,CUdevice,dstDevice);
+DEF_FN(CUresult,cuGraphicsUnregisterResource ,CUgraphicsResource,resource);
+DEF_FN(CUresult,cuGraphicsSubResourceGetMappedArray ,CUarray *,pArray,CUgraphicsResource,resource,unsigned int,arrayIndex,unsigned int,mipLevel);
+DEF_FN(CUresult,cuGraphicsResourceGetMappedMipmappedArray ,CUmipmappedArray *,pMipmappedArray,CUgraphicsResource,resource);
+DEF_FN(CUresult,cuGraphicsResourceGetMappedPointer_v2 ,CUdeviceptr *,pDevPtr,size_t *,pSize,CUgraphicsResource,resource);
+DEF_FN(CUresult,cuGraphicsResourceSetMapFlags_v2 ,CUgraphicsResource,resource,unsigned int,flags);
+DEF_FN(CUresult,cuGraphicsMapResources ,unsigned int,count,CUgraphicsResource *,resources,CUstream,hStream);
+DEF_FN(CUresult,cuGraphicsUnmapResources ,unsigned int,count,CUgraphicsResource *,resources,CUstream,hStream);
+DEF_FN(CUresult,cuCoredumpGetAttribute ,CUcoredumpSettings,attrib,void *,value,size_t *,size);
+DEF_FN(CUresult,cuCoredumpGetAttributeGlobal ,CUcoredumpSettings,attrib,void *,value,size_t *,size);
+DEF_FN(CUresult,cuCoredumpSetAttribute ,CUcoredumpSettings,attrib,void *,value,size_t *,size);
+DEF_FN(CUresult,cuCoredumpSetAttributeGlobal ,CUcoredumpSettings,attrib,void *,value,size_t *,size);
+DEF_FN(CUresult,cuGetExportTable ,const void * *,ppExportTable,const CUuuid *,pExportTableId);
+DEF_FN(CUresult,cuGreenCtxCreate ,CUgreenCtx *,phCtx,CUdevResourceDesc,desc,CUdevice,dev,unsigned int,flags);
+DEF_FN(CUresult,cuGreenCtxDestroy ,CUgreenCtx,hCtx);
+DEF_FN(CUresult,cuCtxFromGreenCtx ,CUcontext *,pContext,CUgreenCtx,hCtx);
+DEF_FN(CUresult,cuDeviceGetDevResource ,CUdevice,device,CUdevResource *,resource,CUdevResourceType,type);
+DEF_FN(CUresult,cuCtxGetDevResource ,CUcontext,hCtx,CUdevResource *,resource,CUdevResourceType,type);
+DEF_FN(CUresult,cuGreenCtxGetDevResource ,CUgreenCtx,hCtx,CUdevResource *,resource,CUdevResourceType,type);
+DEF_FN(CUresult,cuDevSmResourceSplitByCount ,CUdevResource *,result,unsigned int *,nbGroups,const CUdevResource *,input,CUdevResource *,remaining,unsigned int,useFlags,unsigned int,minCount);
+DEF_FN(CUresult,cuDevResourceGenerateDesc ,CUdevResourceDesc *,phDesc,CUdevResource *,resources,unsigned int,nbResources);
+DEF_FN(CUresult,cuGreenCtxRecordEvent ,CUgreenCtx,hCtx,CUevent,hEvent);
+DEF_FN(CUresult,cuGreenCtxWaitEvent ,CUgreenCtx,hCtx,CUevent,hEvent);
+DEF_FN(CUresult,cuStreamGetGreenCtx ,CUstream,hStream,CUgreenCtx *,phCtx);
 
-    CuDriverCallStructure request={
-        .op= CuDriverCall::CuInit,
-        .params={.cuInit{.flags=Flags}},
-    };
-    CuDriverCallReplyStructure reply;
-    printf("cuInit flags:%u\n",Flags);
-    communicate_with_server(NULL, &request, &reply);
-    return reply.result;
-}
+CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus) {
+    CUresult result = realCuGetProcAddress(symbol, pfn, cudaVersion, flags, symbolStatus);
+    printf("Intercepted cuGetProcAddress: Requesting symbol %s (flags=%lu, version=%d): %p\n", symbol, flags, cudaVersion, *pfn);
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDriverGetVersion(int * driverVersion) {
-    HOOK_TRACE_PROFILE("cuDriverGetVersion");
-    CuDriverCallStructure request={
-        .op=CuDriverCall::CuDriverGetVersion,
-        .params={.empty{}},
-    };
-    CuDriverCallReplyStructure reply;
+    if (strcmp(symbol, "cuGetProcAddress") == 0) {
+        *pfn = (void*)&cuGetProcAddress;  // 拦截自身
+    } 
 
-    communicate_with_server(NULL, &request,&reply);
-    
-    *driverVersion=reply.returnParams.driverVersion;
-    printf("driverVersion: %d\n", *driverVersion);
-    return reply.result;
+	ELSE_IF(cuGetErrorString,CUresult, const char * *)
+	ELSE_IF(cuGetErrorName,CUresult, const char * *)
+	ELSE_IF(cuInit,unsigned int)
+	ELSE_IF(cuDriverGetVersion,int *)
+	ELSE_IF(cuDeviceGet,CUdevice *, int)
+	ELSE_IF(cuDeviceGetCount,int *)
+	ELSE_IF(cuDeviceGetName,char *, int, CUdevice)
+	ELSE_IF(cuDeviceGetUuid,CUuuid *, CUdevice)
+	ELSE_IF(cuDeviceGetUuid_v2,CUuuid *, CUdevice)
+	ELSE_IF(cuDeviceGetLuid,char *, unsigned int *, CUdevice)
+	ELSE_IF(cuDeviceTotalMem_v2,size_t *, CUdevice)
+	ELSE_IF(cuDeviceGetTexture1DLinearMaxWidth,size_t *, CUarray_format, unsigned, CUdevice)
+	ELSE_IF(cuDeviceGetAttribute,int *, CUdevice_attribute, CUdevice)
+	ELSE_IF(cuDeviceGetNvSciSyncAttributes,void *, CUdevice, int)
+	ELSE_IF(cuDeviceSetMemPool,CUdevice, CUmemoryPool)
+	ELSE_IF(cuDeviceGetMemPool,CUmemoryPool *, CUdevice)
+	ELSE_IF(cuDeviceGetDefaultMemPool,CUmemoryPool *, CUdevice)
+	ELSE_IF(cuDeviceGetExecAffinitySupport,int *, CUexecAffinityType, CUdevice)
+	ELSE_IF(cuFlushGPUDirectRDMAWrites,CUflushGPUDirectRDMAWritesTarget, CUflushGPUDirectRDMAWritesScope)
+	ELSE_IF(cuDeviceGetProperties,CUdevprop *, CUdevice)
+	ELSE_IF(cuDeviceComputeCapability,int *, int *, CUdevice)
+	ELSE_IF(cuDevicePrimaryCtxRetain,CUcontext *, CUdevice)
+	ELSE_IF(cuDevicePrimaryCtxRelease_v2,CUdevice)
+	ELSE_IF(cuDevicePrimaryCtxSetFlags_v2,CUdevice, unsigned int)
+	ELSE_IF(cuDevicePrimaryCtxGetState,CUdevice, unsigned int *, int *)
+	ELSE_IF(cuDevicePrimaryCtxReset_v2,CUdevice)
+	ELSE_IF(cuCtxCreate_v2,CUcontext *, unsigned int, CUdevice)
+	ELSE_IF(cuCtxCreate_v3,CUcontext *, CUexecAffinityParam *, int, unsigned int, CUdevice)
+	ELSE_IF(cuCtxDestroy_v2,CUcontext)
+	ELSE_IF(cuCtxPushCurrent_v2,CUcontext)
+	ELSE_IF(cuCtxPopCurrent_v2,CUcontext *)
+	ELSE_IF(cuCtxSetCurrent,CUcontext)
+	ELSE_IF(cuCtxGetCurrent,CUcontext *)
+	ELSE_IF(cuCtxGetDevice,CUdevice *)
+	ELSE_IF(cuCtxGetFlags,unsigned int *)
+	ELSE_IF(cuCtxSetFlags,unsigned int)
+	ELSE_IF(cuCtxGetId,CUcontext, unsigned long long *)
+	ELSE_IF(cuCtxSynchronize,void)
+	ELSE_IF(cuCtxSetLimit,CUlimit, size_t)
+	ELSE_IF(cuCtxGetLimit,size_t *, CUlimit)
+	ELSE_IF(cuCtxGetCacheConfig,CUfunc_cache *)
+	ELSE_IF(cuCtxSetCacheConfig,CUfunc_cache)
+	ELSE_IF(cuCtxGetApiVersion,CUcontext, unsigned int *)
+	ELSE_IF(cuCtxGetStreamPriorityRange,int *, int *)
+	ELSE_IF(cuCtxResetPersistingL2Cache,void)
+	ELSE_IF(cuCtxGetExecAffinity,CUexecAffinityParam *, CUexecAffinityType)
+	ELSE_IF(cuCtxAttach,CUcontext *, unsigned int)
+	ELSE_IF(cuCtxDetach,CUcontext)
+	ELSE_IF(cuCtxGetSharedMemConfig,CUsharedconfig *)
+	ELSE_IF(cuCtxSetSharedMemConfig,CUsharedconfig)
+	ELSE_IF(cuModuleLoad,CUmodule *, const char *)
+	ELSE_IF(cuModuleLoadData,CUmodule *, const void *)
+	ELSE_IF(cuModuleLoadDataEx,CUmodule *, const void *, unsigned int, CUjit_option *, void * *)
+	ELSE_IF(cuModuleLoadFatBinary,CUmodule *, const void *)
+	ELSE_IF(cuModuleUnload,CUmodule)
+	ELSE_IF(cuModuleGetLoadingMode,CUmoduleLoadingMode *)
+	ELSE_IF(cuModuleGetFunction,CUfunction *, CUmodule, const char *)
+	ELSE_IF(cuModuleGetFunctionCount,unsigned int *, CUmodule)
+	ELSE_IF(cuModuleEnumerateFunctions,CUfunction *, unsigned int, CUmodule)
+	ELSE_IF(cuModuleGetGlobal_v2,CUdeviceptr *, size_t *, CUmodule, const char *)
+	ELSE_IF(cuLinkCreate_v2,unsigned int, CUjit_option *, void * *, CUlinkState *)
+	ELSE_IF(cuLinkAddData_v2,CUlinkState, CUjitInputType, void *, size_t, const char *, unsigned int, CUjit_option *, void * *)
+	ELSE_IF(cuLinkAddFile_v2,CUlinkState, CUjitInputType, const char *, unsigned int, CUjit_option *, void * *)
+	ELSE_IF(cuLinkComplete,CUlinkState, void * *, size_t *)
+	ELSE_IF(cuLinkDestroy,CUlinkState)
+	ELSE_IF(cuModuleGetTexRef,CUtexref *, CUmodule, const char *)
+	ELSE_IF(cuModuleGetSurfRef,CUsurfref *, CUmodule, const char *)
+	ELSE_IF(cuLibraryLoadData,CUlibrary *, const void *, CUjit_option *, void * *, unsigned int, CUlibraryOption *, void * *, unsigned int)
+	ELSE_IF(cuLibraryLoadFromFile,CUlibrary *, const char *, CUjit_option *, void * *, unsigned int, CUlibraryOption *, void * *, unsigned int)
+	ELSE_IF(cuLibraryUnload,CUlibrary)
+	ELSE_IF(cuLibraryGetKernel,CUkernel *, CUlibrary, const char *)
+	ELSE_IF(cuLibraryGetKernelCount,unsigned int *, CUlibrary)
+	ELSE_IF(cuLibraryEnumerateKernels,CUkernel *, unsigned int, CUlibrary)
+	ELSE_IF(cuLibraryGetModule,CUmodule *, CUlibrary)
+	ELSE_IF(cuKernelGetFunction,CUfunction *, CUkernel)
+	ELSE_IF(cuLibraryGetGlobal,CUdeviceptr *, size_t *, CUlibrary, const char *)
+	ELSE_IF(cuLibraryGetManaged,CUdeviceptr *, size_t *, CUlibrary, const char *)
+	ELSE_IF(cuLibraryGetUnifiedFunction,void * *, CUlibrary, const char *)
+	ELSE_IF(cuKernelGetAttribute,int *, CUfunction_attribute, CUkernel, CUdevice)
+	ELSE_IF(cuKernelSetAttribute,CUfunction_attribute, int, CUkernel, CUdevice)
+	ELSE_IF(cuKernelSetCacheConfig,CUkernel, CUfunc_cache, CUdevice)
+	ELSE_IF(cuKernelGetName,const char * *, CUkernel)
+	ELSE_IF(cuKernelGetParamInfo,CUkernel, size_t, size_t *, size_t *)
+	ELSE_IF(cuMemGetInfo_v2,size_t *, size_t *)
+	ELSE_IF(cuMemAlloc_v2,CUdeviceptr *, size_t)
+	ELSE_IF(cuMemAllocPitch_v2,CUdeviceptr *, size_t *, size_t, size_t, unsigned int)
+	ELSE_IF(cuMemFree_v2,CUdeviceptr)
+	ELSE_IF(cuMemGetAddressRange_v2,CUdeviceptr *, size_t *, CUdeviceptr)
+	ELSE_IF(cuMemAllocHost_v2,void * *, size_t)
+	ELSE_IF(cuMemFreeHost,void *)
+	ELSE_IF(cuMemHostAlloc,void * *, size_t, unsigned int)
+	ELSE_IF(cuMemHostGetDevicePointer_v2,CUdeviceptr *, void *, unsigned int)
+	ELSE_IF(cuMemHostGetFlags,unsigned int *, void *)
+	ELSE_IF(cuMemAllocManaged,CUdeviceptr *, size_t, unsigned int)
+	ELSE_IF(cuDeviceRegisterAsyncNotification,CUdevice, CUasyncCallback, void *, CUasyncCallbackHandle *)
+	ELSE_IF(cuDeviceUnregisterAsyncNotification,CUdevice, CUasyncCallbackHandle)
+	ELSE_IF(cuDeviceGetByPCIBusId,CUdevice *, const char *)
+	ELSE_IF(cuDeviceGetPCIBusId,char *, int, CUdevice)
+	ELSE_IF(cuIpcGetEventHandle,CUipcEventHandle *, CUevent)
+	ELSE_IF(cuIpcOpenEventHandle,CUevent *, CUipcEventHandle)
+	ELSE_IF(cuIpcGetMemHandle,CUipcMemHandle *, CUdeviceptr)
+	ELSE_IF(cuIpcOpenMemHandle_v2,CUdeviceptr *, CUipcMemHandle, unsigned int)
+	ELSE_IF(cuIpcCloseMemHandle,CUdeviceptr)
+	ELSE_IF(cuMemHostRegister_v2,void *, size_t, unsigned int)
+	ELSE_IF(cuMemHostUnregister,void *)
+	ELSE_IF(cuMemcpy,CUdeviceptr, CUdeviceptr, size_t)
+	ELSE_IF(cuMemcpyPeer,CUdeviceptr, CUcontext, CUdeviceptr, CUcontext, size_t)
+	ELSE_IF(cuMemcpyHtoD_v2,CUdeviceptr, const void *, size_t)
+	ELSE_IF(cuMemcpyDtoH_v2,void *, CUdeviceptr, size_t)
+	ELSE_IF(cuMemcpyDtoD_v2,CUdeviceptr, CUdeviceptr, size_t)
+	ELSE_IF(cuMemcpyDtoA_v2,CUarray, size_t, CUdeviceptr, size_t)
+	ELSE_IF(cuMemcpyAtoD_v2,CUdeviceptr, CUarray, size_t, size_t)
+	ELSE_IF(cuMemcpyHtoA_v2,CUarray, size_t, const void *, size_t)
+	ELSE_IF(cuMemcpyAtoH_v2,void *, CUarray, size_t, size_t)
+	ELSE_IF(cuMemcpyAtoA_v2,CUarray, size_t, CUarray, size_t, size_t)
+	ELSE_IF(cuMemcpy2D_v2,const CUDA_MEMCPY2D *)
+	ELSE_IF(cuMemcpy2DUnaligned_v2,const CUDA_MEMCPY2D *)
+	ELSE_IF(cuMemcpy3D_v2,const CUDA_MEMCPY3D *)
+	ELSE_IF(cuMemcpy3DPeer,const CUDA_MEMCPY3D_PEER *)
+	ELSE_IF(cuMemcpyAsync,CUdeviceptr, CUdeviceptr, size_t, CUstream)
+	ELSE_IF(cuMemcpyPeerAsync,CUdeviceptr, CUcontext, CUdeviceptr, CUcontext, size_t, CUstream)
+	ELSE_IF(cuMemcpyHtoDAsync_v2,CUdeviceptr, const void *, size_t, CUstream)
+	ELSE_IF(cuMemcpyDtoHAsync_v2,void *, CUdeviceptr, size_t, CUstream)
+	ELSE_IF(cuMemcpyDtoDAsync_v2,CUdeviceptr, CUdeviceptr, size_t, CUstream)
+	ELSE_IF(cuMemcpyHtoAAsync_v2,CUarray, size_t, const void *, size_t, CUstream)
+	ELSE_IF(cuMemcpyAtoHAsync_v2,void *, CUarray, size_t, size_t, CUstream)
+	ELSE_IF(cuMemcpy2DAsync_v2,const CUDA_MEMCPY2D *, CUstream)
+	ELSE_IF(cuMemcpy3DAsync_v2,const CUDA_MEMCPY3D *, CUstream)
+	ELSE_IF(cuMemcpy3DPeerAsync,const CUDA_MEMCPY3D_PEER *, CUstream)
+	ELSE_IF(cuMemsetD8_v2,CUdeviceptr, unsigned char, size_t)
+	ELSE_IF(cuMemsetD16_v2,CUdeviceptr, unsigned short, size_t)
+	ELSE_IF(cuMemsetD32_v2,CUdeviceptr, unsigned int, size_t)
+	ELSE_IF(cuMemsetD2D8_v2,CUdeviceptr, size_t, unsigned char, size_t, size_t)
+	ELSE_IF(cuMemsetD2D16_v2,CUdeviceptr, size_t, unsigned short, size_t, size_t)
+	ELSE_IF(cuMemsetD2D32_v2,CUdeviceptr, size_t, unsigned int, size_t, size_t)
+	ELSE_IF(cuMemsetD8Async,CUdeviceptr, unsigned char, size_t, CUstream)
+	ELSE_IF(cuMemsetD16Async,CUdeviceptr, unsigned short, size_t, CUstream)
+	ELSE_IF(cuMemsetD32Async,CUdeviceptr, unsigned int, size_t, CUstream)
+	ELSE_IF(cuMemsetD2D8Async,CUdeviceptr, size_t, unsigned char, size_t, size_t, CUstream)
+	ELSE_IF(cuMemsetD2D16Async,CUdeviceptr, size_t, unsigned short, size_t, size_t, CUstream)
+	ELSE_IF(cuMemsetD2D32Async,CUdeviceptr, size_t, unsigned int, size_t, size_t, CUstream)
+	ELSE_IF(cuArrayCreate_v2,CUarray *, const CUDA_ARRAY_DESCRIPTOR *)
+	ELSE_IF(cuArrayGetDescriptor_v2,CUDA_ARRAY_DESCRIPTOR *, CUarray)
+	ELSE_IF(cuArrayGetSparseProperties,CUDA_ARRAY_SPARSE_PROPERTIES *, CUarray)
+	ELSE_IF(cuMipmappedArrayGetSparseProperties,CUDA_ARRAY_SPARSE_PROPERTIES *, CUmipmappedArray)
+	ELSE_IF(cuArrayGetMemoryRequirements,CUDA_ARRAY_MEMORY_REQUIREMENTS *, CUarray, CUdevice)
+	ELSE_IF(cuMipmappedArrayGetMemoryRequirements,CUDA_ARRAY_MEMORY_REQUIREMENTS *, CUmipmappedArray, CUdevice)
+	ELSE_IF(cuArrayGetPlane,CUarray *, CUarray, unsigned int)
+	ELSE_IF(cuArrayDestroy,CUarray)
+	ELSE_IF(cuArray3DCreate_v2,CUarray *, const CUDA_ARRAY3D_DESCRIPTOR *)
+	ELSE_IF(cuArray3DGetDescriptor_v2,CUDA_ARRAY3D_DESCRIPTOR *, CUarray)
+	ELSE_IF(cuMipmappedArrayCreate,CUmipmappedArray *, const CUDA_ARRAY3D_DESCRIPTOR *, unsigned int)
+	ELSE_IF(cuMipmappedArrayGetLevel,CUarray *, CUmipmappedArray, unsigned int)
+	ELSE_IF(cuMipmappedArrayDestroy,CUmipmappedArray)
+	ELSE_IF(cuMemGetHandleForAddressRange,void *, CUdeviceptr, size_t, CUmemRangeHandleType, unsigned long long)
+	ELSE_IF(cuMemAddressReserve,CUdeviceptr *, size_t, size_t, CUdeviceptr, unsigned long long)
+	ELSE_IF(cuMemAddressFree,CUdeviceptr, size_t)
+	ELSE_IF(cuMemCreate,CUmemGenericAllocationHandle *, size_t, const CUmemAllocationProp *, unsigned long long)
+	ELSE_IF(cuMemRelease,CUmemGenericAllocationHandle)
+	ELSE_IF(cuMemMap,CUdeviceptr, size_t, size_t, CUmemGenericAllocationHandle, unsigned long long)
+	ELSE_IF(cuMemMapArrayAsync,CUarrayMapInfo *, unsigned int, CUstream)
+	ELSE_IF(cuMemUnmap,CUdeviceptr, size_t)
+	ELSE_IF(cuMemSetAccess,CUdeviceptr, size_t, const CUmemAccessDesc *, size_t)
+	ELSE_IF(cuMemGetAccess,unsigned long long *, const CUmemLocation *, CUdeviceptr)
+	ELSE_IF(cuMemExportToShareableHandle,void *, CUmemGenericAllocationHandle, CUmemAllocationHandleType, unsigned long long)
+	ELSE_IF(cuMemImportFromShareableHandle,CUmemGenericAllocationHandle *, void *, CUmemAllocationHandleType)
+	ELSE_IF(cuMemGetAllocationGranularity,size_t *, const CUmemAllocationProp *, CUmemAllocationGranularity_flags)
+	ELSE_IF(cuMemGetAllocationPropertiesFromHandle,CUmemAllocationProp *, CUmemGenericAllocationHandle)
+	ELSE_IF(cuMemRetainAllocationHandle,CUmemGenericAllocationHandle *, void *)
+	ELSE_IF(cuMemFreeAsync,CUdeviceptr, CUstream)
+	ELSE_IF(cuMemAllocAsync,CUdeviceptr *, size_t, CUstream)
+	ELSE_IF(cuMemPoolTrimTo,CUmemoryPool, size_t)
+	ELSE_IF(cuMemPoolSetAttribute,CUmemoryPool, CUmemPool_attribute, void *)
+	ELSE_IF(cuMemPoolGetAttribute,CUmemoryPool, CUmemPool_attribute, void *)
+	ELSE_IF(cuMemPoolSetAccess,CUmemoryPool, const CUmemAccessDesc *, size_t)
+	ELSE_IF(cuMemPoolGetAccess,CUmemAccess_flags *, CUmemoryPool, CUmemLocation *)
+	ELSE_IF(cuMemPoolCreate,CUmemoryPool *, const CUmemPoolProps *)
+	ELSE_IF(cuMemPoolDestroy,CUmemoryPool)
+	ELSE_IF(cuMemAllocFromPoolAsync,CUdeviceptr *, size_t, CUmemoryPool, CUstream)
+	ELSE_IF(cuMemPoolExportToShareableHandle,void *, CUmemoryPool, CUmemAllocationHandleType, unsigned long long)
+	ELSE_IF(cuMemPoolImportFromShareableHandle,CUmemoryPool *, void *, CUmemAllocationHandleType, unsigned long long)
+	ELSE_IF(cuMemPoolExportPointer,CUmemPoolPtrExportData *, CUdeviceptr)
+	ELSE_IF(cuMemPoolImportPointer,CUdeviceptr *, CUmemoryPool, CUmemPoolPtrExportData *)
+	ELSE_IF(cuMulticastCreate,CUmemGenericAllocationHandle *, const CUmulticastObjectProp *)
+	ELSE_IF(cuMulticastAddDevice,CUmemGenericAllocationHandle, CUdevice)
+	ELSE_IF(cuMulticastBindMem,CUmemGenericAllocationHandle, size_t, CUmemGenericAllocationHandle, size_t, size_t, unsigned long long)
+	ELSE_IF(cuMulticastBindAddr,CUmemGenericAllocationHandle, size_t, CUdeviceptr, size_t, unsigned long long)
+	ELSE_IF(cuMulticastUnbind,CUmemGenericAllocationHandle, CUdevice, size_t, size_t)
+	ELSE_IF(cuMulticastGetGranularity,size_t *, const CUmulticastObjectProp *, CUmulticastGranularity_flags)
+	ELSE_IF(cuPointerGetAttribute,void *, CUpointer_attribute, CUdeviceptr)
+	ELSE_IF(cuMemPrefetchAsync,CUdeviceptr, size_t, CUdevice, CUstream)
+	ELSE_IF(cuMemPrefetchAsync_v2,CUdeviceptr, size_t, CUmemLocation, unsigned int, CUstream)
+	ELSE_IF(cuMemAdvise,CUdeviceptr, size_t, CUmem_advise, CUdevice)
+	ELSE_IF(cuMemAdvise_v2,CUdeviceptr, size_t, CUmem_advise, CUmemLocation)
+	ELSE_IF(cuMemRangeGetAttribute,void *, size_t, CUmem_range_attribute, CUdeviceptr, size_t)
+	ELSE_IF(cuMemRangeGetAttributes,void * *, size_t *, CUmem_range_attribute *, size_t, CUdeviceptr, size_t)
+	ELSE_IF(cuPointerSetAttribute,const void *, CUpointer_attribute, CUdeviceptr)
+	ELSE_IF(cuPointerGetAttributes,unsigned int, CUpointer_attribute *, void * *, CUdeviceptr)
+	ELSE_IF(cuStreamCreate,CUstream *, unsigned int)
+	ELSE_IF(cuStreamCreateWithPriority,CUstream *, unsigned int, int)
+	ELSE_IF(cuStreamGetPriority,CUstream, int *)
+	ELSE_IF(cuStreamGetFlags,CUstream, unsigned int *)
+	ELSE_IF(cuStreamGetId,CUstream, unsigned long long *)
+	ELSE_IF(cuStreamGetCtx,CUstream, CUcontext *)
+	ELSE_IF(cuStreamWaitEvent,CUstream, CUevent, unsigned int)
+	ELSE_IF(cuStreamAddCallback,CUstream, CUstreamCallback, void *, unsigned int)
+	ELSE_IF(cuStreamBeginCapture_v2,CUstream, CUstreamCaptureMode)
+	ELSE_IF(cuStreamBeginCaptureToGraph,CUstream, CUgraph, const CUgraphNode *, const CUgraphEdgeData *, size_t, CUstreamCaptureMode)
+	ELSE_IF(cuThreadExchangeStreamCaptureMode,CUstreamCaptureMode *)
+	ELSE_IF(cuStreamEndCapture,CUstream, CUgraph *)
+	ELSE_IF(cuStreamIsCapturing,CUstream, CUstreamCaptureStatus *)
+	ELSE_IF(cuStreamGetCaptureInfo_v2,CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, size_t *)
+	ELSE_IF(cuStreamGetCaptureInfo_v3,CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, const CUgraphEdgeData * *, size_t *)
+	ELSE_IF(cuStreamUpdateCaptureDependencies,CUstream, CUgraphNode *, size_t, unsigned int)
+	ELSE_IF(cuStreamUpdateCaptureDependencies_v2,CUstream, CUgraphNode *, const CUgraphEdgeData *, size_t, unsigned int)
+	ELSE_IF(cuStreamAttachMemAsync,CUstream, CUdeviceptr, size_t, unsigned int)
+	ELSE_IF(cuStreamQuery,CUstream)
+	ELSE_IF(cuStreamSynchronize,CUstream)
+	ELSE_IF(cuStreamDestroy_v2,CUstream)
+	ELSE_IF(cuStreamCopyAttributes,CUstream, CUstream)
+	ELSE_IF(cuStreamGetAttribute,CUstream, CUstreamAttrID, CUstreamAttrValue *)
+	ELSE_IF(cuStreamSetAttribute,CUstream, CUstreamAttrID, const CUstreamAttrValue *)
+	ELSE_IF(cuEventCreate,CUevent *, unsigned int)
+	ELSE_IF(cuEventRecord,CUevent, CUstream)
+	ELSE_IF(cuEventRecordWithFlags,CUevent, CUstream, unsigned int)
+	ELSE_IF(cuEventQuery,CUevent)
+	ELSE_IF(cuEventSynchronize,CUevent)
+	ELSE_IF(cuEventDestroy_v2,CUevent)
+	ELSE_IF(cuEventElapsedTime,float *, CUevent, CUevent)
+	ELSE_IF(cuImportExternalMemory,CUexternalMemory *, const CUDA_EXTERNAL_MEMORY_HANDLE_DESC *)
+	ELSE_IF(cuExternalMemoryGetMappedBuffer,CUdeviceptr *, CUexternalMemory, const CUDA_EXTERNAL_MEMORY_BUFFER_DESC *)
+	ELSE_IF(cuExternalMemoryGetMappedMipmappedArray,CUmipmappedArray *, CUexternalMemory, const CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC *)
+	ELSE_IF(cuDestroyExternalMemory,CUexternalMemory)
+	ELSE_IF(cuImportExternalSemaphore,CUexternalSemaphore *, const CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC *)
+	ELSE_IF(cuSignalExternalSemaphoresAsync,const CUexternalSemaphore *, const CUDA_EXTERNAL_SEMAPHORE_SIGNAL_PARAMS *, unsigned int, CUstream)
+	ELSE_IF(cuWaitExternalSemaphoresAsync,const CUexternalSemaphore *, const CUDA_EXTERNAL_SEMAPHORE_WAIT_PARAMS *, unsigned int, CUstream)
+	ELSE_IF(cuDestroyExternalSemaphore,CUexternalSemaphore)
+	ELSE_IF(cuStreamWaitValue32_v2,CUstream, CUdeviceptr, cuuint32_t, unsigned int)
+	ELSE_IF(cuStreamWaitValue64_v2,CUstream, CUdeviceptr, cuuint64_t, unsigned int)
+	ELSE_IF(cuStreamWriteValue32_v2,CUstream, CUdeviceptr, cuuint32_t, unsigned int)
+	ELSE_IF(cuStreamWriteValue64_v2,CUstream, CUdeviceptr, cuuint64_t, unsigned int)
+	ELSE_IF(cuStreamBatchMemOp_v2,CUstream, unsigned int, CUstreamBatchMemOpParams *, unsigned int)
+	ELSE_IF(cuFuncGetAttribute,int *, CUfunction_attribute, CUfunction)
+	ELSE_IF(cuFuncSetAttribute,CUfunction, CUfunction_attribute, int)
+	ELSE_IF(cuFuncSetCacheConfig,CUfunction, CUfunc_cache)
+	ELSE_IF(cuFuncGetModule,CUmodule *, CUfunction)
+	ELSE_IF(cuFuncGetName,const char * *, CUfunction)
+	ELSE_IF(cuFuncGetParamInfo,CUfunction, size_t, size_t *, size_t *)
+	ELSE_IF(cuFuncIsLoaded,CUfunctionLoadingState *, CUfunction)
+	ELSE_IF(cuFuncLoad,CUfunction)
+	ELSE_IF(cuLaunchKernel,CUfunction, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, CUstream, void * *, void * *)
+	ELSE_IF(cuLaunchKernelEx,const CUlaunchConfig *, CUfunction, void * *, void * *)
+	ELSE_IF(cuLaunchCooperativeKernel,CUfunction, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, CUstream, void * *)
+	ELSE_IF(cuLaunchCooperativeKernelMultiDevice,CUDA_LAUNCH_PARAMS *, unsigned int, unsigned int)
+	ELSE_IF(cuLaunchHostFunc,CUstream, CUhostFn, void *)
+	ELSE_IF(cuFuncSetBlockShape,CUfunction, int, int, int)
+	ELSE_IF(cuFuncSetSharedSize,CUfunction, unsigned int)
+	ELSE_IF(cuParamSetSize,CUfunction, unsigned int)
+	ELSE_IF(cuParamSeti,CUfunction, int, unsigned int)
+	ELSE_IF(cuParamSetf,CUfunction, int, float)
+	ELSE_IF(cuParamSetv,CUfunction, int, void *, unsigned int)
+	ELSE_IF(cuLaunch,CUfunction)
+	ELSE_IF(cuLaunchGrid,CUfunction, int, int)
+	ELSE_IF(cuLaunchGridAsync,CUfunction, int, int, CUstream)
+	ELSE_IF(cuParamSetTexRef,CUfunction, int, CUtexref)
+	ELSE_IF(cuFuncSetSharedMemConfig,CUfunction, CUsharedconfig)
+	ELSE_IF(cuGraphCreate,CUgraph *, unsigned int)
+	ELSE_IF(cuGraphAddKernelNode_v2,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_KERNEL_NODE_PARAMS *)
+	ELSE_IF(cuGraphKernelNodeGetParams_v2,CUgraphNode, CUDA_KERNEL_NODE_PARAMS *)
+	ELSE_IF(cuGraphKernelNodeSetParams_v2,CUgraphNode, const CUDA_KERNEL_NODE_PARAMS *)
+	ELSE_IF(cuGraphAddMemcpyNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_MEMCPY3D *, CUcontext)
+	ELSE_IF(cuGraphMemcpyNodeGetParams,CUgraphNode, CUDA_MEMCPY3D *)
+	ELSE_IF(cuGraphMemcpyNodeSetParams,CUgraphNode, const CUDA_MEMCPY3D *)
+	ELSE_IF(cuGraphAddMemsetNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_MEMSET_NODE_PARAMS *, CUcontext)
+	ELSE_IF(cuGraphMemsetNodeGetParams,CUgraphNode, CUDA_MEMSET_NODE_PARAMS *)
+	ELSE_IF(cuGraphMemsetNodeSetParams,CUgraphNode, const CUDA_MEMSET_NODE_PARAMS *)
+	ELSE_IF(cuGraphAddHostNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_HOST_NODE_PARAMS *)
+	ELSE_IF(cuGraphHostNodeGetParams,CUgraphNode, CUDA_HOST_NODE_PARAMS *)
+	ELSE_IF(cuGraphHostNodeSetParams,CUgraphNode, const CUDA_HOST_NODE_PARAMS *)
+	ELSE_IF(cuGraphAddChildGraphNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUgraph)
+	ELSE_IF(cuGraphChildGraphNodeGetGraph,CUgraphNode, CUgraph *)
+	ELSE_IF(cuGraphAddEmptyNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t)
+	ELSE_IF(cuGraphAddEventRecordNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUevent)
+	ELSE_IF(cuGraphEventRecordNodeGetEvent,CUgraphNode, CUevent *)
+	ELSE_IF(cuGraphEventRecordNodeSetEvent,CUgraphNode, CUevent)
+	ELSE_IF(cuGraphAddEventWaitNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUevent)
+	ELSE_IF(cuGraphEventWaitNodeGetEvent,CUgraphNode, CUevent *)
+	ELSE_IF(cuGraphEventWaitNodeSetEvent,CUgraphNode, CUevent)
+	ELSE_IF(cuGraphAddExternalSemaphoresSignalNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_EXT_SEM_SIGNAL_NODE_PARAMS *)
+	ELSE_IF(cuGraphExternalSemaphoresSignalNodeGetParams,CUgraphNode, CUDA_EXT_SEM_SIGNAL_NODE_PARAMS *)
+	ELSE_IF(cuGraphExternalSemaphoresSignalNodeSetParams,CUgraphNode, const CUDA_EXT_SEM_SIGNAL_NODE_PARAMS *)
+	ELSE_IF(cuGraphAddExternalSemaphoresWaitNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_EXT_SEM_WAIT_NODE_PARAMS *)
+	ELSE_IF(cuGraphExternalSemaphoresWaitNodeGetParams,CUgraphNode, CUDA_EXT_SEM_WAIT_NODE_PARAMS *)
+	ELSE_IF(cuGraphExternalSemaphoresWaitNodeSetParams,CUgraphNode, const CUDA_EXT_SEM_WAIT_NODE_PARAMS *)
+	ELSE_IF(cuGraphAddBatchMemOpNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_BATCH_MEM_OP_NODE_PARAMS *)
+	ELSE_IF(cuGraphBatchMemOpNodeGetParams,CUgraphNode, CUDA_BATCH_MEM_OP_NODE_PARAMS *)
+	ELSE_IF(cuGraphBatchMemOpNodeSetParams,CUgraphNode, const CUDA_BATCH_MEM_OP_NODE_PARAMS *)
+	ELSE_IF(cuGraphExecBatchMemOpNodeSetParams,CUgraphExec, CUgraphNode, const CUDA_BATCH_MEM_OP_NODE_PARAMS *)
+	ELSE_IF(cuGraphAddMemAllocNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUDA_MEM_ALLOC_NODE_PARAMS *)
+	ELSE_IF(cuGraphMemAllocNodeGetParams,CUgraphNode, CUDA_MEM_ALLOC_NODE_PARAMS *)
+	ELSE_IF(cuGraphAddMemFreeNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUdeviceptr)
+	ELSE_IF(cuGraphMemFreeNodeGetParams,CUgraphNode, CUdeviceptr *)
+	ELSE_IF(cuDeviceGraphMemTrim,CUdevice)
+	ELSE_IF(cuDeviceGetGraphMemAttribute,CUdevice, CUgraphMem_attribute, void *)
+	ELSE_IF(cuDeviceSetGraphMemAttribute,CUdevice, CUgraphMem_attribute, void *)
+	ELSE_IF(cuGraphClone,CUgraph *, CUgraph)
+	ELSE_IF(cuGraphNodeFindInClone,CUgraphNode *, CUgraphNode, CUgraph)
+	ELSE_IF(cuGraphNodeGetType,CUgraphNode, CUgraphNodeType *)
+	ELSE_IF(cuGraphGetNodes,CUgraph, CUgraphNode *, size_t *)
+	ELSE_IF(cuGraphGetRootNodes,CUgraph, CUgraphNode *, size_t *)
+	ELSE_IF(cuGraphGetEdges,CUgraph, CUgraphNode *, CUgraphNode *, size_t *)
+	ELSE_IF(cuGraphGetEdges_v2,CUgraph, CUgraphNode *, CUgraphNode *, CUgraphEdgeData *, size_t *)
+	ELSE_IF(cuGraphNodeGetDependencies,CUgraphNode, CUgraphNode *, size_t *)
+	ELSE_IF(cuGraphNodeGetDependencies_v2,CUgraphNode, CUgraphNode *, CUgraphEdgeData *, size_t *)
+	ELSE_IF(cuGraphNodeGetDependentNodes,CUgraphNode, CUgraphNode *, size_t *)
+	ELSE_IF(cuGraphNodeGetDependentNodes_v2,CUgraphNode, CUgraphNode *, CUgraphEdgeData *, size_t *)
+	ELSE_IF(cuGraphAddDependencies,CUgraph, const CUgraphNode *, const CUgraphNode *, size_t)
+	ELSE_IF(cuGraphAddDependencies_v2,CUgraph, const CUgraphNode *, const CUgraphNode *, const CUgraphEdgeData *, size_t)
+	ELSE_IF(cuGraphRemoveDependencies,CUgraph, const CUgraphNode *, const CUgraphNode *, size_t)
+	ELSE_IF(cuGraphRemoveDependencies_v2,CUgraph, const CUgraphNode *, const CUgraphNode *, const CUgraphEdgeData *, size_t)
+	ELSE_IF(cuGraphDestroyNode,CUgraphNode)
+	ELSE_IF(cuGraphInstantiateWithFlags,CUgraphExec *, CUgraph, unsigned long long)
+	ELSE_IF(cuGraphInstantiateWithParams,CUgraphExec *, CUgraph, CUDA_GRAPH_INSTANTIATE_PARAMS *)
+	ELSE_IF(cuGraphExecGetFlags,CUgraphExec, cuuint64_t *)
+	ELSE_IF(cuGraphExecKernelNodeSetParams_v2,CUgraphExec, CUgraphNode, const CUDA_KERNEL_NODE_PARAMS *)
+	ELSE_IF(cuGraphExecMemcpyNodeSetParams,CUgraphExec, CUgraphNode, const CUDA_MEMCPY3D *, CUcontext)
+	ELSE_IF(cuGraphExecMemsetNodeSetParams,CUgraphExec, CUgraphNode, const CUDA_MEMSET_NODE_PARAMS *, CUcontext)
+	ELSE_IF(cuGraphExecHostNodeSetParams,CUgraphExec, CUgraphNode, const CUDA_HOST_NODE_PARAMS *)
+	ELSE_IF(cuGraphExecChildGraphNodeSetParams,CUgraphExec, CUgraphNode, CUgraph)
+	ELSE_IF(cuGraphExecEventRecordNodeSetEvent,CUgraphExec, CUgraphNode, CUevent)
+	ELSE_IF(cuGraphExecEventWaitNodeSetEvent,CUgraphExec, CUgraphNode, CUevent)
+	ELSE_IF(cuGraphExecExternalSemaphoresSignalNodeSetParams,CUgraphExec, CUgraphNode, const CUDA_EXT_SEM_SIGNAL_NODE_PARAMS *)
+	ELSE_IF(cuGraphExecExternalSemaphoresWaitNodeSetParams,CUgraphExec, CUgraphNode, const CUDA_EXT_SEM_WAIT_NODE_PARAMS *)
+	ELSE_IF(cuGraphNodeSetEnabled,CUgraphExec, CUgraphNode, unsigned int)
+	ELSE_IF(cuGraphNodeGetEnabled,CUgraphExec, CUgraphNode, unsigned int *)
+	ELSE_IF(cuGraphUpload,CUgraphExec, CUstream)
+	ELSE_IF(cuGraphLaunch,CUgraphExec, CUstream)
+	ELSE_IF(cuGraphExecDestroy,CUgraphExec)
+	ELSE_IF(cuGraphDestroy,CUgraph)
+	ELSE_IF(cuGraphExecUpdate_v2,CUgraphExec, CUgraph, CUgraphExecUpdateResultInfo *)
+	ELSE_IF(cuGraphKernelNodeCopyAttributes,CUgraphNode, CUgraphNode)
+	ELSE_IF(cuGraphKernelNodeGetAttribute,CUgraphNode, CUkernelNodeAttrID, CUkernelNodeAttrValue *)
+	ELSE_IF(cuGraphKernelNodeSetAttribute,CUgraphNode, CUkernelNodeAttrID, const CUkernelNodeAttrValue *)
+	ELSE_IF(cuGraphDebugDotPrint,CUgraph, const char *, unsigned int)
+	ELSE_IF(cuUserObjectCreate,CUuserObject *, void *, CUhostFn, unsigned int, unsigned int)
+	ELSE_IF(cuUserObjectRetain,CUuserObject, unsigned int)
+	ELSE_IF(cuUserObjectRelease,CUuserObject, unsigned int)
+	ELSE_IF(cuGraphRetainUserObject,CUgraph, CUuserObject, unsigned int, unsigned int)
+	ELSE_IF(cuGraphReleaseUserObject,CUgraph, CUuserObject, unsigned int)
+	ELSE_IF(cuGraphAddNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUgraphNodeParams *)
+	ELSE_IF(cuGraphAddNode_v2,CUgraphNode *, CUgraph, const CUgraphNode *, const CUgraphEdgeData *, size_t, CUgraphNodeParams *)
+	ELSE_IF(cuGraphNodeSetParams,CUgraphNode, CUgraphNodeParams *)
+	ELSE_IF(cuGraphExecNodeSetParams,CUgraphExec, CUgraphNode, CUgraphNodeParams *)
+	ELSE_IF(cuGraphConditionalHandleCreate,CUgraphConditionalHandle *, CUgraph, CUcontext, unsigned int, unsigned int)
+	ELSE_IF(cuOccupancyMaxActiveBlocksPerMultiprocessor,int *, CUfunction, int, size_t)
+	ELSE_IF(cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags,int *, CUfunction, int, size_t, unsigned int)
+	ELSE_IF(cuOccupancyMaxPotentialBlockSize,int *, int *, CUfunction, CUoccupancyB2DSize, size_t, int)
+	ELSE_IF(cuOccupancyMaxPotentialBlockSizeWithFlags,int *, int *, CUfunction, CUoccupancyB2DSize, size_t, int, unsigned int)
+	ELSE_IF(cuOccupancyAvailableDynamicSMemPerBlock,size_t *, CUfunction, int, int)
+	ELSE_IF(cuOccupancyMaxPotentialClusterSize,int *, CUfunction, const CUlaunchConfig *)
+	ELSE_IF(cuOccupancyMaxActiveClusters,int *, CUfunction, const CUlaunchConfig *)
+	ELSE_IF(cuTexRefSetArray,CUtexref, CUarray, unsigned int)
+	ELSE_IF(cuTexRefSetMipmappedArray,CUtexref, CUmipmappedArray, unsigned int)
+	ELSE_IF(cuTexRefSetAddress_v2,size_t *, CUtexref, CUdeviceptr, size_t)
+	ELSE_IF(cuTexRefSetAddress2D_v3,CUtexref, const CUDA_ARRAY_DESCRIPTOR *, CUdeviceptr, size_t)
+	ELSE_IF(cuTexRefSetFormat,CUtexref, CUarray_format, int)
+	ELSE_IF(cuTexRefSetAddressMode,CUtexref, int, CUaddress_mode)
+	ELSE_IF(cuTexRefSetFilterMode,CUtexref, CUfilter_mode)
+	ELSE_IF(cuTexRefSetMipmapFilterMode,CUtexref, CUfilter_mode)
+	ELSE_IF(cuTexRefSetMipmapLevelBias,CUtexref, float)
+	ELSE_IF(cuTexRefSetMipmapLevelClamp,CUtexref, float, float)
+	ELSE_IF(cuTexRefSetMaxAnisotropy,CUtexref, unsigned int)
+	ELSE_IF(cuTexRefSetBorderColor,CUtexref, float *)
+	ELSE_IF(cuTexRefSetFlags,CUtexref, unsigned int)
+	ELSE_IF(cuTexRefGetAddress_v2,CUdeviceptr *, CUtexref)
+	ELSE_IF(cuTexRefGetArray,CUarray *, CUtexref)
+	ELSE_IF(cuTexRefGetMipmappedArray,CUmipmappedArray *, CUtexref)
+	ELSE_IF(cuTexRefGetAddressMode,CUaddress_mode *, CUtexref, int)
+	ELSE_IF(cuTexRefGetFilterMode,CUfilter_mode *, CUtexref)
+	ELSE_IF(cuTexRefGetFormat,CUarray_format *, int *, CUtexref)
+	ELSE_IF(cuTexRefGetMipmapFilterMode,CUfilter_mode *, CUtexref)
+	ELSE_IF(cuTexRefGetMipmapLevelBias,float *, CUtexref)
+	ELSE_IF(cuTexRefGetMipmapLevelClamp,float *, float *, CUtexref)
+	ELSE_IF(cuTexRefGetMaxAnisotropy,int *, CUtexref)
+	ELSE_IF(cuTexRefGetBorderColor,float *, CUtexref)
+	ELSE_IF(cuTexRefGetFlags,unsigned int *, CUtexref)
+	ELSE_IF(cuTexRefCreate,CUtexref *)
+	ELSE_IF(cuTexRefDestroy,CUtexref)
+	ELSE_IF(cuSurfRefSetArray,CUsurfref, CUarray, unsigned int)
+	ELSE_IF(cuSurfRefGetArray,CUarray *, CUsurfref)
+	ELSE_IF(cuTexObjectCreate,CUtexObject *, const CUDA_RESOURCE_DESC *, const CUDA_TEXTURE_DESC *, const CUDA_RESOURCE_VIEW_DESC *)
+	ELSE_IF(cuTexObjectDestroy,CUtexObject)
+	ELSE_IF(cuTexObjectGetResourceDesc,CUDA_RESOURCE_DESC *, CUtexObject)
+	ELSE_IF(cuTexObjectGetTextureDesc,CUDA_TEXTURE_DESC *, CUtexObject)
+	ELSE_IF(cuTexObjectGetResourceViewDesc,CUDA_RESOURCE_VIEW_DESC *, CUtexObject)
+	ELSE_IF(cuSurfObjectCreate,CUsurfObject *, const CUDA_RESOURCE_DESC *)
+	ELSE_IF(cuSurfObjectDestroy,CUsurfObject)
+	ELSE_IF(cuSurfObjectGetResourceDesc,CUDA_RESOURCE_DESC *, CUsurfObject)
+	ELSE_IF(cuTensorMapEncodeTiled,CUtensorMap *, CUtensorMapDataType, cuuint32_t, void *, const cuuint64_t *, const cuuint64_t *, const cuuint32_t *, const cuuint32_t *, CUtensorMapInterleave, CUtensorMapSwizzle, CUtensorMapL2promotion, CUtensorMapFloatOOBfill)
+	ELSE_IF(cuTensorMapEncodeIm2col,CUtensorMap *, CUtensorMapDataType, cuuint32_t, void *, const cuuint64_t *, const cuuint64_t *, const int *, const int *, cuuint32_t, cuuint32_t, const cuuint32_t *, CUtensorMapInterleave, CUtensorMapSwizzle, CUtensorMapL2promotion, CUtensorMapFloatOOBfill)
+	ELSE_IF(cuTensorMapReplaceAddress,CUtensorMap *, void *)
+	ELSE_IF(cuDeviceCanAccessPeer,int *, CUdevice, CUdevice)
+	ELSE_IF(cuCtxEnablePeerAccess,CUcontext, unsigned int)
+	ELSE_IF(cuCtxDisablePeerAccess,CUcontext)
+	ELSE_IF(cuDeviceGetP2PAttribute,int *, CUdevice_P2PAttribute, CUdevice, CUdevice)
+	ELSE_IF(cuGraphicsUnregisterResource,CUgraphicsResource)
+	ELSE_IF(cuGraphicsSubResourceGetMappedArray,CUarray *, CUgraphicsResource, unsigned int, unsigned int)
+	ELSE_IF(cuGraphicsResourceGetMappedMipmappedArray,CUmipmappedArray *, CUgraphicsResource)
+	ELSE_IF(cuGraphicsResourceGetMappedPointer_v2,CUdeviceptr *, size_t *, CUgraphicsResource)
+	ELSE_IF(cuGraphicsResourceSetMapFlags_v2,CUgraphicsResource, unsigned int)
+	ELSE_IF(cuGraphicsMapResources,unsigned int, CUgraphicsResource *, CUstream)
+	ELSE_IF(cuGraphicsUnmapResources,unsigned int, CUgraphicsResource *, CUstream)
+	ELSE_IF(cuCoredumpGetAttribute,CUcoredumpSettings, void *, size_t *)
+	ELSE_IF(cuCoredumpGetAttributeGlobal,CUcoredumpSettings, void *, size_t *)
+	ELSE_IF(cuCoredumpSetAttribute,CUcoredumpSettings, void *, size_t *)
+	ELSE_IF(cuCoredumpSetAttributeGlobal,CUcoredumpSettings, void *, size_t *)
+	ELSE_IF(cuGetExportTable,const void * *, const CUuuid *)
+	ELSE_IF(cuGreenCtxCreate,CUgreenCtx *, CUdevResourceDesc, CUdevice, unsigned int)
+	ELSE_IF(cuGreenCtxDestroy,CUgreenCtx)
+	ELSE_IF(cuCtxFromGreenCtx,CUcontext *, CUgreenCtx)
+	ELSE_IF(cuDeviceGetDevResource,CUdevice, CUdevResource *, CUdevResourceType)
+	ELSE_IF(cuCtxGetDevResource,CUcontext, CUdevResource *, CUdevResourceType)
+	ELSE_IF(cuGreenCtxGetDevResource,CUgreenCtx, CUdevResource *, CUdevResourceType)
+	ELSE_IF(cuDevSmResourceSplitByCount,CUdevResource *, unsigned int *, const CUdevResource *, CUdevResource *, unsigned int, unsigned int)
+	ELSE_IF(cuDevResourceGenerateDesc,CUdevResourceDesc *, CUdevResource *, unsigned int)
+	ELSE_IF(cuGreenCtxRecordEvent,CUgreenCtx, CUevent)
+	ELSE_IF(cuGreenCtxWaitEvent,CUgreenCtx, CUevent)
+	ELSE_IF(cuStreamGetGreenCtx,CUstream, CUgreenCtx *)
 
-}
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGet(CUdevice * device, int ordinal) {
-    HOOK_TRACE_PROFILE("cuDeviceGet");
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuDeviceGet,
-        .params={.cuDeviceGet={.ordinal=ordinal}},
-    };
-    CuDriverCallReplyStructure reply;
-    request.op=CuDriverCall::CuDeviceGet;
-    communicate_with_server(nullptr, &request, &reply);
 
-    *device=reply.returnParams.device;
-    return reply.result;
-}
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetCount(int * count) {
-    HOOK_TRACE_PROFILE("cuDeviceGetCount");
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuDeviceGetCount,
-        .params={.empty{}},
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    *count=reply.returnParams.count;
 
-    return reply.result;
-}
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetName(char * name, int len, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceGetName");
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuDeviceGetName,
-        .params={.cuDeviceGetName={.name=name,.len=len,.device=dev}}
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    return reply.result;
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetUuid(CUuuid * uuid, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceGetUuid");
-    using func_ptr = CUresult (*)(CUuuid *, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetUuid"));
-    HOOK_CHECK(func_entry);
-    return func_entry(uuid, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetUuid_v2(CUuuid * uuid, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceGetUuid_v2");
-    using func_ptr = CUresult (*)(CUuuid *, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetUuid_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(uuid, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetLuid(char * luid, unsigned int * deviceNodeMask, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceGetLuid");
-    using func_ptr = CUresult (*)(char *, unsigned int *, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetLuid"));
-    HOOK_CHECK(func_entry);
-    return func_entry(luid, deviceNodeMask, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceTotalMem(size_t * bytes, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceTotalMem");
-    using func_ptr = CUresult (*)(size_t *, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceTotalMem"));
-    HOOK_CHECK(func_entry);
-    return func_entry(bytes, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetTexture1DLinearMaxWidth(size_t * maxWidthInElements, CUarray_format format, unsigned numChannels, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceGetTexture1DLinearMaxWidth");
-    using func_ptr = CUresult (*)(size_t *, CUarray_format, unsigned, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetTexture1DLinearMaxWidth"));
-    HOOK_CHECK(func_entry);
-    return func_entry(maxWidthInElements, format, numChannels, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetAttribute(int * pi, CUdevice_attribute attrib, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceGetAttribute");
-    CuDriverCallStructure request={
-        .op=CuDriverCall::CuDeviceGetAttribute,
-        .params={.cuDeviceGetAttribute={.attrib=attrib,.dev=dev}},
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    *pi=reply.returnParams.pi;
-    return reply.result;
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetNvSciSyncAttributes(void * nvSciSyncAttrList, CUdevice dev, int flags) {
-    HOOK_TRACE_PROFILE("cuDeviceGetNvSciSyncAttributes");
-    using func_ptr = CUresult (*)(void *, CUdevice, int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetNvSciSyncAttributes"));
-    HOOK_CHECK(func_entry);
-    return func_entry(nvSciSyncAttrList, dev, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceSetMemPool(CUdevice dev, CUmemoryPool pool) {
-    HOOK_TRACE_PROFILE("cuDeviceSetMemPool");
-    using func_ptr = CUresult (*)(CUdevice, CUmemoryPool);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceSetMemPool"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dev, pool);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetMemPool(CUmemoryPool * pool, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceGetMemPool");
-    using func_ptr = CUresult (*)(CUmemoryPool *, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetMemPool"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pool, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetDefaultMemPool(CUmemoryPool * pool_out, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceGetDefaultMemPool");
-    using func_ptr = CUresult (*)(CUmemoryPool *, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetDefaultMemPool"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pool_out, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetExecAffinitySupport(int * pi, CUexecAffinityType type, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceGetExecAffinitySupport");
-    using func_ptr = CUresult (*)(int *, CUexecAffinityType, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetExecAffinitySupport"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pi, type, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuFlushGPUDirectRDMAWrites(CUflushGPUDirectRDMAWritesTarget target, CUflushGPUDirectRDMAWritesScope scope) {
-    HOOK_TRACE_PROFILE("cuFlushGPUDirectRDMAWrites");
-    using func_ptr = CUresult (*)(CUflushGPUDirectRDMAWritesTarget, CUflushGPUDirectRDMAWritesScope);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFlushGPUDirectRDMAWrites"));
-    HOOK_CHECK(func_entry);
-    return func_entry(target, scope);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetProperties(CUdevprop * prop, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceGetProperties");
-    using func_ptr = CUresult (*)(CUdevprop *, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetProperties"));
-    HOOK_CHECK(func_entry);
-    return func_entry(prop, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceComputeCapability(int * major, int * minor, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceComputeCapability");
-    using func_ptr = CUresult (*)(int *, int *, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceComputeCapability"));
-    HOOK_CHECK(func_entry);
-    return func_entry(major, minor, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRetain(CUcontext * pctx, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDevicePrimaryCtxRetain");
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuDevicePrimaryCtxRetain,
-        .params={.cuDevicePrimaryCtxRetain={.dev=dev}},
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    *pctx=reply.returnParams.ctx;
-    return reply.result;
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDevicePrimaryCtxRelease");
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuDevicePrimaryCtxRelease,
-        .params={.cuDevicePrimaryCtxRelease={.dev=dev}},
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    return reply.result;
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxSetFlags(CUdevice dev, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuDevicePrimaryCtxSetFlags");
-    using func_ptr = CUresult (*)(CUdevice, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDevicePrimaryCtxSetFlags"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dev, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxGetState(CUdevice dev, unsigned int * flags, int * active) {
-    HOOK_TRACE_PROFILE("cuDevicePrimaryCtxGetState");
-    using func_ptr = CUresult (*)(CUdevice, unsigned int *, int *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDevicePrimaryCtxGetState"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dev, flags, active);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxReset(CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDevicePrimaryCtxReset");
-    using func_ptr = CUresult (*)(CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDevicePrimaryCtxReset"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxCreate(CUcontext * pctx, unsigned int flags, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuCtxCreate");
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuCtxCreate,
-        .params={.cuCtxCreate={.flags=flags,.dev=dev}},
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    *pctx=reply.returnParams.ctx;
-    return reply.result;
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxCreate_v3(CUcontext * pctx, CUexecAffinityParam * paramsArray, int numParams, unsigned int flags, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuCtxCreate_v3");
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuCtxCreate,
-        .params={.cuCtxCreate={.flags=flags,.dev=dev}},
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    *pctx=reply.returnParams.ctx;
-    return reply.result;
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxDestroy(CUcontext ctx) {
-    HOOK_TRACE_PROFILE("cuCtxDestroy");
-    using func_ptr = CUresult (*)(CUcontext);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxDestroy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(ctx);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxPushCurrent(CUcontext ctx) {
-    HOOK_TRACE_PROFILE("cuCtxPushCurrent");
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuCtxPushCurrent,
-        .params={.cuCtxPushCurrent={.ctx=ctx}},
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    return reply.result;
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxPopCurrent(CUcontext * pctx) {
-    HOOK_TRACE_PROFILE("cuCtxPopCurrent");
-    using func_ptr = CUresult (*)(CUcontext *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxPopCurrent"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pctx);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxSetCurrent(CUcontext ctx) {
-    HOOK_TRACE_PROFILE("cuCtxSetCurrent");
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuCtxSetCurrent,
-        .params={.cuCtxSetCurrent={.ctx=ctx}},
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    return reply.result;
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetCurrent(CUcontext * pctx) {
-    HOOK_TRACE_PROFILE("cuCtxGetCurrent");
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuCtxGetCurrent,
-        .params={.empty{}},
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    *pctx=reply.returnParams.ctx;
-    return reply.result;
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetDevice(CUdevice * device) {
-    HOOK_TRACE_PROFILE("cuCtxGetDevice");
-    using func_ptr = CUresult (*)(CUdevice *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetDevice"));
-    HOOK_CHECK(func_entry);
-    CUresult result=func_entry(device);
-    const char * error_string;
-    cuGetErrorString(result, &error_string);
-    printf("cuCtxGetDevice: %s\n", error_string);
     return result;
 }
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetFlags(unsigned int * flags) {
-    HOOK_TRACE_PROFILE("cuCtxGetFlags");
-    using func_ptr = CUresult (*)(unsigned int *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetFlags"));
-    HOOK_CHECK(func_entry);
-    return func_entry(flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxSetFlags(unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuCtxSetFlags");
-    using func_ptr = CUresult (*)(unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxSetFlags"));
-    HOOK_CHECK(func_entry);
-    return func_entry(flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetId(CUcontext ctx, unsigned long long * ctxId) {
-    HOOK_TRACE_PROFILE("cuCtxGetId");
-    using func_ptr = CUresult (*)(CUcontext, unsigned long long *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetId"));
-    HOOK_CHECK(func_entry);
-    return func_entry(ctx, ctxId);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxSynchronize(void ) {
-    HOOK_TRACE_PROFILE("cuCtxSynchronize");
-    using func_ptr = CUresult (*)(void);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxSynchronize"));
-    HOOK_CHECK(func_entry);
-    return func_entry();
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxSetLimit(CUlimit limit, size_t value) {
-    HOOK_TRACE_PROFILE("cuCtxSetLimit");
-    using func_ptr = CUresult (*)(CUlimit, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxSetLimit"));
-    HOOK_CHECK(func_entry);
-    return func_entry(limit, value);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetLimit(size_t * pvalue, CUlimit limit) {
-    HOOK_TRACE_PROFILE("cuCtxGetLimit");
-    using func_ptr = CUresult (*)(size_t *, CUlimit);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetLimit"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pvalue, limit);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetCacheConfig(CUfunc_cache * pconfig) {
-    HOOK_TRACE_PROFILE("cuCtxGetCacheConfig");
-    using func_ptr = CUresult (*)(CUfunc_cache *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetCacheConfig"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pconfig);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxSetCacheConfig(CUfunc_cache config) {
-    HOOK_TRACE_PROFILE("cuCtxSetCacheConfig");
-    using func_ptr = CUresult (*)(CUfunc_cache);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxSetCacheConfig"));
-    HOOK_CHECK(func_entry);
-    return func_entry(config);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetApiVersion(CUcontext ctx, unsigned int * version) {
-    HOOK_TRACE_PROFILE("cuCtxGetApiVersion");
-    using func_ptr = CUresult (*)(CUcontext, unsigned int *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetApiVersion"));
-    HOOK_CHECK(func_entry);
-    return func_entry(ctx, version);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetStreamPriorityRange(int * leastPriority, int * greatestPriority) {
-    HOOK_TRACE_PROFILE("cuCtxGetStreamPriorityRange");
-    using func_ptr = CUresult (*)(int *, int *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetStreamPriorityRange"));
-    HOOK_CHECK(func_entry);
-    return func_entry(leastPriority, greatestPriority);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxResetPersistingL2Cache(void ) {
-    HOOK_TRACE_PROFILE("cuCtxResetPersistingL2Cache");
-    using func_ptr = CUresult (*)(void);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxResetPersistingL2Cache"));
-    HOOK_CHECK(func_entry);
-    return func_entry();
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetExecAffinity(CUexecAffinityParam * pExecAffinity, CUexecAffinityType type) {
-    HOOK_TRACE_PROFILE("cuCtxGetExecAffinity");
-    using func_ptr = CUresult (*)(CUexecAffinityParam *, CUexecAffinityType);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetExecAffinity"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pExecAffinity, type);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxAttach(CUcontext * pctx, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuCtxAttach");
-    using func_ptr = CUresult (*)(CUcontext *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxAttach"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pctx, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxDetach(CUcontext ctx) {
-    HOOK_TRACE_PROFILE("cuCtxDetach");
-    using func_ptr = CUresult (*)(CUcontext);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxDetach"));
-    HOOK_CHECK(func_entry);
-    return func_entry(ctx);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetSharedMemConfig(CUsharedconfig * pConfig) {
-    HOOK_TRACE_PROFILE("cuCtxGetSharedMemConfig");
-    using func_ptr = CUresult (*)(CUsharedconfig *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetSharedMemConfig"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pConfig);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxSetSharedMemConfig(CUsharedconfig config) {
-    HOOK_TRACE_PROFILE("cuCtxSetSharedMemConfig");
-    using func_ptr = CUresult (*)(CUsharedconfig);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxSetSharedMemConfig"));
-    HOOK_CHECK(func_entry);
-    return func_entry(config);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleLoad(CUmodule * module, const char * fname) {
-    HOOK_TRACE_PROFILE("cuModuleLoad");
-    using func_ptr = CUresult (*)(CUmodule *, const char *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleLoad"));
-    HOOK_CHECK(func_entry);
-    return func_entry(module, fname);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleLoadData(CUmodule * module, const void * image) {
-    HOOK_TRACE_PROFILE("cuModuleLoadData");
-    using func_ptr = CUresult (*)(CUmodule *, const void *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleLoadData"));
-    HOOK_CHECK(func_entry);
-    return func_entry(module, image);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleLoadDataEx(CUmodule * module, const void * image, unsigned int numOptions, CUjit_option * options, void * * optionValues) {
-    HOOK_TRACE_PROFILE("cuModuleLoadDataEx");
-    using func_ptr = CUresult (*)(CUmodule *, const void *, unsigned int, CUjit_option *, void * *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleLoadDataEx"));
-    HOOK_CHECK(func_entry);
-    return func_entry(module, image, numOptions, options, optionValues);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleLoadFatBinary(CUmodule * module, const void * fatCubin) {
-    HOOK_TRACE_PROFILE("cuModuleLoadFatBinary");
-    using func_ptr = CUresult (*)(CUmodule *, const void *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleLoadFatBinary"));
-    HOOK_CHECK(func_entry);
-    return func_entry(module, fatCubin);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleUnload(CUmodule hmod) {
-    HOOK_TRACE_PROFILE("cuModuleUnload");
-    using func_ptr = CUresult (*)(CUmodule);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleUnload"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hmod);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetLoadingMode(CUmoduleLoadingMode * mode) {
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuModuleGetLoadingMode,
-    };
-    CuDriverCallReplyStructure reply;
-    
-    communicate_with_server(NULL, &request, &reply);
-    *mode=reply.returnParams.mode;
-    return reply.result;
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetFunction(CUfunction * hfunc, CUmodule hmod, const char * name) {
-    HOOK_TRACE_PROFILE("cuModuleGetFunction");
-    using func_ptr = CUresult (*)(CUfunction *, CUmodule, const char *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleGetFunction"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hfunc, hmod, name);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetFunctionCount(unsigned int * count, CUmodule mod) {
-    HOOK_TRACE_PROFILE("cuModuleGetFunctionCount");
-    using func_ptr = CUresult (*)(unsigned int *, CUmodule);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleGetFunctionCount"));
-    HOOK_CHECK(func_entry);
-    return func_entry(count, mod);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleEnumerateFunctions(CUfunction * functions, unsigned int numFunctions, CUmodule mod) {
-    HOOK_TRACE_PROFILE("cuModuleEnumerateFunctions");
-    using func_ptr = CUresult (*)(CUfunction *, unsigned int, CUmodule);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleEnumerateFunctions"));
-    HOOK_CHECK(func_entry);
-    return func_entry(functions, numFunctions, mod);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetGlobal(CUdeviceptr * dptr, size_t * bytes, CUmodule hmod, const char * name) {
-    HOOK_TRACE_PROFILE("cuModuleGetGlobal");
-    using func_ptr = CUresult (*)(CUdeviceptr *, size_t *, CUmodule, const char *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleGetGlobal"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dptr, bytes, hmod, name);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLinkCreate(unsigned int numOptions, CUjit_option * options, void * * optionValues, CUlinkState * stateOut) {
-    HOOK_TRACE_PROFILE("cuLinkCreate");
-    using func_ptr = CUresult (*)(unsigned int, CUjit_option *, void * *, CUlinkState *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLinkCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(numOptions, options, optionValues, stateOut);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLinkAddData(CUlinkState state, CUjitInputType type, void * data, size_t size, const char * name, unsigned int numOptions, CUjit_option * options, void * * optionValues) {
-    HOOK_TRACE_PROFILE("cuLinkAddData");
-    using func_ptr = CUresult (*)(CUlinkState, CUjitInputType, void *, size_t, const char *, unsigned int, CUjit_option *, void * *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLinkAddData"));
-    HOOK_CHECK(func_entry);
-    return func_entry(state, type, data, size, name, numOptions, options, optionValues);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLinkAddFile(CUlinkState state, CUjitInputType type, const char * path, unsigned int numOptions, CUjit_option * options, void * * optionValues) {
-    HOOK_TRACE_PROFILE("cuLinkAddFile");
-    using func_ptr = CUresult (*)(CUlinkState, CUjitInputType, const char *, unsigned int, CUjit_option *, void * *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLinkAddFile"));
-    HOOK_CHECK(func_entry);
-    return func_entry(state, type, path, numOptions, options, optionValues);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLinkComplete(CUlinkState state, void * * cubinOut, size_t * sizeOut) {
-    HOOK_TRACE_PROFILE("cuLinkComplete");
-    using func_ptr = CUresult (*)(CUlinkState, void * *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLinkComplete"));
-    HOOK_CHECK(func_entry);
-    return func_entry(state, cubinOut, sizeOut);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLinkDestroy(CUlinkState state) {
-    HOOK_TRACE_PROFILE("cuLinkDestroy");
-    using func_ptr = CUresult (*)(CUlinkState);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLinkDestroy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(state);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetTexRef(CUtexref * pTexRef, CUmodule hmod, const char * name) {
-    HOOK_TRACE_PROFILE("cuModuleGetTexRef");
-    using func_ptr = CUresult (*)(CUtexref *, CUmodule, const char *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleGetTexRef"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pTexRef, hmod, name);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetSurfRef(CUsurfref * pSurfRef, CUmodule hmod, const char * name) {
-    HOOK_TRACE_PROFILE("cuModuleGetSurfRef");
-    using func_ptr = CUresult (*)(CUsurfref *, CUmodule, const char *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuModuleGetSurfRef"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pSurfRef, hmod, name);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryLoadData(CUlibrary * library, const void * code, CUjit_option * jitOptions, void * * jitOptionsValues, unsigned int numJitOptions, CUlibraryOption * libraryOptions, void * * libraryOptionValues, unsigned int numLibraryOptions) {
-    HOOK_TRACE_PROFILE("cuLibraryLoadData");
-    using func_ptr = CUresult (*)(CUlibrary *, const void *, CUjit_option *, void * *, unsigned int, CUlibraryOption *, void * *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryLoadData"));
-    HOOK_CHECK(func_entry);
-    printf("cuLibraryLoadData code:%s\n",(const char *)code);
-    return func_entry(library, code, jitOptions, jitOptionsValues, numJitOptions, libraryOptions, libraryOptionValues, numLibraryOptions);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryLoadFromFile(CUlibrary * library, const char * fileName, CUjit_option * jitOptions, void * * jitOptionsValues, unsigned int numJitOptions, CUlibraryOption * libraryOptions, void * * libraryOptionValues, unsigned int numLibraryOptions) {
-    HOOK_TRACE_PROFILE("cuLibraryLoadFromFile");
-    using func_ptr = CUresult (*)(CUlibrary *, const char *, CUjit_option *, void * *, unsigned int, CUlibraryOption *, void * *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryLoadFromFile"));
-    HOOK_CHECK(func_entry);
-    return func_entry(library, fileName, jitOptions, jitOptionsValues, numJitOptions, libraryOptions, libraryOptionValues, numLibraryOptions);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryUnload(CUlibrary library) {
-    HOOK_TRACE_PROFILE("cuLibraryUnload");
-    using func_ptr = CUresult (*)(CUlibrary);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryUnload"));
-    HOOK_CHECK(func_entry);
-    return func_entry(library);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetKernel(CUkernel * pKernel, CUlibrary library, const char * name) {
-    HOOK_TRACE_PROFILE("cuLibraryGetKernel");
-    using func_ptr = CUresult (*)(CUkernel *, CUlibrary, const char *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryGetKernel"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pKernel, library, name);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetKernelCount(unsigned int * count, CUlibrary lib) {
-    HOOK_TRACE_PROFILE("cuLibraryGetKernelCount");
-    using func_ptr = CUresult (*)(unsigned int *, CUlibrary);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryGetKernelCount"));
-    HOOK_CHECK(func_entry);
-    return func_entry(count, lib);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryEnumerateKernels(CUkernel * kernels, unsigned int numKernels, CUlibrary lib) {
-    HOOK_TRACE_PROFILE("cuLibraryEnumerateKernels");
-    using func_ptr = CUresult (*)(CUkernel *, unsigned int, CUlibrary);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryEnumerateKernels"));
-    HOOK_CHECK(func_entry);
-    return func_entry(kernels, numKernels, lib);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetModule(CUmodule * pMod, CUlibrary library) {
-    HOOK_TRACE_PROFILE("cuLibraryGetModule");
-    using func_ptr = CUresult (*)(CUmodule *, CUlibrary);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryGetModule"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pMod, library);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuKernelGetFunction(CUfunction * pFunc, CUkernel kernel) {
-    HOOK_TRACE_PROFILE("cuKernelGetFunction");
-    using func_ptr = CUresult (*)(CUfunction *, CUkernel);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuKernelGetFunction"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pFunc, kernel);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetGlobal(CUdeviceptr * dptr, size_t * bytes, CUlibrary library, const char * name) {
-    HOOK_TRACE_PROFILE("cuLibraryGetGlobal");
-    using func_ptr = CUresult (*)(CUdeviceptr *, size_t *, CUlibrary, const char *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryGetGlobal"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dptr, bytes, library, name);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetManaged(CUdeviceptr * dptr, size_t * bytes, CUlibrary library, const char * name) {
-    HOOK_TRACE_PROFILE("cuLibraryGetManaged");
-    using func_ptr = CUresult (*)(CUdeviceptr *, size_t *, CUlibrary, const char *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryGetManaged"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dptr, bytes, library, name);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetUnifiedFunction(void * * fptr, CUlibrary library, const char * symbol) {
-    HOOK_TRACE_PROFILE("cuLibraryGetUnifiedFunction");
-    using func_ptr = CUresult (*)(void * *, CUlibrary, const char *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLibraryGetUnifiedFunction"));
-    HOOK_CHECK(func_entry);
-    return func_entry(fptr, library, symbol);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuKernelGetAttribute(int * pi, CUfunction_attribute attrib, CUkernel kernel, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuKernelGetAttribute");
-    using func_ptr = CUresult (*)(int *, CUfunction_attribute, CUkernel, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuKernelGetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pi, attrib, kernel, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuKernelSetAttribute(CUfunction_attribute attrib, int val, CUkernel kernel, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuKernelSetAttribute");
-    using func_ptr = CUresult (*)(CUfunction_attribute, int, CUkernel, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuKernelSetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(attrib, val, kernel, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuKernelSetCacheConfig(CUkernel kernel, CUfunc_cache config, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuKernelSetCacheConfig");
-    using func_ptr = CUresult (*)(CUkernel, CUfunc_cache, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuKernelSetCacheConfig"));
-    HOOK_CHECK(func_entry);
-    return func_entry(kernel, config, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuKernelGetName(const char * * name, CUkernel hfunc) {
-    HOOK_TRACE_PROFILE("cuKernelGetName");
-    using func_ptr = CUresult (*)(const char * *, CUkernel);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuKernelGetName"));
-    HOOK_CHECK(func_entry);
-    return func_entry(name, hfunc);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuKernelGetParamInfo(CUkernel kernel, size_t paramIndex, size_t * paramOffset, size_t * paramSize) {
-    HOOK_TRACE_PROFILE("cuKernelGetParamInfo");
-    using func_ptr = CUresult (*)(CUkernel, size_t, size_t *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuKernelGetParamInfo"));
-    HOOK_CHECK(func_entry);
-    return func_entry(kernel, paramIndex, paramOffset, paramSize);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemGetInfo(size_t * free, size_t * total) {
-    HOOK_TRACE_PROFILE("cuMemGetInfo");
-    using func_ptr = CUresult (*)(size_t *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemGetInfo"));
-    HOOK_CHECK(func_entry);
-    return func_entry(free, total);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemAlloc(CUdeviceptr * dptr, size_t bytesize) {
-    HOOK_TRACE_PROFILE("cuMemAlloc");
-    printf("cuMemAlloc: dptr=%p, bytesize=%lu\n", dptr, bytesize);
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuMemAlloc,
-        .params={.cuMemAlloc={
-                    .size=bytesize}},
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    *dptr=reply.returnParams.dptr;
-    return reply.result;
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemAllocPitch(CUdeviceptr * dptr, size_t * pPitch, size_t WidthInBytes, size_t Height, unsigned int ElementSizeBytes) {
-    HOOK_TRACE_PROFILE("cuMemAllocPitch");
-    using func_ptr = CUresult (*)(CUdeviceptr *, size_t *, size_t, size_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAllocPitch"));
-    HOOK_CHECK(func_entry);
-    
-    return func_entry(dptr, pPitch, WidthInBytes, Height, ElementSizeBytes);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemFree(CUdeviceptr dptr) {
-    HOOK_TRACE_PROFILE("cuMemFree");
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuMemFree,
-        .params={.cuMemFree={
-                    .dptr=dptr}},
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    return reply.result;
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemGetAddressRange(CUdeviceptr * pbase, size_t * psize, CUdeviceptr dptr) {
-    HOOK_TRACE_PROFILE("cuMemGetAddressRange");
-    using func_ptr = CUresult (*)(CUdeviceptr *, size_t *, CUdeviceptr);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemGetAddressRange"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pbase, psize, dptr);
-}
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemAllocHost(void * * pp, size_t bytesize) {
-    HOOK_TRACE_PROFILE("cuMemAllocHost");
-    using func_ptr = CUresult (*)(void * *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAllocHost"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pp, bytesize);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemFreeHost(void * p) {
-    HOOK_TRACE_PROFILE("cuMemFreeHost");
-    using func_ptr = CUresult (*)(void *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemFreeHost"));
-    HOOK_CHECK(func_entry);
-    return func_entry(p);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemHostAlloc(void * * pp, size_t bytesize, unsigned int Flags) {
-    HOOK_TRACE_PROFILE("cuMemHostAlloc");
-    using func_ptr = CUresult (*)(void * *, size_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemHostAlloc"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pp, bytesize, Flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemHostGetDevicePointer(CUdeviceptr * pdptr, void * p, unsigned int Flags) {
-    HOOK_TRACE_PROFILE("cuMemHostGetDevicePointer");
-    using func_ptr = CUresult (*)(CUdeviceptr *, void *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemHostGetDevicePointer"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pdptr, p, Flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemHostGetFlags(unsigned int * pFlags, void * p) {
-    HOOK_TRACE_PROFILE("cuMemHostGetFlags");
-    using func_ptr = CUresult (*)(unsigned int *, void *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemHostGetFlags"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pFlags, p);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemAllocManaged(CUdeviceptr * dptr, size_t bytesize, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuMemAllocManaged");
-    using func_ptr = CUresult (*)(CUdeviceptr *, size_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAllocManaged"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dptr, bytesize, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceRegisterAsyncNotification(CUdevice device, CUasyncCallback callbackFunc, void * userData, CUasyncCallbackHandle * callback) {
-    HOOK_TRACE_PROFILE("cuDeviceRegisterAsyncNotification");
-    using func_ptr = CUresult (*)(CUdevice, CUasyncCallback, void *, CUasyncCallbackHandle *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceRegisterAsyncNotification"));
-    HOOK_CHECK(func_entry);
-    return func_entry(device, callbackFunc, userData, callback);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceUnregisterAsyncNotification(CUdevice device, CUasyncCallbackHandle callback) {
-    HOOK_TRACE_PROFILE("cuDeviceUnregisterAsyncNotification");
-    using func_ptr = CUresult (*)(CUdevice, CUasyncCallbackHandle);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceUnregisterAsyncNotification"));
-    HOOK_CHECK(func_entry);
-    return func_entry(device, callback);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetByPCIBusId(CUdevice * dev, const char * pciBusId) {
-    HOOK_TRACE_PROFILE("cuDeviceGetByPCIBusId");
-    using func_ptr = CUresult (*)(CUdevice *, const char *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetByPCIBusId"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dev, pciBusId);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetPCIBusId(char * pciBusId, int len, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuDeviceGetPCIBusId");
-    using func_ptr = CUresult (*)(char *, int, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetPCIBusId"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pciBusId, len, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuIpcGetEventHandle(CUipcEventHandle * pHandle, CUevent event) {
-    HOOK_TRACE_PROFILE("cuIpcGetEventHandle");
-    using func_ptr = CUresult (*)(CUipcEventHandle *, CUevent);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuIpcGetEventHandle"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pHandle, event);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuIpcOpenEventHandle(CUevent * phEvent, CUipcEventHandle handle) {
-    HOOK_TRACE_PROFILE("cuIpcOpenEventHandle");
-    using func_ptr = CUresult (*)(CUevent *, CUipcEventHandle);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuIpcOpenEventHandle"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phEvent, handle);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuIpcGetMemHandle(CUipcMemHandle * pHandle, CUdeviceptr dptr) {
-    HOOK_TRACE_PROFILE("cuIpcGetMemHandle");
-    using func_ptr = CUresult (*)(CUipcMemHandle *, CUdeviceptr);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuIpcGetMemHandle"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pHandle, dptr);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuIpcOpenMemHandle(CUdeviceptr * pdptr, CUipcMemHandle handle, unsigned int Flags) {
-    HOOK_TRACE_PROFILE("cuIpcOpenMemHandle");
-    using func_ptr = CUresult (*)(CUdeviceptr *, CUipcMemHandle, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuIpcOpenMemHandle"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pdptr, handle, Flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuIpcCloseMemHandle(CUdeviceptr dptr) {
-    HOOK_TRACE_PROFILE("cuIpcCloseMemHandle");
-    using func_ptr = CUresult (*)(CUdeviceptr);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuIpcCloseMemHandle"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dptr);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemHostRegister(void * p, size_t bytesize, unsigned int Flags) {
-    HOOK_TRACE_PROFILE("cuMemHostRegister");
-    using func_ptr = CUresult (*)(void *, size_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemHostRegister"));
-    HOOK_CHECK(func_entry);
-    return func_entry(p, bytesize, Flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemHostUnregister(void * p) {
-    HOOK_TRACE_PROFILE("cuMemHostUnregister");
-    using func_ptr = CUresult (*)(void *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemHostUnregister"));
-    HOOK_CHECK(func_entry);
-    return func_entry(p);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpy(CUdeviceptr dst, CUdeviceptr src, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpy");
-    using func_ptr = CUresult (*)(CUdeviceptr, CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dst, src, ByteCount);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyPeer(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyPeer");
-    using func_ptr = CUresult (*)(CUdeviceptr, CUcontext, CUdeviceptr, CUcontext, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyPeer"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, dstContext, srcDevice, srcContext, ByteCount);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyHtoD(CUdeviceptr dstDevice, const void * srcHost, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyHtoD");
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuMemcpyHtoD,
-        .params={
-            .cuMemcpyHtoD{
-                .srcHost=srcHost,
-                .dstDevice=dstDevice,
-                .ByteCount=ByteCount,
-            }
-        },
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    return reply.result;
-
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyDtoH(void * dstHost, CUdeviceptr srcDevice, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyDtoH");
-    CuDriverCallStructure request{
-        .op=CuDriverCall::CuMemcpyDtoH,
-        .params={
-            .cuMemcpyDtoH{
-                .srcDevice=srcDevice,
-                .ByteCount=ByteCount,
-            }
-        },
-    };
-    CuDriverCallReplyStructure reply;
-    communicate_with_server(nullptr, &request, &reply);
-    return reply.result;
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyDtoD(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyDtoD");
-    using func_ptr = CUresult (*)(CUdeviceptr, CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoD"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, srcDevice, ByteCount);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyDtoA(CUarray dstArray, size_t dstOffset, CUdeviceptr srcDevice, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyDtoA");
-    using func_ptr = CUresult (*)(CUarray, size_t, CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoA"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstArray, dstOffset, srcDevice, ByteCount);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyAtoD(CUdeviceptr dstDevice, CUarray srcArray, size_t srcOffset, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyAtoD");
-    using func_ptr = CUresult (*)(CUdeviceptr, CUarray, size_t, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoD"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, srcArray, srcOffset, ByteCount);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyHtoA(CUarray dstArray, size_t dstOffset, const void * srcHost, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyHtoA");
-    using func_ptr = CUresult (*)(CUarray, size_t, const void *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoA"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstArray, dstOffset, srcHost, ByteCount);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyAtoH(void * dstHost, CUarray srcArray, size_t srcOffset, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyAtoH");
-    using func_ptr = CUresult (*)(void *, CUarray, size_t, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoH"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstHost, srcArray, srcOffset, ByteCount);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyAtoA(CUarray dstArray, size_t dstOffset, CUarray srcArray, size_t srcOffset, size_t ByteCount) {
-    HOOK_TRACE_PROFILE("cuMemcpyAtoA");
-    using func_ptr = CUresult (*)(CUarray, size_t, CUarray, size_t, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoA"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstArray, dstOffset, srcArray, srcOffset, ByteCount);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpy2D(const CUDA_MEMCPY2D * pCopy) {
-    HOOK_TRACE_PROFILE("cuMemcpy2D");
-    using func_ptr = CUresult (*)(const CUDA_MEMCPY2D *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy2D"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pCopy);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpy2DUnaligned(const CUDA_MEMCPY2D * pCopy) {
-    HOOK_TRACE_PROFILE("cuMemcpy2DUnaligned");
-    using func_ptr = CUresult (*)(const CUDA_MEMCPY2D *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy2DUnaligned"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pCopy);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpy3D(const CUDA_MEMCPY3D * pCopy) {
-    HOOK_TRACE_PROFILE("cuMemcpy3D");
-    using func_ptr = CUresult (*)(const CUDA_MEMCPY3D *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy3D"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pCopy);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpy3DPeer(const CUDA_MEMCPY3D_PEER * pCopy) {
-    HOOK_TRACE_PROFILE("cuMemcpy3DPeer");
-    using func_ptr = CUresult (*)(const CUDA_MEMCPY3D_PEER *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy3DPeer"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pCopy);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyAsync(CUdeviceptr dst, CUdeviceptr src, size_t ByteCount, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpyAsync");
-    using func_ptr = CUresult (*)(CUdeviceptr, CUdeviceptr, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dst, src, ByteCount, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyPeerAsync(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpyPeerAsync");
-    using func_ptr = CUresult (*)(CUdeviceptr, CUcontext, CUdeviceptr, CUcontext, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyPeerAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, dstContext, srcDevice, srcContext, ByteCount, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyHtoDAsync(CUdeviceptr dstDevice, const void * srcHost, size_t ByteCount, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpyHtoDAsync");
-    using func_ptr = CUresult (*)(CUdeviceptr, const void *, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoDAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, srcHost, ByteCount, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyDtoHAsync(void * dstHost, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpyDtoHAsync");
-    using func_ptr = CUresult (*)(void *, CUdeviceptr, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoHAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstHost, srcDevice, ByteCount, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyDtoDAsync(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpyDtoDAsync");
-    using func_ptr = CUresult (*)(CUdeviceptr, CUdeviceptr, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoDAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, srcDevice, ByteCount, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyHtoAAsync(CUarray dstArray, size_t dstOffset, const void * srcHost, size_t ByteCount, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpyHtoAAsync");
-    using func_ptr = CUresult (*)(CUarray, size_t, const void *, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoAAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstArray, dstOffset, srcHost, ByteCount, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyAtoHAsync(void * dstHost, CUarray srcArray, size_t srcOffset, size_t ByteCount, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpyAtoHAsync");
-    using func_ptr = CUresult (*)(void *, CUarray, size_t, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoHAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstHost, srcArray, srcOffset, ByteCount, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpy2DAsync(const CUDA_MEMCPY2D * pCopy, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpy2DAsync");
-    using func_ptr = CUresult (*)(const CUDA_MEMCPY2D *, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy2DAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pCopy, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpy3DAsync(const CUDA_MEMCPY3D * pCopy, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpy3DAsync");
-    using func_ptr = CUresult (*)(const CUDA_MEMCPY3D *, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy3DAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pCopy, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpy3DPeerAsync(const CUDA_MEMCPY3D_PEER * pCopy, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemcpy3DPeerAsync");
-    using func_ptr = CUresult (*)(const CUDA_MEMCPY3D_PEER *, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy3DPeerAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pCopy, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD8(CUdeviceptr dstDevice, unsigned char uc, size_t N) {
-    HOOK_TRACE_PROFILE("cuMemsetD8");
-    using func_ptr = CUresult (*)(CUdeviceptr, unsigned char, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD8"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, uc, N);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD16(CUdeviceptr dstDevice, unsigned short us, size_t N) {
-    HOOK_TRACE_PROFILE("cuMemsetD16");
-    using func_ptr = CUresult (*)(CUdeviceptr, unsigned short, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD16"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, us, N);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD32(CUdeviceptr dstDevice, unsigned int ui, size_t N) {
-    HOOK_TRACE_PROFILE("cuMemsetD32");
-    using func_ptr = CUresult (*)(CUdeviceptr, unsigned int, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD32"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, ui, N);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD2D8(CUdeviceptr dstDevice, size_t dstPitch, unsigned char uc, size_t Width, size_t Height) {
-    HOOK_TRACE_PROFILE("cuMemsetD2D8");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned char, size_t, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D8"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, dstPitch, uc, Width, Height);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD2D16(CUdeviceptr dstDevice, size_t dstPitch, unsigned short us, size_t Width, size_t Height) {
-    HOOK_TRACE_PROFILE("cuMemsetD2D16");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned short, size_t, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D16"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, dstPitch, us, Width, Height);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD2D32(CUdeviceptr dstDevice, size_t dstPitch, unsigned int ui, size_t Width, size_t Height) {
-    HOOK_TRACE_PROFILE("cuMemsetD2D32");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned int, size_t, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D32"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, dstPitch, ui, Width, Height);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD8Async(CUdeviceptr dstDevice, unsigned char uc, size_t N, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemsetD8Async");
-    using func_ptr = CUresult (*)(CUdeviceptr, unsigned char, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD8Async"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, uc, N, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD16Async(CUdeviceptr dstDevice, unsigned short us, size_t N, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemsetD16Async");
-    using func_ptr = CUresult (*)(CUdeviceptr, unsigned short, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD16Async"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, us, N, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD32Async(CUdeviceptr dstDevice, unsigned int ui, size_t N, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemsetD32Async");
-    using func_ptr = CUresult (*)(CUdeviceptr, unsigned int, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD32Async"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, ui, N, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD2D8Async(CUdeviceptr dstDevice, size_t dstPitch, unsigned char uc, size_t Width, size_t Height, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemsetD2D8Async");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned char, size_t, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D8Async"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, dstPitch, uc, Width, Height, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD2D16Async(CUdeviceptr dstDevice, size_t dstPitch, unsigned short us, size_t Width, size_t Height, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemsetD2D16Async");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned short, size_t, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D16Async"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, dstPitch, us, Width, Height, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD2D32Async(CUdeviceptr dstDevice, size_t dstPitch, unsigned int ui, size_t Width, size_t Height, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemsetD2D32Async");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned int, size_t, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D32Async"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dstDevice, dstPitch, ui, Width, Height, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuArrayCreate(CUarray * pHandle, const CUDA_ARRAY_DESCRIPTOR * pAllocateArray) {
-    HOOK_TRACE_PROFILE("cuArrayCreate");
-    using func_ptr = CUresult (*)(CUarray *, const CUDA_ARRAY_DESCRIPTOR *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuArrayCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pHandle, pAllocateArray);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuArrayGetDescriptor(CUDA_ARRAY_DESCRIPTOR * pArrayDescriptor, CUarray hArray) {
-    HOOK_TRACE_PROFILE("cuArrayGetDescriptor");
-    using func_ptr = CUresult (*)(CUDA_ARRAY_DESCRIPTOR *, CUarray);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuArrayGetDescriptor"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pArrayDescriptor, hArray);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuArrayGetSparseProperties(CUDA_ARRAY_SPARSE_PROPERTIES * sparseProperties, CUarray array) {
-    HOOK_TRACE_PROFILE("cuArrayGetSparseProperties");
-    using func_ptr = CUresult (*)(CUDA_ARRAY_SPARSE_PROPERTIES *, CUarray);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuArrayGetSparseProperties"));
-    HOOK_CHECK(func_entry);
-    return func_entry(sparseProperties, array);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMipmappedArrayGetSparseProperties(CUDA_ARRAY_SPARSE_PROPERTIES * sparseProperties, CUmipmappedArray mipmap) {
-    HOOK_TRACE_PROFILE("cuMipmappedArrayGetSparseProperties");
-    using func_ptr = CUresult (*)(CUDA_ARRAY_SPARSE_PROPERTIES *, CUmipmappedArray);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMipmappedArrayGetSparseProperties"));
-    HOOK_CHECK(func_entry);
-    return func_entry(sparseProperties, mipmap);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuArrayGetMemoryRequirements(CUDA_ARRAY_MEMORY_REQUIREMENTS * memoryRequirements, CUarray array, CUdevice device) {
-    HOOK_TRACE_PROFILE("cuArrayGetMemoryRequirements");
-    using func_ptr = CUresult (*)(CUDA_ARRAY_MEMORY_REQUIREMENTS *, CUarray, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuArrayGetMemoryRequirements"));
-    HOOK_CHECK(func_entry);
-    return func_entry(memoryRequirements, array, device);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMipmappedArrayGetMemoryRequirements(CUDA_ARRAY_MEMORY_REQUIREMENTS * memoryRequirements, CUmipmappedArray mipmap, CUdevice device) {
-    HOOK_TRACE_PROFILE("cuMipmappedArrayGetMemoryRequirements");
-    using func_ptr = CUresult (*)(CUDA_ARRAY_MEMORY_REQUIREMENTS *, CUmipmappedArray, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMipmappedArrayGetMemoryRequirements"));
-    HOOK_CHECK(func_entry);
-    return func_entry(memoryRequirements, mipmap, device);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuArrayGetPlane(CUarray * pPlaneArray, CUarray hArray, unsigned int planeIdx) {
-    HOOK_TRACE_PROFILE("cuArrayGetPlane");
-    using func_ptr = CUresult (*)(CUarray *, CUarray, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuArrayGetPlane"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pPlaneArray, hArray, planeIdx);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuArrayDestroy(CUarray hArray) {
-    HOOK_TRACE_PROFILE("cuArrayDestroy");
-    using func_ptr = CUresult (*)(CUarray);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuArrayDestroy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hArray);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuArray3DCreate(CUarray * pHandle, const CUDA_ARRAY3D_DESCRIPTOR * pAllocateArray) {
-    HOOK_TRACE_PROFILE("cuArray3DCreate");
-    using func_ptr = CUresult (*)(CUarray *, const CUDA_ARRAY3D_DESCRIPTOR *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuArray3DCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pHandle, pAllocateArray);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuArray3DGetDescriptor(CUDA_ARRAY3D_DESCRIPTOR * pArrayDescriptor, CUarray hArray) {
-    HOOK_TRACE_PROFILE("cuArray3DGetDescriptor");
-    using func_ptr = CUresult (*)(CUDA_ARRAY3D_DESCRIPTOR *, CUarray);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuArray3DGetDescriptor"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pArrayDescriptor, hArray);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMipmappedArrayCreate(CUmipmappedArray * pHandle, const CUDA_ARRAY3D_DESCRIPTOR * pMipmappedArrayDesc, unsigned int numMipmapLevels) {
-    HOOK_TRACE_PROFILE("cuMipmappedArrayCreate");
-    using func_ptr = CUresult (*)(CUmipmappedArray *, const CUDA_ARRAY3D_DESCRIPTOR *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMipmappedArrayCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pHandle, pMipmappedArrayDesc, numMipmapLevels);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMipmappedArrayGetLevel(CUarray * pLevelArray, CUmipmappedArray hMipmappedArray, unsigned int level) {
-    HOOK_TRACE_PROFILE("cuMipmappedArrayGetLevel");
-    using func_ptr = CUresult (*)(CUarray *, CUmipmappedArray, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMipmappedArrayGetLevel"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pLevelArray, hMipmappedArray, level);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMipmappedArrayDestroy(CUmipmappedArray hMipmappedArray) {
-    HOOK_TRACE_PROFILE("cuMipmappedArrayDestroy");
-    using func_ptr = CUresult (*)(CUmipmappedArray);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMipmappedArrayDestroy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hMipmappedArray);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemGetHandleForAddressRange(void * handle, CUdeviceptr dptr, size_t size, CUmemRangeHandleType handleType, unsigned long long flags) {
-    HOOK_TRACE_PROFILE("cuMemGetHandleForAddressRange");
-    using func_ptr = CUresult (*)(void *, CUdeviceptr, size_t, CUmemRangeHandleType, unsigned long long);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemGetHandleForAddressRange"));
-    HOOK_CHECK(func_entry);
-    return func_entry(handle, dptr, size, handleType, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemAddressReserve(CUdeviceptr * ptr, size_t size, size_t alignment, CUdeviceptr addr, unsigned long long flags) {
-    HOOK_TRACE_PROFILE("cuMemAddressReserve");
-    using func_ptr = CUresult (*)(CUdeviceptr *, size_t, size_t, CUdeviceptr, unsigned long long);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAddressReserve"));
-    HOOK_CHECK(func_entry);
-    return func_entry(ptr, size, alignment, addr, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemAddressFree(CUdeviceptr ptr, size_t size) {
-    HOOK_TRACE_PROFILE("cuMemAddressFree");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAddressFree"));
-    HOOK_CHECK(func_entry);
-    return func_entry(ptr, size);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemCreate(CUmemGenericAllocationHandle * handle, size_t size, const CUmemAllocationProp * prop, unsigned long long flags) {
-    HOOK_TRACE_PROFILE("cuMemCreate");
-    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle *, size_t, const CUmemAllocationProp *, unsigned long long);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(handle, size, prop, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemRelease(CUmemGenericAllocationHandle handle) {
-    HOOK_TRACE_PROFILE("cuMemRelease");
-    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemRelease"));
-    HOOK_CHECK(func_entry);
-    return func_entry(handle);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemMap(CUdeviceptr ptr, size_t size, size_t offset, CUmemGenericAllocationHandle handle, unsigned long long flags) {
-    HOOK_TRACE_PROFILE("cuMemMap");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, size_t, CUmemGenericAllocationHandle, unsigned long long);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemMap"));
-    HOOK_CHECK(func_entry);
-    return func_entry(ptr, size, offset, handle, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemMapArrayAsync(CUarrayMapInfo * mapInfoList, unsigned int count, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemMapArrayAsync");
-    using func_ptr = CUresult (*)(CUarrayMapInfo *, unsigned int, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemMapArrayAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(mapInfoList, count, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemUnmap(CUdeviceptr ptr, size_t size) {
-    HOOK_TRACE_PROFILE("cuMemUnmap");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemUnmap"));
-    HOOK_CHECK(func_entry);
-    return func_entry(ptr, size);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemSetAccess(CUdeviceptr ptr, size_t size, const CUmemAccessDesc * desc, size_t count) {
-    HOOK_TRACE_PROFILE("cuMemSetAccess");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, const CUmemAccessDesc *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemSetAccess"));
-    HOOK_CHECK(func_entry);
-    return func_entry(ptr, size, desc, count);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemGetAccess(unsigned long long * flags, const CUmemLocation * location, CUdeviceptr ptr) {
-    HOOK_TRACE_PROFILE("cuMemGetAccess");
-    using func_ptr = CUresult (*)(unsigned long long *, const CUmemLocation *, CUdeviceptr);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemGetAccess"));
-    HOOK_CHECK(func_entry);
-    return func_entry(flags, location, ptr);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemExportToShareableHandle(void * shareableHandle, CUmemGenericAllocationHandle handle, CUmemAllocationHandleType handleType, unsigned long long flags) {
-    HOOK_TRACE_PROFILE("cuMemExportToShareableHandle");
-    using func_ptr = CUresult (*)(void *, CUmemGenericAllocationHandle, CUmemAllocationHandleType, unsigned long long);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemExportToShareableHandle"));
-    HOOK_CHECK(func_entry);
-    return func_entry(shareableHandle, handle, handleType, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemImportFromShareableHandle(CUmemGenericAllocationHandle * handle, void * osHandle, CUmemAllocationHandleType shHandleType) {
-    HOOK_TRACE_PROFILE("cuMemImportFromShareableHandle");
-    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle *, void *, CUmemAllocationHandleType);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemImportFromShareableHandle"));
-    HOOK_CHECK(func_entry);
-    return func_entry(handle, osHandle, shHandleType);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemGetAllocationGranularity(size_t * granularity, const CUmemAllocationProp * prop, CUmemAllocationGranularity_flags option) {
-    HOOK_TRACE_PROFILE("cuMemGetAllocationGranularity");
-    using func_ptr = CUresult (*)(size_t *, const CUmemAllocationProp *, CUmemAllocationGranularity_flags);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemGetAllocationGranularity"));
-    HOOK_CHECK(func_entry);
-    return func_entry(granularity, prop, option);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemGetAllocationPropertiesFromHandle(CUmemAllocationProp * prop, CUmemGenericAllocationHandle handle) {
-    HOOK_TRACE_PROFILE("cuMemGetAllocationPropertiesFromHandle");
-    using func_ptr = CUresult (*)(CUmemAllocationProp *, CUmemGenericAllocationHandle);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemGetAllocationPropertiesFromHandle"));
-    HOOK_CHECK(func_entry);
-    return func_entry(prop, handle);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemRetainAllocationHandle(CUmemGenericAllocationHandle * handle, void * addr) {
-    HOOK_TRACE_PROFILE("cuMemRetainAllocationHandle");
-    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle *, void *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemRetainAllocationHandle"));
-    HOOK_CHECK(func_entry);
-    return func_entry(handle, addr);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemFreeAsync(CUdeviceptr dptr, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemFreeAsync");
-    using func_ptr = CUresult (*)(CUdeviceptr, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemFreeAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dptr, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemAllocAsync(CUdeviceptr * dptr, size_t bytesize, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemAllocAsync");
-    using func_ptr = CUresult (*)(CUdeviceptr *, size_t, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAllocAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dptr, bytesize, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemPoolTrimTo(CUmemoryPool pool, size_t minBytesToKeep) {
-    HOOK_TRACE_PROFILE("cuMemPoolTrimTo");
-    using func_ptr = CUresult (*)(CUmemoryPool, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPoolTrimTo"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pool, minBytesToKeep);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemPoolSetAttribute(CUmemoryPool pool, CUmemPool_attribute attr, void * value) {
-    HOOK_TRACE_PROFILE("cuMemPoolSetAttribute");
-    using func_ptr = CUresult (*)(CUmemoryPool, CUmemPool_attribute, void *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPoolSetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pool, attr, value);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemPoolGetAttribute(CUmemoryPool pool, CUmemPool_attribute attr, void * value) {
-    HOOK_TRACE_PROFILE("cuMemPoolGetAttribute");
-    using func_ptr = CUresult (*)(CUmemoryPool, CUmemPool_attribute, void *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPoolGetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pool, attr, value);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemPoolSetAccess(CUmemoryPool pool, const CUmemAccessDesc * map, size_t count) {
-    HOOK_TRACE_PROFILE("cuMemPoolSetAccess");
-    using func_ptr = CUresult (*)(CUmemoryPool, const CUmemAccessDesc *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPoolSetAccess"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pool, map, count);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemPoolGetAccess(CUmemAccess_flags * flags, CUmemoryPool memPool, CUmemLocation * location) {
-    HOOK_TRACE_PROFILE("cuMemPoolGetAccess");
-    using func_ptr = CUresult (*)(CUmemAccess_flags *, CUmemoryPool, CUmemLocation *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPoolGetAccess"));
-    HOOK_CHECK(func_entry);
-    return func_entry(flags, memPool, location);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemPoolCreate(CUmemoryPool * pool, const CUmemPoolProps * poolProps) {
-    HOOK_TRACE_PROFILE("cuMemPoolCreate");
-    using func_ptr = CUresult (*)(CUmemoryPool *, const CUmemPoolProps *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPoolCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pool, poolProps);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemPoolDestroy(CUmemoryPool pool) {
-    HOOK_TRACE_PROFILE("cuMemPoolDestroy");
-    using func_ptr = CUresult (*)(CUmemoryPool);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPoolDestroy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pool);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemAllocFromPoolAsync(CUdeviceptr * dptr, size_t bytesize, CUmemoryPool pool, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemAllocFromPoolAsync");
-    using func_ptr = CUresult (*)(CUdeviceptr *, size_t, CUmemoryPool, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAllocFromPoolAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dptr, bytesize, pool, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemPoolExportToShareableHandle(void * handle_out, CUmemoryPool pool, CUmemAllocationHandleType handleType, unsigned long long flags) {
-    HOOK_TRACE_PROFILE("cuMemPoolExportToShareableHandle");
-    using func_ptr = CUresult (*)(void *, CUmemoryPool, CUmemAllocationHandleType, unsigned long long);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPoolExportToShareableHandle"));
-    HOOK_CHECK(func_entry);
-    return func_entry(handle_out, pool, handleType, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemPoolImportFromShareableHandle(CUmemoryPool * pool_out, void * handle, CUmemAllocationHandleType handleType, unsigned long long flags) {
-    HOOK_TRACE_PROFILE("cuMemPoolImportFromShareableHandle");
-    using func_ptr = CUresult (*)(CUmemoryPool *, void *, CUmemAllocationHandleType, unsigned long long);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPoolImportFromShareableHandle"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pool_out, handle, handleType, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemPoolExportPointer(CUmemPoolPtrExportData * shareData_out, CUdeviceptr ptr) {
-    HOOK_TRACE_PROFILE("cuMemPoolExportPointer");
-    using func_ptr = CUresult (*)(CUmemPoolPtrExportData *, CUdeviceptr);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPoolExportPointer"));
-    HOOK_CHECK(func_entry);
-    return func_entry(shareData_out, ptr);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemPoolImportPointer(CUdeviceptr * ptr_out, CUmemoryPool pool, CUmemPoolPtrExportData * shareData) {
-    HOOK_TRACE_PROFILE("cuMemPoolImportPointer");
-    using func_ptr = CUresult (*)(CUdeviceptr *, CUmemoryPool, CUmemPoolPtrExportData *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPoolImportPointer"));
-    HOOK_CHECK(func_entry);
-    return func_entry(ptr_out, pool, shareData);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMulticastCreate(CUmemGenericAllocationHandle * mcHandle, const CUmulticastObjectProp * prop) {
-    HOOK_TRACE_PROFILE("cuMulticastCreate");
-    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle *, const CUmulticastObjectProp *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMulticastCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(mcHandle, prop);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMulticastAddDevice(CUmemGenericAllocationHandle mcHandle, CUdevice dev) {
-    HOOK_TRACE_PROFILE("cuMulticastAddDevice");
-    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMulticastAddDevice"));
-    HOOK_CHECK(func_entry);
-    return func_entry(mcHandle, dev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMulticastBindMem(CUmemGenericAllocationHandle mcHandle, size_t mcOffset, CUmemGenericAllocationHandle memHandle, size_t memOffset, size_t size, unsigned long long flags) {
-    HOOK_TRACE_PROFILE("cuMulticastBindMem");
-    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle, size_t, CUmemGenericAllocationHandle, size_t, size_t, unsigned long long);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMulticastBindMem"));
-    HOOK_CHECK(func_entry);
-    return func_entry(mcHandle, mcOffset, memHandle, memOffset, size, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMulticastBindAddr(CUmemGenericAllocationHandle mcHandle, size_t mcOffset, CUdeviceptr memptr, size_t size, unsigned long long flags) {
-    HOOK_TRACE_PROFILE("cuMulticastBindAddr");
-    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle, size_t, CUdeviceptr, size_t, unsigned long long);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMulticastBindAddr"));
-    HOOK_CHECK(func_entry);
-    return func_entry(mcHandle, mcOffset, memptr, size, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMulticastUnbind(CUmemGenericAllocationHandle mcHandle, CUdevice dev, size_t mcOffset, size_t size) {
-    HOOK_TRACE_PROFILE("cuMulticastUnbind");
-    using func_ptr = CUresult (*)(CUmemGenericAllocationHandle, CUdevice, size_t, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMulticastUnbind"));
-    HOOK_CHECK(func_entry);
-    return func_entry(mcHandle, dev, mcOffset, size);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMulticastGetGranularity(size_t * granularity, const CUmulticastObjectProp * prop, CUmulticastGranularity_flags option) {
-    HOOK_TRACE_PROFILE("cuMulticastGetGranularity");
-    using func_ptr = CUresult (*)(size_t *, const CUmulticastObjectProp *, CUmulticastGranularity_flags);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMulticastGetGranularity"));
-    HOOK_CHECK(func_entry);
-    return func_entry(granularity, prop, option);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuPointerGetAttribute(void * data, CUpointer_attribute attribute, CUdeviceptr ptr) {
-    HOOK_TRACE_PROFILE("cuPointerGetAttribute");
-    using func_ptr = CUresult (*)(void *, CUpointer_attribute, CUdeviceptr);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuPointerGetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(data, attribute, ptr);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemPrefetchAsync(CUdeviceptr devPtr, size_t count, CUdevice dstDevice, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemPrefetchAsync");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, CUdevice, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPrefetchAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(devPtr, count, dstDevice, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemPrefetchAsync_v2(CUdeviceptr devPtr, size_t count, CUmemLocation location, unsigned int flags, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuMemPrefetchAsync_v2");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, CUmemLocation, unsigned int, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemPrefetchAsync_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(devPtr, count, location, flags, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemAdvise(CUdeviceptr devPtr, size_t count, CUmem_advise advice, CUdevice device) {
-    HOOK_TRACE_PROFILE("cuMemAdvise");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, CUmem_advise, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAdvise"));
-    HOOK_CHECK(func_entry);
-    return func_entry(devPtr, count, advice, device);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemAdvise_v2(CUdeviceptr devPtr, size_t count, CUmem_advise advice, CUmemLocation location) {
-    HOOK_TRACE_PROFILE("cuMemAdvise_v2");
-    using func_ptr = CUresult (*)(CUdeviceptr, size_t, CUmem_advise, CUmemLocation);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemAdvise_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(devPtr, count, advice, location);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemRangeGetAttribute(void * data, size_t dataSize, CUmem_range_attribute attribute, CUdeviceptr devPtr, size_t count) {
-    HOOK_TRACE_PROFILE("cuMemRangeGetAttribute");
-    using func_ptr = CUresult (*)(void *, size_t, CUmem_range_attribute, CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemRangeGetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(data, dataSize, attribute, devPtr, count);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemRangeGetAttributes(void * * data, size_t * dataSizes, CUmem_range_attribute * attributes, size_t numAttributes, CUdeviceptr devPtr, size_t count) {
-    HOOK_TRACE_PROFILE("cuMemRangeGetAttributes");
-    using func_ptr = CUresult (*)(void * *, size_t *, CUmem_range_attribute *, size_t, CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemRangeGetAttributes"));
-    HOOK_CHECK(func_entry);
-    return func_entry(data, dataSizes, attributes, numAttributes, devPtr, count);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuPointerSetAttribute(const void * value, CUpointer_attribute attribute, CUdeviceptr ptr) {
-    HOOK_TRACE_PROFILE("cuPointerSetAttribute");
-    using func_ptr = CUresult (*)(const void *, CUpointer_attribute, CUdeviceptr);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuPointerSetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(value, attribute, ptr);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuPointerGetAttributes(unsigned int numAttributes, CUpointer_attribute * attributes, void * * data, CUdeviceptr ptr) {
-    HOOK_TRACE_PROFILE("cuPointerGetAttributes");
-    using func_ptr = CUresult (*)(unsigned int, CUpointer_attribute *, void * *, CUdeviceptr);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuPointerGetAttributes"));
-    HOOK_CHECK(func_entry);
-    return func_entry(numAttributes, attributes, data, ptr);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamCreate(CUstream * phStream, unsigned int Flags) {
-    HOOK_TRACE_PROFILE("cuStreamCreate");
-    using func_ptr = CUresult (*)(CUstream *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phStream, Flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamCreateWithPriority(CUstream * phStream, unsigned int flags, int priority) {
-    HOOK_TRACE_PROFILE("cuStreamCreateWithPriority");
-    using func_ptr = CUresult (*)(CUstream *, unsigned int, int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamCreateWithPriority"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phStream, flags, priority);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamGetPriority(CUstream hStream, int * priority) {
-    HOOK_TRACE_PROFILE("cuStreamGetPriority");
-    using func_ptr = CUresult (*)(CUstream, int *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetPriority"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, priority);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamGetFlags(CUstream hStream, unsigned int * flags) {
-    HOOK_TRACE_PROFILE("cuStreamGetFlags");
-    using func_ptr = CUresult (*)(CUstream, unsigned int *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetFlags"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamGetId(CUstream hStream, unsigned long long * streamId) {
-    HOOK_TRACE_PROFILE("cuStreamGetId");
-    using func_ptr = CUresult (*)(CUstream, unsigned long long *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetId"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, streamId);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamGetCtx(CUstream hStream, CUcontext * pctx) {
-    HOOK_TRACE_PROFILE("cuStreamGetCtx");
-    using func_ptr = CUresult (*)(CUstream, CUcontext *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetCtx"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, pctx);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamWaitEvent(CUstream hStream, CUevent hEvent, unsigned int Flags) {
-    HOOK_TRACE_PROFILE("cuStreamWaitEvent");
-    using func_ptr = CUresult (*)(CUstream, CUevent, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitEvent"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, hEvent, Flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamAddCallback(CUstream hStream, CUstreamCallback callback, void * userData, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamAddCallback");
-    using func_ptr = CUresult (*)(CUstream, CUstreamCallback, void *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamAddCallback"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, callback, userData, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamBeginCapture(CUstream hStream, CUstreamCaptureMode mode) {
-    HOOK_TRACE_PROFILE("cuStreamBeginCapture");
-    using func_ptr = CUresult (*)(CUstream, CUstreamCaptureMode);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBeginCapture"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, mode);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamBeginCaptureToGraph(CUstream hStream, CUgraph hGraph, const CUgraphNode * dependencies, const CUgraphEdgeData * dependencyData, size_t numDependencies, CUstreamCaptureMode mode) {
-    HOOK_TRACE_PROFILE("cuStreamBeginCaptureToGraph");
-    using func_ptr = CUresult (*)(CUstream, CUgraph, const CUgraphNode *, const CUgraphEdgeData *, size_t, CUstreamCaptureMode);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBeginCaptureToGraph"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, hGraph, dependencies, dependencyData, numDependencies, mode);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuThreadExchangeStreamCaptureMode(CUstreamCaptureMode * mode) {
-    HOOK_TRACE_PROFILE("cuThreadExchangeStreamCaptureMode");
-    using func_ptr = CUresult (*)(CUstreamCaptureMode *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuThreadExchangeStreamCaptureMode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(mode);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamEndCapture(CUstream hStream, CUgraph * phGraph) {
-    HOOK_TRACE_PROFILE("cuStreamEndCapture");
-    using func_ptr = CUresult (*)(CUstream, CUgraph *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamEndCapture"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, phGraph);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamIsCapturing(CUstream hStream, CUstreamCaptureStatus * captureStatus) {
-    HOOK_TRACE_PROFILE("cuStreamIsCapturing");
-    using func_ptr = CUresult (*)(CUstream, CUstreamCaptureStatus *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamIsCapturing"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, captureStatus);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamGetCaptureInfo(CUstream hStream, CUstreamCaptureStatus * captureStatus_out, cuuint64_t * id_out, CUgraph * graph_out, const CUgraphNode * * dependencies_out, size_t * numDependencies_out) {
-    HOOK_TRACE_PROFILE("cuStreamGetCaptureInfo");
-    using func_ptr = CUresult (*)(CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetCaptureInfo"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, captureStatus_out, id_out, graph_out, dependencies_out, numDependencies_out);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamGetCaptureInfo_v3(CUstream hStream, CUstreamCaptureStatus * captureStatus_out, cuuint64_t * id_out, CUgraph * graph_out, const CUgraphNode * * dependencies_out, const CUgraphEdgeData * * edgeData_out, size_t * numDependencies_out) {
-    HOOK_TRACE_PROFILE("cuStreamGetCaptureInfo_v3");
-    using func_ptr = CUresult (*)(CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, const CUgraphEdgeData * *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetCaptureInfo_v3"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, captureStatus_out, id_out, graph_out, dependencies_out, edgeData_out, numDependencies_out);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamUpdateCaptureDependencies(CUstream hStream, CUgraphNode * dependencies, size_t numDependencies, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamUpdateCaptureDependencies");
-    using func_ptr = CUresult (*)(CUstream, CUgraphNode *, size_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamUpdateCaptureDependencies"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, dependencies, numDependencies, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamUpdateCaptureDependencies_v2(CUstream hStream, CUgraphNode * dependencies, const CUgraphEdgeData * dependencyData, size_t numDependencies, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamUpdateCaptureDependencies_v2");
-    using func_ptr = CUresult (*)(CUstream, CUgraphNode *, const CUgraphEdgeData *, size_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamUpdateCaptureDependencies_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, dependencies, dependencyData, numDependencies, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamAttachMemAsync(CUstream hStream, CUdeviceptr dptr, size_t length, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamAttachMemAsync");
-    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, size_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamAttachMemAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, dptr, length, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamQuery(CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuStreamQuery");
-    using func_ptr = CUresult (*)(CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamQuery"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamSynchronize(CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuStreamSynchronize");
-    using func_ptr = CUresult (*)(CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamSynchronize"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamDestroy(CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuStreamDestroy");
-    using func_ptr = CUresult (*)(CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamDestroy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamCopyAttributes(CUstream dst, CUstream src) {
-    HOOK_TRACE_PROFILE("cuStreamCopyAttributes");
-    using func_ptr = CUresult (*)(CUstream, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamCopyAttributes"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dst, src);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamGetAttribute(CUstream hStream, CUstreamAttrID attr, CUstreamAttrValue * value_out) {
-    HOOK_TRACE_PROFILE("cuStreamGetAttribute");
-    using func_ptr = CUresult (*)(CUstream, CUstreamAttrID, CUstreamAttrValue *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, attr, value_out);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamSetAttribute(CUstream hStream, CUstreamAttrID attr, const CUstreamAttrValue * value) {
-    HOOK_TRACE_PROFILE("cuStreamSetAttribute");
-    using func_ptr = CUresult (*)(CUstream, CUstreamAttrID, const CUstreamAttrValue *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamSetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, attr, value);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuEventCreate(CUevent * phEvent, unsigned int Flags) {
-    HOOK_TRACE_PROFILE("cuEventCreate");
-    using func_ptr = CUresult (*)(CUevent *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuEventCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phEvent, Flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuEventRecord(CUevent hEvent, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuEventRecord");
-    using func_ptr = CUresult (*)(CUevent, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuEventRecord"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hEvent, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuEventRecordWithFlags(CUevent hEvent, CUstream hStream, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuEventRecordWithFlags");
-    using func_ptr = CUresult (*)(CUevent, CUstream, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuEventRecordWithFlags"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hEvent, hStream, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuEventQuery(CUevent hEvent) {
-    HOOK_TRACE_PROFILE("cuEventQuery");
-    using func_ptr = CUresult (*)(CUevent);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuEventQuery"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hEvent);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuEventSynchronize(CUevent hEvent) {
-    HOOK_TRACE_PROFILE("cuEventSynchronize");
-    using func_ptr = CUresult (*)(CUevent);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuEventSynchronize"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hEvent);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuEventDestroy(CUevent hEvent) {
-    HOOK_TRACE_PROFILE("cuEventDestroy");
-    using func_ptr = CUresult (*)(CUevent);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuEventDestroy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hEvent);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuEventElapsedTime(float * pMilliseconds, CUevent hStart, CUevent hEnd) {
-    HOOK_TRACE_PROFILE("cuEventElapsedTime");
-    using func_ptr = CUresult (*)(float *, CUevent, CUevent);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuEventElapsedTime"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pMilliseconds, hStart, hEnd);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuImportExternalMemory(CUexternalMemory * extMem_out, const CUDA_EXTERNAL_MEMORY_HANDLE_DESC * memHandleDesc) {
-    HOOK_TRACE_PROFILE("cuImportExternalMemory");
-    using func_ptr = CUresult (*)(CUexternalMemory *, const CUDA_EXTERNAL_MEMORY_HANDLE_DESC *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuImportExternalMemory"));
-    HOOK_CHECK(func_entry);
-    return func_entry(extMem_out, memHandleDesc);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuExternalMemoryGetMappedBuffer(CUdeviceptr * devPtr, CUexternalMemory extMem, const CUDA_EXTERNAL_MEMORY_BUFFER_DESC * bufferDesc) {
-    HOOK_TRACE_PROFILE("cuExternalMemoryGetMappedBuffer");
-    using func_ptr = CUresult (*)(CUdeviceptr *, CUexternalMemory, const CUDA_EXTERNAL_MEMORY_BUFFER_DESC *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuExternalMemoryGetMappedBuffer"));
-    HOOK_CHECK(func_entry);
-    return func_entry(devPtr, extMem, bufferDesc);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuExternalMemoryGetMappedMipmappedArray(CUmipmappedArray * mipmap, CUexternalMemory extMem, const CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC * mipmapDesc) {
-    HOOK_TRACE_PROFILE("cuExternalMemoryGetMappedMipmappedArray");
-    using func_ptr = CUresult (*)(CUmipmappedArray *, CUexternalMemory, const CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuExternalMemoryGetMappedMipmappedArray"));
-    HOOK_CHECK(func_entry);
-    return func_entry(mipmap, extMem, mipmapDesc);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDestroyExternalMemory(CUexternalMemory extMem) {
-    HOOK_TRACE_PROFILE("cuDestroyExternalMemory");
-    using func_ptr = CUresult (*)(CUexternalMemory);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDestroyExternalMemory"));
-    HOOK_CHECK(func_entry);
-    return func_entry(extMem);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuImportExternalSemaphore(CUexternalSemaphore * extSem_out, const CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC * semHandleDesc) {
-    HOOK_TRACE_PROFILE("cuImportExternalSemaphore");
-    using func_ptr = CUresult (*)(CUexternalSemaphore *, const CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuImportExternalSemaphore"));
-    HOOK_CHECK(func_entry);
-    return func_entry(extSem_out, semHandleDesc);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuSignalExternalSemaphoresAsync(const CUexternalSemaphore * extSemArray, const CUDA_EXTERNAL_SEMAPHORE_SIGNAL_PARAMS * paramsArray, unsigned int numExtSems, CUstream stream) {
-    HOOK_TRACE_PROFILE("cuSignalExternalSemaphoresAsync");
-    using func_ptr = CUresult (*)(const CUexternalSemaphore *, const CUDA_EXTERNAL_SEMAPHORE_SIGNAL_PARAMS *, unsigned int, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuSignalExternalSemaphoresAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(extSemArray, paramsArray, numExtSems, stream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuWaitExternalSemaphoresAsync(const CUexternalSemaphore * extSemArray, const CUDA_EXTERNAL_SEMAPHORE_WAIT_PARAMS * paramsArray, unsigned int numExtSems, CUstream stream) {
-    HOOK_TRACE_PROFILE("cuWaitExternalSemaphoresAsync");
-    using func_ptr = CUresult (*)(const CUexternalSemaphore *, const CUDA_EXTERNAL_SEMAPHORE_WAIT_PARAMS *, unsigned int, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuWaitExternalSemaphoresAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(extSemArray, paramsArray, numExtSems, stream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDestroyExternalSemaphore(CUexternalSemaphore extSem) {
-    HOOK_TRACE_PROFILE("cuDestroyExternalSemaphore");
-    using func_ptr = CUresult (*)(CUexternalSemaphore);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDestroyExternalSemaphore"));
-    HOOK_CHECK(func_entry);
-    return func_entry(extSem);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamWaitValue32(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamWaitValue32");
-    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue32"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, addr, value, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamWaitValue64(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamWaitValue64");
-    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue64"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, addr, value, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamWriteValue32(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamWriteValue32");
-    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue32"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, addr, value, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamWriteValue64(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamWriteValue64");
-    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue64"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, addr, value, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamBatchMemOp(CUstream stream, unsigned int count, CUstreamBatchMemOpParams * paramArray, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamBatchMemOp");
-    using func_ptr = CUresult (*)(CUstream, unsigned int, CUstreamBatchMemOpParams *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBatchMemOp"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, count, paramArray, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuFuncGetAttribute(int * pi, CUfunction_attribute attrib, CUfunction hfunc) {
-    HOOK_TRACE_PROFILE("cuFuncGetAttribute");
-    using func_ptr = CUresult (*)(int *, CUfunction_attribute, CUfunction);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncGetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pi, attrib, hfunc);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuFuncSetAttribute(CUfunction hfunc, CUfunction_attribute attrib, int value) {
-    HOOK_TRACE_PROFILE("cuFuncSetAttribute");
-    using func_ptr = CUresult (*)(CUfunction, CUfunction_attribute, int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncSetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hfunc, attrib, value);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuFuncSetCacheConfig(CUfunction hfunc, CUfunc_cache config) {
-    HOOK_TRACE_PROFILE("cuFuncSetCacheConfig");
-    using func_ptr = CUresult (*)(CUfunction, CUfunc_cache);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncSetCacheConfig"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hfunc, config);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuFuncGetModule(CUmodule * hmod, CUfunction hfunc) {
-    HOOK_TRACE_PROFILE("cuFuncGetModule");
-    using func_ptr = CUresult (*)(CUmodule *, CUfunction);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncGetModule"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hmod, hfunc);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuFuncGetName(const char * * name, CUfunction hfunc) {
-    HOOK_TRACE_PROFILE("cuFuncGetName");
-    using func_ptr = CUresult (*)(const char * *, CUfunction);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncGetName"));
-    HOOK_CHECK(func_entry);
-    return func_entry(name, hfunc);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuFuncGetParamInfo(CUfunction func, size_t paramIndex, size_t * paramOffset, size_t * paramSize) {
-    HOOK_TRACE_PROFILE("cuFuncGetParamInfo");
-    using func_ptr = CUresult (*)(CUfunction, size_t, size_t *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncGetParamInfo"));
-    HOOK_CHECK(func_entry);
-    return func_entry(func, paramIndex, paramOffset, paramSize);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuFuncIsLoaded(CUfunctionLoadingState * state, CUfunction function) {
-    HOOK_TRACE_PROFILE("cuFuncIsLoaded");
-    using func_ptr = CUresult (*)(CUfunctionLoadingState *, CUfunction);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncIsLoaded"));
-    HOOK_CHECK(func_entry);
-    return func_entry(state, function);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuFuncLoad(CUfunction function) {
-    HOOK_TRACE_PROFILE("cuFuncLoad");
-    using func_ptr = CUresult (*)(CUfunction);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncLoad"));
-    HOOK_CHECK(func_entry);
-    return func_entry(function);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunchKernel(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void * * kernelParams, void * * extra) {
-    HOOK_TRACE_PROFILE("cuLaunchKernel");
-    using func_ptr = CUresult (*)(CUfunction, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, CUstream, void * *, void * *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLaunchKernel"));
-    HOOK_CHECK(func_entry);
-    return func_entry(f, gridDimX, gridDimY, gridDimZ, blockDimX, blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams, extra);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunchKernelEx(const CUlaunchConfig * config, CUfunction f, void * * kernelParams, void * * extra) {
-    HOOK_TRACE_PROFILE("cuLaunchKernelEx");
-    using func_ptr = CUresult (*)(const CUlaunchConfig *, CUfunction, void * *, void * *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLaunchKernelEx"));
-    HOOK_CHECK(func_entry);
-    return func_entry(config, f, kernelParams, extra);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunchCooperativeKernel(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void * * kernelParams) {
-    HOOK_TRACE_PROFILE("cuLaunchCooperativeKernel");
-    using func_ptr = CUresult (*)(CUfunction, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, CUstream, void * *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLaunchCooperativeKernel"));
-    HOOK_CHECK(func_entry);
-    return func_entry(f, gridDimX, gridDimY, gridDimZ, blockDimX, blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunchCooperativeKernelMultiDevice(CUDA_LAUNCH_PARAMS * launchParamsList, unsigned int numDevices, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuLaunchCooperativeKernelMultiDevice");
-    using func_ptr = CUresult (*)(CUDA_LAUNCH_PARAMS *, unsigned int, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLaunchCooperativeKernelMultiDevice"));
-    HOOK_CHECK(func_entry);
-    return func_entry(launchParamsList, numDevices, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunchHostFunc(CUstream hStream, CUhostFn fn, void * userData) {
-    HOOK_TRACE_PROFILE("cuLaunchHostFunc");
-    using func_ptr = CUresult (*)(CUstream, CUhostFn, void *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLaunchHostFunc"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, fn, userData);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuFuncSetBlockShape(CUfunction hfunc, int x, int y, int z) {
-    HOOK_TRACE_PROFILE("cuFuncSetBlockShape");
-    using func_ptr = CUresult (*)(CUfunction, int, int, int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncSetBlockShape"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hfunc, x, y, z);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuFuncSetSharedSize(CUfunction hfunc, unsigned int bytes) {
-    HOOK_TRACE_PROFILE("cuFuncSetSharedSize");
-    using func_ptr = CUresult (*)(CUfunction, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncSetSharedSize"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hfunc, bytes);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuParamSetSize(CUfunction hfunc, unsigned int numbytes) {
-    HOOK_TRACE_PROFILE("cuParamSetSize");
-    using func_ptr = CUresult (*)(CUfunction, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuParamSetSize"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hfunc, numbytes);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuParamSeti(CUfunction hfunc, int offset, unsigned int value) {
-    HOOK_TRACE_PROFILE("cuParamSeti");
-    using func_ptr = CUresult (*)(CUfunction, int, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuParamSeti"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hfunc, offset, value);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuParamSetf(CUfunction hfunc, int offset, float value) {
-    HOOK_TRACE_PROFILE("cuParamSetf");
-    using func_ptr = CUresult (*)(CUfunction, int, float);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuParamSetf"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hfunc, offset, value);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuParamSetv(CUfunction hfunc, int offset, void * ptr, unsigned int numbytes) {
-    HOOK_TRACE_PROFILE("cuParamSetv");
-    using func_ptr = CUresult (*)(CUfunction, int, void *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuParamSetv"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hfunc, offset, ptr, numbytes);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunch(CUfunction f) {
-    HOOK_TRACE_PROFILE("cuLaunch");
-    using func_ptr = CUresult (*)(CUfunction);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLaunch"));
-    HOOK_CHECK(func_entry);
-    return func_entry(f);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunchGrid(CUfunction f, int grid_width, int grid_height) {
-    HOOK_TRACE_PROFILE("cuLaunchGrid");
-    using func_ptr = CUresult (*)(CUfunction, int, int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLaunchGrid"));
-    HOOK_CHECK(func_entry);
-    return func_entry(f, grid_width, grid_height);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunchGridAsync(CUfunction f, int grid_width, int grid_height, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuLaunchGridAsync");
-    using func_ptr = CUresult (*)(CUfunction, int, int, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuLaunchGridAsync"));
-    HOOK_CHECK(func_entry);
-    return func_entry(f, grid_width, grid_height, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuParamSetTexRef(CUfunction hfunc, int texunit, CUtexref hTexRef) {
-    HOOK_TRACE_PROFILE("cuParamSetTexRef");
-    using func_ptr = CUresult (*)(CUfunction, int, CUtexref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuParamSetTexRef"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hfunc, texunit, hTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuFuncSetSharedMemConfig(CUfunction hfunc, CUsharedconfig config) {
-    HOOK_TRACE_PROFILE("cuFuncSetSharedMemConfig");
-    using func_ptr = CUresult (*)(CUfunction, CUsharedconfig);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuFuncSetSharedMemConfig"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hfunc, config);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphCreate(CUgraph * phGraph, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuGraphCreate");
-    using func_ptr = CUresult (*)(CUgraph *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraph, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddKernelNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, const CUDA_KERNEL_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphAddKernelNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_KERNEL_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddKernelNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphKernelNodeGetParams(CUgraphNode hNode, CUDA_KERNEL_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphKernelNodeGetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, CUDA_KERNEL_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphKernelNodeGetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphKernelNodeSetParams(CUgraphNode hNode, const CUDA_KERNEL_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphKernelNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, const CUDA_KERNEL_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphKernelNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddMemcpyNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, const CUDA_MEMCPY3D * copyParams, CUcontext ctx) {
-    HOOK_TRACE_PROFILE("cuGraphAddMemcpyNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_MEMCPY3D *, CUcontext);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddMemcpyNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, copyParams, ctx);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphMemcpyNodeGetParams(CUgraphNode hNode, CUDA_MEMCPY3D * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphMemcpyNodeGetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, CUDA_MEMCPY3D *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphMemcpyNodeGetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphMemcpyNodeSetParams(CUgraphNode hNode, const CUDA_MEMCPY3D * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphMemcpyNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, const CUDA_MEMCPY3D *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphMemcpyNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddMemsetNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, const CUDA_MEMSET_NODE_PARAMS * memsetParams, CUcontext ctx) {
-    HOOK_TRACE_PROFILE("cuGraphAddMemsetNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_MEMSET_NODE_PARAMS *, CUcontext);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddMemsetNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, memsetParams, ctx);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphMemsetNodeGetParams(CUgraphNode hNode, CUDA_MEMSET_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphMemsetNodeGetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, CUDA_MEMSET_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphMemsetNodeGetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphMemsetNodeSetParams(CUgraphNode hNode, const CUDA_MEMSET_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphMemsetNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, const CUDA_MEMSET_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphMemsetNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddHostNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, const CUDA_HOST_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphAddHostNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_HOST_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddHostNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphHostNodeGetParams(CUgraphNode hNode, CUDA_HOST_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphHostNodeGetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, CUDA_HOST_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphHostNodeGetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphHostNodeSetParams(CUgraphNode hNode, const CUDA_HOST_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphHostNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, const CUDA_HOST_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphHostNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddChildGraphNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, CUgraph childGraph) {
-    HOOK_TRACE_PROFILE("cuGraphAddChildGraphNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUgraph);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddChildGraphNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, childGraph);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphChildGraphNodeGetGraph(CUgraphNode hNode, CUgraph * phGraph) {
-    HOOK_TRACE_PROFILE("cuGraphChildGraphNodeGetGraph");
-    using func_ptr = CUresult (*)(CUgraphNode, CUgraph *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphChildGraphNodeGetGraph"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, phGraph);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddEmptyNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies) {
-    HOOK_TRACE_PROFILE("cuGraphAddEmptyNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddEmptyNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddEventRecordNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, CUevent event) {
-    HOOK_TRACE_PROFILE("cuGraphAddEventRecordNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUevent);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddEventRecordNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, event);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphEventRecordNodeGetEvent(CUgraphNode hNode, CUevent * event_out) {
-    HOOK_TRACE_PROFILE("cuGraphEventRecordNodeGetEvent");
-    using func_ptr = CUresult (*)(CUgraphNode, CUevent *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphEventRecordNodeGetEvent"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, event_out);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphEventRecordNodeSetEvent(CUgraphNode hNode, CUevent event) {
-    HOOK_TRACE_PROFILE("cuGraphEventRecordNodeSetEvent");
-    using func_ptr = CUresult (*)(CUgraphNode, CUevent);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphEventRecordNodeSetEvent"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, event);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddEventWaitNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, CUevent event) {
-    HOOK_TRACE_PROFILE("cuGraphAddEventWaitNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUevent);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddEventWaitNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, event);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphEventWaitNodeGetEvent(CUgraphNode hNode, CUevent * event_out) {
-    HOOK_TRACE_PROFILE("cuGraphEventWaitNodeGetEvent");
-    using func_ptr = CUresult (*)(CUgraphNode, CUevent *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphEventWaitNodeGetEvent"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, event_out);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphEventWaitNodeSetEvent(CUgraphNode hNode, CUevent event) {
-    HOOK_TRACE_PROFILE("cuGraphEventWaitNodeSetEvent");
-    using func_ptr = CUresult (*)(CUgraphNode, CUevent);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphEventWaitNodeSetEvent"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, event);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddExternalSemaphoresSignalNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, const CUDA_EXT_SEM_SIGNAL_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphAddExternalSemaphoresSignalNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_EXT_SEM_SIGNAL_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddExternalSemaphoresSignalNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExternalSemaphoresSignalNodeGetParams(CUgraphNode hNode, CUDA_EXT_SEM_SIGNAL_NODE_PARAMS * params_out) {
-    HOOK_TRACE_PROFILE("cuGraphExternalSemaphoresSignalNodeGetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, CUDA_EXT_SEM_SIGNAL_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExternalSemaphoresSignalNodeGetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, params_out);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExternalSemaphoresSignalNodeSetParams(CUgraphNode hNode, const CUDA_EXT_SEM_SIGNAL_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphExternalSemaphoresSignalNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, const CUDA_EXT_SEM_SIGNAL_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExternalSemaphoresSignalNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddExternalSemaphoresWaitNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, const CUDA_EXT_SEM_WAIT_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphAddExternalSemaphoresWaitNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_EXT_SEM_WAIT_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddExternalSemaphoresWaitNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExternalSemaphoresWaitNodeGetParams(CUgraphNode hNode, CUDA_EXT_SEM_WAIT_NODE_PARAMS * params_out) {
-    HOOK_TRACE_PROFILE("cuGraphExternalSemaphoresWaitNodeGetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, CUDA_EXT_SEM_WAIT_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExternalSemaphoresWaitNodeGetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, params_out);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExternalSemaphoresWaitNodeSetParams(CUgraphNode hNode, const CUDA_EXT_SEM_WAIT_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphExternalSemaphoresWaitNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, const CUDA_EXT_SEM_WAIT_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExternalSemaphoresWaitNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddBatchMemOpNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, const CUDA_BATCH_MEM_OP_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphAddBatchMemOpNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_BATCH_MEM_OP_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddBatchMemOpNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphBatchMemOpNodeGetParams(CUgraphNode hNode, CUDA_BATCH_MEM_OP_NODE_PARAMS * nodeParams_out) {
-    HOOK_TRACE_PROFILE("cuGraphBatchMemOpNodeGetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, CUDA_BATCH_MEM_OP_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphBatchMemOpNodeGetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, nodeParams_out);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphBatchMemOpNodeSetParams(CUgraphNode hNode, const CUDA_BATCH_MEM_OP_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphBatchMemOpNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, const CUDA_BATCH_MEM_OP_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphBatchMemOpNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecBatchMemOpNodeSetParams(CUgraphExec hGraphExec, CUgraphNode hNode, const CUDA_BATCH_MEM_OP_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphExecBatchMemOpNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, const CUDA_BATCH_MEM_OP_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecBatchMemOpNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddMemAllocNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, CUDA_MEM_ALLOC_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphAddMemAllocNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUDA_MEM_ALLOC_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddMemAllocNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphMemAllocNodeGetParams(CUgraphNode hNode, CUDA_MEM_ALLOC_NODE_PARAMS * params_out) {
-    HOOK_TRACE_PROFILE("cuGraphMemAllocNodeGetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, CUDA_MEM_ALLOC_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphMemAllocNodeGetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, params_out);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddMemFreeNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, CUdeviceptr dptr) {
-    HOOK_TRACE_PROFILE("cuGraphAddMemFreeNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUdeviceptr);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddMemFreeNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, dptr);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphMemFreeNodeGetParams(CUgraphNode hNode, CUdeviceptr * dptr_out) {
-    HOOK_TRACE_PROFILE("cuGraphMemFreeNodeGetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, CUdeviceptr *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphMemFreeNodeGetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, dptr_out);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGraphMemTrim(CUdevice device) {
-    HOOK_TRACE_PROFILE("cuDeviceGraphMemTrim");
-    using func_ptr = CUresult (*)(CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGraphMemTrim"));
-    HOOK_CHECK(func_entry);
-    return func_entry(device);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetGraphMemAttribute(CUdevice device, CUgraphMem_attribute attr, void * value) {
-    HOOK_TRACE_PROFILE("cuDeviceGetGraphMemAttribute");
-    using func_ptr = CUresult (*)(CUdevice, CUgraphMem_attribute, void *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetGraphMemAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(device, attr, value);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceSetGraphMemAttribute(CUdevice device, CUgraphMem_attribute attr, void * value) {
-    HOOK_TRACE_PROFILE("cuDeviceSetGraphMemAttribute");
-    using func_ptr = CUresult (*)(CUdevice, CUgraphMem_attribute, void *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceSetGraphMemAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(device, attr, value);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphClone(CUgraph * phGraphClone, CUgraph originalGraph) {
-    HOOK_TRACE_PROFILE("cuGraphClone");
-    using func_ptr = CUresult (*)(CUgraph *, CUgraph);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphClone"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphClone, originalGraph);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphNodeFindInClone(CUgraphNode * phNode, CUgraphNode hOriginalNode, CUgraph hClonedGraph) {
-    HOOK_TRACE_PROFILE("cuGraphNodeFindInClone");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraphNode, CUgraph);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeFindInClone"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phNode, hOriginalNode, hClonedGraph);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphNodeGetType(CUgraphNode hNode, CUgraphNodeType * type) {
-    HOOK_TRACE_PROFILE("cuGraphNodeGetType");
-    using func_ptr = CUresult (*)(CUgraphNode, CUgraphNodeType *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeGetType"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, type);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphGetNodes(CUgraph hGraph, CUgraphNode * nodes, size_t * numNodes) {
-    HOOK_TRACE_PROFILE("cuGraphGetNodes");
-    using func_ptr = CUresult (*)(CUgraph, CUgraphNode *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphGetNodes"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraph, nodes, numNodes);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphGetRootNodes(CUgraph hGraph, CUgraphNode * rootNodes, size_t * numRootNodes) {
-    HOOK_TRACE_PROFILE("cuGraphGetRootNodes");
-    using func_ptr = CUresult (*)(CUgraph, CUgraphNode *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphGetRootNodes"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraph, rootNodes, numRootNodes);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphGetEdges(CUgraph hGraph, CUgraphNode * from, CUgraphNode * to, size_t * numEdges) {
-    HOOK_TRACE_PROFILE("cuGraphGetEdges");
-    using func_ptr = CUresult (*)(CUgraph, CUgraphNode *, CUgraphNode *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphGetEdges"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraph, from, to, numEdges);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphGetEdges_v2(CUgraph hGraph, CUgraphNode * from, CUgraphNode * to, CUgraphEdgeData * edgeData, size_t * numEdges) {
-    HOOK_TRACE_PROFILE("cuGraphGetEdges_v2");
-    using func_ptr = CUresult (*)(CUgraph, CUgraphNode *, CUgraphNode *, CUgraphEdgeData *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphGetEdges_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraph, from, to, edgeData, numEdges);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphNodeGetDependencies(CUgraphNode hNode, CUgraphNode * dependencies, size_t * numDependencies) {
-    HOOK_TRACE_PROFILE("cuGraphNodeGetDependencies");
-    using func_ptr = CUresult (*)(CUgraphNode, CUgraphNode *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeGetDependencies"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, dependencies, numDependencies);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphNodeGetDependencies_v2(CUgraphNode hNode, CUgraphNode * dependencies, CUgraphEdgeData * edgeData, size_t * numDependencies) {
-    HOOK_TRACE_PROFILE("cuGraphNodeGetDependencies_v2");
-    using func_ptr = CUresult (*)(CUgraphNode, CUgraphNode *, CUgraphEdgeData *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeGetDependencies_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, dependencies, edgeData, numDependencies);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphNodeGetDependentNodes(CUgraphNode hNode, CUgraphNode * dependentNodes, size_t * numDependentNodes) {
-    HOOK_TRACE_PROFILE("cuGraphNodeGetDependentNodes");
-    using func_ptr = CUresult (*)(CUgraphNode, CUgraphNode *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeGetDependentNodes"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, dependentNodes, numDependentNodes);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphNodeGetDependentNodes_v2(CUgraphNode hNode, CUgraphNode * dependentNodes, CUgraphEdgeData * edgeData, size_t * numDependentNodes) {
-    HOOK_TRACE_PROFILE("cuGraphNodeGetDependentNodes_v2");
-    using func_ptr = CUresult (*)(CUgraphNode, CUgraphNode *, CUgraphEdgeData *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeGetDependentNodes_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, dependentNodes, edgeData, numDependentNodes);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddDependencies(CUgraph hGraph, const CUgraphNode * from, const CUgraphNode * to, size_t numDependencies) {
-    HOOK_TRACE_PROFILE("cuGraphAddDependencies");
-    using func_ptr = CUresult (*)(CUgraph, const CUgraphNode *, const CUgraphNode *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddDependencies"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraph, from, to, numDependencies);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddDependencies_v2(CUgraph hGraph, const CUgraphNode * from, const CUgraphNode * to, const CUgraphEdgeData * edgeData, size_t numDependencies) {
-    HOOK_TRACE_PROFILE("cuGraphAddDependencies_v2");
-    using func_ptr = CUresult (*)(CUgraph, const CUgraphNode *, const CUgraphNode *, const CUgraphEdgeData *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddDependencies_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraph, from, to, edgeData, numDependencies);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphRemoveDependencies(CUgraph hGraph, const CUgraphNode * from, const CUgraphNode * to, size_t numDependencies) {
-    HOOK_TRACE_PROFILE("cuGraphRemoveDependencies");
-    using func_ptr = CUresult (*)(CUgraph, const CUgraphNode *, const CUgraphNode *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphRemoveDependencies"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraph, from, to, numDependencies);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphRemoveDependencies_v2(CUgraph hGraph, const CUgraphNode * from, const CUgraphNode * to, const CUgraphEdgeData * edgeData, size_t numDependencies) {
-    HOOK_TRACE_PROFILE("cuGraphRemoveDependencies_v2");
-    using func_ptr = CUresult (*)(CUgraph, const CUgraphNode *, const CUgraphNode *, const CUgraphEdgeData *, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphRemoveDependencies_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraph, from, to, edgeData, numDependencies);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphDestroyNode(CUgraphNode hNode) {
-    HOOK_TRACE_PROFILE("cuGraphDestroyNode");
-    using func_ptr = CUresult (*)(CUgraphNode);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphDestroyNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphInstantiate(CUgraphExec * phGraphExec, CUgraph hGraph, unsigned long long flags) {
-    HOOK_TRACE_PROFILE("cuGraphInstantiate");
-    using func_ptr = CUresult (*)(CUgraphExec *, CUgraph, unsigned long long);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphInstantiate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphExec, hGraph, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphInstantiateWithParams(CUgraphExec * phGraphExec, CUgraph hGraph, CUDA_GRAPH_INSTANTIATE_PARAMS * instantiateParams) {
-    HOOK_TRACE_PROFILE("cuGraphInstantiateWithParams");
-    using func_ptr = CUresult (*)(CUgraphExec *, CUgraph, CUDA_GRAPH_INSTANTIATE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphInstantiateWithParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphExec, hGraph, instantiateParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecGetFlags(CUgraphExec hGraphExec, cuuint64_t * flags) {
-    HOOK_TRACE_PROFILE("cuGraphExecGetFlags");
-    using func_ptr = CUresult (*)(CUgraphExec, cuuint64_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecGetFlags"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecKernelNodeSetParams(CUgraphExec hGraphExec, CUgraphNode hNode, const CUDA_KERNEL_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphExecKernelNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, const CUDA_KERNEL_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecKernelNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecMemcpyNodeSetParams(CUgraphExec hGraphExec, CUgraphNode hNode, const CUDA_MEMCPY3D * copyParams, CUcontext ctx) {
-    HOOK_TRACE_PROFILE("cuGraphExecMemcpyNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, const CUDA_MEMCPY3D *, CUcontext);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecMemcpyNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hNode, copyParams, ctx);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecMemsetNodeSetParams(CUgraphExec hGraphExec, CUgraphNode hNode, const CUDA_MEMSET_NODE_PARAMS * memsetParams, CUcontext ctx) {
-    HOOK_TRACE_PROFILE("cuGraphExecMemsetNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, const CUDA_MEMSET_NODE_PARAMS *, CUcontext);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecMemsetNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hNode, memsetParams, ctx);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecHostNodeSetParams(CUgraphExec hGraphExec, CUgraphNode hNode, const CUDA_HOST_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphExecHostNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, const CUDA_HOST_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecHostNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecChildGraphNodeSetParams(CUgraphExec hGraphExec, CUgraphNode hNode, CUgraph childGraph) {
-    HOOK_TRACE_PROFILE("cuGraphExecChildGraphNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, CUgraph);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecChildGraphNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hNode, childGraph);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecEventRecordNodeSetEvent(CUgraphExec hGraphExec, CUgraphNode hNode, CUevent event) {
-    HOOK_TRACE_PROFILE("cuGraphExecEventRecordNodeSetEvent");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, CUevent);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecEventRecordNodeSetEvent"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hNode, event);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecEventWaitNodeSetEvent(CUgraphExec hGraphExec, CUgraphNode hNode, CUevent event) {
-    HOOK_TRACE_PROFILE("cuGraphExecEventWaitNodeSetEvent");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, CUevent);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecEventWaitNodeSetEvent"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hNode, event);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecExternalSemaphoresSignalNodeSetParams(CUgraphExec hGraphExec, CUgraphNode hNode, const CUDA_EXT_SEM_SIGNAL_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphExecExternalSemaphoresSignalNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, const CUDA_EXT_SEM_SIGNAL_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecExternalSemaphoresSignalNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecExternalSemaphoresWaitNodeSetParams(CUgraphExec hGraphExec, CUgraphNode hNode, const CUDA_EXT_SEM_WAIT_NODE_PARAMS * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphExecExternalSemaphoresWaitNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, const CUDA_EXT_SEM_WAIT_NODE_PARAMS *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecExternalSemaphoresWaitNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphNodeSetEnabled(CUgraphExec hGraphExec, CUgraphNode hNode, unsigned int isEnabled) {
-    HOOK_TRACE_PROFILE("cuGraphNodeSetEnabled");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeSetEnabled"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hNode, isEnabled);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphNodeGetEnabled(CUgraphExec hGraphExec, CUgraphNode hNode, unsigned int * isEnabled) {
-    HOOK_TRACE_PROFILE("cuGraphNodeGetEnabled");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, unsigned int *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeGetEnabled"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hNode, isEnabled);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphUpload(CUgraphExec hGraphExec, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuGraphUpload");
-    using func_ptr = CUresult (*)(CUgraphExec, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphUpload"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphLaunch(CUgraphExec hGraphExec, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuGraphLaunch");
-    using func_ptr = CUresult (*)(CUgraphExec, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphLaunch"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecDestroy(CUgraphExec hGraphExec) {
-    HOOK_TRACE_PROFILE("cuGraphExecDestroy");
-    using func_ptr = CUresult (*)(CUgraphExec);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecDestroy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphDestroy(CUgraph hGraph) {
-    HOOK_TRACE_PROFILE("cuGraphDestroy");
-    using func_ptr = CUresult (*)(CUgraph);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphDestroy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraph);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecUpdate(CUgraphExec hGraphExec, CUgraph hGraph, CUgraphExecUpdateResultInfo * resultInfo) {
-    HOOK_TRACE_PROFILE("cuGraphExecUpdate");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraph, CUgraphExecUpdateResultInfo *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecUpdate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hGraph, resultInfo);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphKernelNodeCopyAttributes(CUgraphNode dst, CUgraphNode src) {
-    HOOK_TRACE_PROFILE("cuGraphKernelNodeCopyAttributes");
-    using func_ptr = CUresult (*)(CUgraphNode, CUgraphNode);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphKernelNodeCopyAttributes"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dst, src);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphKernelNodeGetAttribute(CUgraphNode hNode, CUkernelNodeAttrID attr, CUkernelNodeAttrValue * value_out) {
-    HOOK_TRACE_PROFILE("cuGraphKernelNodeGetAttribute");
-    using func_ptr = CUresult (*)(CUgraphNode, CUkernelNodeAttrID, CUkernelNodeAttrValue *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphKernelNodeGetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, attr, value_out);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphKernelNodeSetAttribute(CUgraphNode hNode, CUkernelNodeAttrID attr, const CUkernelNodeAttrValue * value) {
-    HOOK_TRACE_PROFILE("cuGraphKernelNodeSetAttribute");
-    using func_ptr = CUresult (*)(CUgraphNode, CUkernelNodeAttrID, const CUkernelNodeAttrValue *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphKernelNodeSetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, attr, value);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphDebugDotPrint(CUgraph hGraph, const char * path, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuGraphDebugDotPrint");
-    using func_ptr = CUresult (*)(CUgraph, const char *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphDebugDotPrint"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraph, path, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuUserObjectCreate(CUuserObject * object_out, void * ptr, CUhostFn destroy, unsigned int initialRefcount, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuUserObjectCreate");
-    using func_ptr = CUresult (*)(CUuserObject *, void *, CUhostFn, unsigned int, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuUserObjectCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(object_out, ptr, destroy, initialRefcount, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuUserObjectRetain(CUuserObject object, unsigned int count) {
-    HOOK_TRACE_PROFILE("cuUserObjectRetain");
-    using func_ptr = CUresult (*)(CUuserObject, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuUserObjectRetain"));
-    HOOK_CHECK(func_entry);
-    return func_entry(object, count);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuUserObjectRelease(CUuserObject object, unsigned int count) {
-    HOOK_TRACE_PROFILE("cuUserObjectRelease");
-    using func_ptr = CUresult (*)(CUuserObject, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuUserObjectRelease"));
-    HOOK_CHECK(func_entry);
-    return func_entry(object, count);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphRetainUserObject(CUgraph graph, CUuserObject object, unsigned int count, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuGraphRetainUserObject");
-    using func_ptr = CUresult (*)(CUgraph, CUuserObject, unsigned int, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphRetainUserObject"));
-    HOOK_CHECK(func_entry);
-    return func_entry(graph, object, count, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphReleaseUserObject(CUgraph graph, CUuserObject object, unsigned int count) {
-    HOOK_TRACE_PROFILE("cuGraphReleaseUserObject");
-    using func_ptr = CUresult (*)(CUgraph, CUuserObject, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphReleaseUserObject"));
-    HOOK_CHECK(func_entry);
-    return func_entry(graph, object, count);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddNode(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, size_t numDependencies, CUgraphNodeParams * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphAddNode");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, size_t, CUgraphNodeParams *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddNode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, numDependencies, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphAddNode_v2(CUgraphNode * phGraphNode, CUgraph hGraph, const CUgraphNode * dependencies, const CUgraphEdgeData * dependencyData, size_t numDependencies, CUgraphNodeParams * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphAddNode_v2");
-    using func_ptr = CUresult (*)(CUgraphNode *, CUgraph, const CUgraphNode *, const CUgraphEdgeData *, size_t, CUgraphNodeParams *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphAddNode_v2"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phGraphNode, hGraph, dependencies, dependencyData, numDependencies, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphNodeSetParams(CUgraphNode hNode, CUgraphNodeParams * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphNode, CUgraphNodeParams *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphExecNodeSetParams(CUgraphExec hGraphExec, CUgraphNode hNode, CUgraphNodeParams * nodeParams) {
-    HOOK_TRACE_PROFILE("cuGraphExecNodeSetParams");
-    using func_ptr = CUresult (*)(CUgraphExec, CUgraphNode, CUgraphNodeParams *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphExecNodeSetParams"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hGraphExec, hNode, nodeParams);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphConditionalHandleCreate(CUgraphConditionalHandle * pHandle_out, CUgraph hGraph, CUcontext ctx, unsigned int defaultLaunchValue, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuGraphConditionalHandleCreate");
-    using func_ptr = CUresult (*)(CUgraphConditionalHandle *, CUgraph, CUcontext, unsigned int, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphConditionalHandleCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pHandle_out, hGraph, ctx, defaultLaunchValue, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(int * numBlocks, CUfunction func, int blockSize, size_t dynamicSMemSize) {
-    HOOK_TRACE_PROFILE("cuOccupancyMaxActiveBlocksPerMultiprocessor");
-    using func_ptr = CUresult (*)(int *, CUfunction, int, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuOccupancyMaxActiveBlocksPerMultiprocessor"));
-    HOOK_CHECK(func_entry);
-    return func_entry(numBlocks, func, blockSize, dynamicSMemSize);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int * numBlocks, CUfunction func, int blockSize, size_t dynamicSMemSize, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags");
-    using func_ptr = CUresult (*)(int *, CUfunction, int, size_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags"));
-    HOOK_CHECK(func_entry);
-    return func_entry(numBlocks, func, blockSize, dynamicSMemSize, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuOccupancyMaxPotentialBlockSize(int * minGridSize, int * blockSize, CUfunction func, CUoccupancyB2DSize blockSizeToDynamicSMemSize, size_t dynamicSMemSize, int blockSizeLimit) {
-    HOOK_TRACE_PROFILE("cuOccupancyMaxPotentialBlockSize");
-    using func_ptr = CUresult (*)(int *, int *, CUfunction, CUoccupancyB2DSize, size_t, int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuOccupancyMaxPotentialBlockSize"));
-    HOOK_CHECK(func_entry);
-    return func_entry(minGridSize, blockSize, func, blockSizeToDynamicSMemSize, dynamicSMemSize, blockSizeLimit);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuOccupancyMaxPotentialBlockSizeWithFlags(int * minGridSize, int * blockSize, CUfunction func, CUoccupancyB2DSize blockSizeToDynamicSMemSize, size_t dynamicSMemSize, int blockSizeLimit, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuOccupancyMaxPotentialBlockSizeWithFlags");
-    using func_ptr = CUresult (*)(int *, int *, CUfunction, CUoccupancyB2DSize, size_t, int, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuOccupancyMaxPotentialBlockSizeWithFlags"));
-    HOOK_CHECK(func_entry);
-    return func_entry(minGridSize, blockSize, func, blockSizeToDynamicSMemSize, dynamicSMemSize, blockSizeLimit, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuOccupancyAvailableDynamicSMemPerBlock(size_t * dynamicSmemSize, CUfunction func, int numBlocks, int blockSize) {
-    HOOK_TRACE_PROFILE("cuOccupancyAvailableDynamicSMemPerBlock");
-    using func_ptr = CUresult (*)(size_t *, CUfunction, int, int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuOccupancyAvailableDynamicSMemPerBlock"));
-    HOOK_CHECK(func_entry);
-    return func_entry(dynamicSmemSize, func, numBlocks, blockSize);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuOccupancyMaxPotentialClusterSize(int * clusterSize, CUfunction func, const CUlaunchConfig * config) {
-    HOOK_TRACE_PROFILE("cuOccupancyMaxPotentialClusterSize");
-    using func_ptr = CUresult (*)(int *, CUfunction, const CUlaunchConfig *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuOccupancyMaxPotentialClusterSize"));
-    HOOK_CHECK(func_entry);
-    return func_entry(clusterSize, func, config);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuOccupancyMaxActiveClusters(int * numClusters, CUfunction func, const CUlaunchConfig * config) {
-    HOOK_TRACE_PROFILE("cuOccupancyMaxActiveClusters");
-    using func_ptr = CUresult (*)(int *, CUfunction, const CUlaunchConfig *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuOccupancyMaxActiveClusters"));
-    HOOK_CHECK(func_entry);
-    return func_entry(numClusters, func, config);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetArray(CUtexref hTexRef, CUarray hArray, unsigned int Flags) {
-    HOOK_TRACE_PROFILE("cuTexRefSetArray");
-    using func_ptr = CUresult (*)(CUtexref, CUarray, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetArray"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef, hArray, Flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetMipmappedArray(CUtexref hTexRef, CUmipmappedArray hMipmappedArray, unsigned int Flags) {
-    HOOK_TRACE_PROFILE("cuTexRefSetMipmappedArray");
-    using func_ptr = CUresult (*)(CUtexref, CUmipmappedArray, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetMipmappedArray"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef, hMipmappedArray, Flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetAddress(size_t * ByteOffset, CUtexref hTexRef, CUdeviceptr dptr, size_t bytes) {
-    HOOK_TRACE_PROFILE("cuTexRefSetAddress");
-    using func_ptr = CUresult (*)(size_t *, CUtexref, CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetAddress"));
-    HOOK_CHECK(func_entry);
-    return func_entry(ByteOffset, hTexRef, dptr, bytes);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetAddress2D(CUtexref hTexRef, const CUDA_ARRAY_DESCRIPTOR * desc, CUdeviceptr dptr, size_t Pitch) {
-    HOOK_TRACE_PROFILE("cuTexRefSetAddress2D");
-    using func_ptr = CUresult (*)(CUtexref, const CUDA_ARRAY_DESCRIPTOR *, CUdeviceptr, size_t);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetAddress2D"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef, desc, dptr, Pitch);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetFormat(CUtexref hTexRef, CUarray_format fmt, int NumPackedComponents) {
-    HOOK_TRACE_PROFILE("cuTexRefSetFormat");
-    using func_ptr = CUresult (*)(CUtexref, CUarray_format, int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetFormat"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef, fmt, NumPackedComponents);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetAddressMode(CUtexref hTexRef, int dim, CUaddress_mode am) {
-    HOOK_TRACE_PROFILE("cuTexRefSetAddressMode");
-    using func_ptr = CUresult (*)(CUtexref, int, CUaddress_mode);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetAddressMode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef, dim, am);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetFilterMode(CUtexref hTexRef, CUfilter_mode fm) {
-    HOOK_TRACE_PROFILE("cuTexRefSetFilterMode");
-    using func_ptr = CUresult (*)(CUtexref, CUfilter_mode);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetFilterMode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef, fm);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetMipmapFilterMode(CUtexref hTexRef, CUfilter_mode fm) {
-    HOOK_TRACE_PROFILE("cuTexRefSetMipmapFilterMode");
-    using func_ptr = CUresult (*)(CUtexref, CUfilter_mode);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetMipmapFilterMode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef, fm);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetMipmapLevelBias(CUtexref hTexRef, float bias) {
-    HOOK_TRACE_PROFILE("cuTexRefSetMipmapLevelBias");
-    using func_ptr = CUresult (*)(CUtexref, float);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetMipmapLevelBias"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef, bias);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetMipmapLevelClamp(CUtexref hTexRef, float minMipmapLevelClamp, float maxMipmapLevelClamp) {
-    HOOK_TRACE_PROFILE("cuTexRefSetMipmapLevelClamp");
-    using func_ptr = CUresult (*)(CUtexref, float, float);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetMipmapLevelClamp"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef, minMipmapLevelClamp, maxMipmapLevelClamp);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetMaxAnisotropy(CUtexref hTexRef, unsigned int maxAniso) {
-    HOOK_TRACE_PROFILE("cuTexRefSetMaxAnisotropy");
-    using func_ptr = CUresult (*)(CUtexref, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetMaxAnisotropy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef, maxAniso);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetBorderColor(CUtexref hTexRef, float * pBorderColor) {
-    HOOK_TRACE_PROFILE("cuTexRefSetBorderColor");
-    using func_ptr = CUresult (*)(CUtexref, float *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetBorderColor"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef, pBorderColor);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetFlags(CUtexref hTexRef, unsigned int Flags) {
-    HOOK_TRACE_PROFILE("cuTexRefSetFlags");
-    using func_ptr = CUresult (*)(CUtexref, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetFlags"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef, Flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefGetAddress(CUdeviceptr * pdptr, CUtexref hTexRef) {
-    HOOK_TRACE_PROFILE("cuTexRefGetAddress");
-    using func_ptr = CUresult (*)(CUdeviceptr *, CUtexref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefGetAddress"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pdptr, hTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefGetArray(CUarray * phArray, CUtexref hTexRef) {
-    HOOK_TRACE_PROFILE("cuTexRefGetArray");
-    using func_ptr = CUresult (*)(CUarray *, CUtexref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefGetArray"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phArray, hTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefGetMipmappedArray(CUmipmappedArray * phMipmappedArray, CUtexref hTexRef) {
-    HOOK_TRACE_PROFILE("cuTexRefGetMipmappedArray");
-    using func_ptr = CUresult (*)(CUmipmappedArray *, CUtexref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefGetMipmappedArray"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phMipmappedArray, hTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefGetAddressMode(CUaddress_mode * pam, CUtexref hTexRef, int dim) {
-    HOOK_TRACE_PROFILE("cuTexRefGetAddressMode");
-    using func_ptr = CUresult (*)(CUaddress_mode *, CUtexref, int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefGetAddressMode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pam, hTexRef, dim);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefGetFilterMode(CUfilter_mode * pfm, CUtexref hTexRef) {
-    HOOK_TRACE_PROFILE("cuTexRefGetFilterMode");
-    using func_ptr = CUresult (*)(CUfilter_mode *, CUtexref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefGetFilterMode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pfm, hTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefGetFormat(CUarray_format * pFormat, int * pNumChannels, CUtexref hTexRef) {
-    HOOK_TRACE_PROFILE("cuTexRefGetFormat");
-    using func_ptr = CUresult (*)(CUarray_format *, int *, CUtexref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefGetFormat"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pFormat, pNumChannels, hTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefGetMipmapFilterMode(CUfilter_mode * pfm, CUtexref hTexRef) {
-    HOOK_TRACE_PROFILE("cuTexRefGetMipmapFilterMode");
-    using func_ptr = CUresult (*)(CUfilter_mode *, CUtexref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefGetMipmapFilterMode"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pfm, hTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefGetMipmapLevelBias(float * pbias, CUtexref hTexRef) {
-    HOOK_TRACE_PROFILE("cuTexRefGetMipmapLevelBias");
-    using func_ptr = CUresult (*)(float *, CUtexref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefGetMipmapLevelBias"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pbias, hTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefGetMipmapLevelClamp(float * pminMipmapLevelClamp, float * pmaxMipmapLevelClamp, CUtexref hTexRef) {
-    HOOK_TRACE_PROFILE("cuTexRefGetMipmapLevelClamp");
-    using func_ptr = CUresult (*)(float *, float *, CUtexref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefGetMipmapLevelClamp"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pminMipmapLevelClamp, pmaxMipmapLevelClamp, hTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefGetMaxAnisotropy(int * pmaxAniso, CUtexref hTexRef) {
-    HOOK_TRACE_PROFILE("cuTexRefGetMaxAnisotropy");
-    using func_ptr = CUresult (*)(int *, CUtexref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefGetMaxAnisotropy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pmaxAniso, hTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefGetBorderColor(float * pBorderColor, CUtexref hTexRef) {
-    HOOK_TRACE_PROFILE("cuTexRefGetBorderColor");
-    using func_ptr = CUresult (*)(float *, CUtexref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefGetBorderColor"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pBorderColor, hTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefGetFlags(unsigned int * pFlags, CUtexref hTexRef) {
-    HOOK_TRACE_PROFILE("cuTexRefGetFlags");
-    using func_ptr = CUresult (*)(unsigned int *, CUtexref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefGetFlags"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pFlags, hTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefCreate(CUtexref * pTexRef) {
-    HOOK_TRACE_PROFILE("cuTexRefCreate");
-    using func_ptr = CUresult (*)(CUtexref *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefDestroy(CUtexref hTexRef) {
-    HOOK_TRACE_PROFILE("cuTexRefDestroy");
-    using func_ptr = CUresult (*)(CUtexref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefDestroy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hTexRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuSurfRefSetArray(CUsurfref hSurfRef, CUarray hArray, unsigned int Flags) {
-    HOOK_TRACE_PROFILE("cuSurfRefSetArray");
-    using func_ptr = CUresult (*)(CUsurfref, CUarray, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuSurfRefSetArray"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hSurfRef, hArray, Flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuSurfRefGetArray(CUarray * phArray, CUsurfref hSurfRef) {
-    HOOK_TRACE_PROFILE("cuSurfRefGetArray");
-    using func_ptr = CUresult (*)(CUarray *, CUsurfref);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuSurfRefGetArray"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phArray, hSurfRef);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexObjectCreate(CUtexObject * pTexObject, const CUDA_RESOURCE_DESC * pResDesc, const CUDA_TEXTURE_DESC * pTexDesc, const CUDA_RESOURCE_VIEW_DESC * pResViewDesc) {
-    HOOK_TRACE_PROFILE("cuTexObjectCreate");
-    using func_ptr = CUresult (*)(CUtexObject *, const CUDA_RESOURCE_DESC *, const CUDA_TEXTURE_DESC *, const CUDA_RESOURCE_VIEW_DESC *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexObjectCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pTexObject, pResDesc, pTexDesc, pResViewDesc);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexObjectDestroy(CUtexObject texObject) {
-    HOOK_TRACE_PROFILE("cuTexObjectDestroy");
-    using func_ptr = CUresult (*)(CUtexObject);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexObjectDestroy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(texObject);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexObjectGetResourceDesc(CUDA_RESOURCE_DESC * pResDesc, CUtexObject texObject) {
-    HOOK_TRACE_PROFILE("cuTexObjectGetResourceDesc");
-    using func_ptr = CUresult (*)(CUDA_RESOURCE_DESC *, CUtexObject);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexObjectGetResourceDesc"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pResDesc, texObject);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexObjectGetTextureDesc(CUDA_TEXTURE_DESC * pTexDesc, CUtexObject texObject) {
-    HOOK_TRACE_PROFILE("cuTexObjectGetTextureDesc");
-    using func_ptr = CUresult (*)(CUDA_TEXTURE_DESC *, CUtexObject);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexObjectGetTextureDesc"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pTexDesc, texObject);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexObjectGetResourceViewDesc(CUDA_RESOURCE_VIEW_DESC * pResViewDesc, CUtexObject texObject) {
-    HOOK_TRACE_PROFILE("cuTexObjectGetResourceViewDesc");
-    using func_ptr = CUresult (*)(CUDA_RESOURCE_VIEW_DESC *, CUtexObject);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexObjectGetResourceViewDesc"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pResViewDesc, texObject);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuSurfObjectCreate(CUsurfObject * pSurfObject, const CUDA_RESOURCE_DESC * pResDesc) {
-    HOOK_TRACE_PROFILE("cuSurfObjectCreate");
-    using func_ptr = CUresult (*)(CUsurfObject *, const CUDA_RESOURCE_DESC *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuSurfObjectCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pSurfObject, pResDesc);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuSurfObjectDestroy(CUsurfObject surfObject) {
-    HOOK_TRACE_PROFILE("cuSurfObjectDestroy");
-    using func_ptr = CUresult (*)(CUsurfObject);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuSurfObjectDestroy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(surfObject);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuSurfObjectGetResourceDesc(CUDA_RESOURCE_DESC * pResDesc, CUsurfObject surfObject) {
-    HOOK_TRACE_PROFILE("cuSurfObjectGetResourceDesc");
-    using func_ptr = CUresult (*)(CUDA_RESOURCE_DESC *, CUsurfObject);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuSurfObjectGetResourceDesc"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pResDesc, surfObject);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTensorMapEncodeTiled(CUtensorMap * tensorMap, CUtensorMapDataType tensorDataType, cuuint32_t tensorRank, void * globalAddress, const cuuint64_t * globalDim, const cuuint64_t * globalStrides, const cuuint32_t * boxDim, const cuuint32_t * elementStrides, CUtensorMapInterleave interleave, CUtensorMapSwizzle swizzle, CUtensorMapL2promotion l2Promotion, CUtensorMapFloatOOBfill oobFill) {
-    HOOK_TRACE_PROFILE("cuTensorMapEncodeTiled");
-    using func_ptr = CUresult (*)(CUtensorMap *, CUtensorMapDataType, cuuint32_t, void *, const cuuint64_t *, const cuuint64_t *, const cuuint32_t *, const cuuint32_t *, CUtensorMapInterleave, CUtensorMapSwizzle, CUtensorMapL2promotion, CUtensorMapFloatOOBfill);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTensorMapEncodeTiled"));
-    HOOK_CHECK(func_entry);
-    return func_entry(tensorMap, tensorDataType, tensorRank, globalAddress, globalDim, globalStrides, boxDim, elementStrides, interleave, swizzle, l2Promotion, oobFill);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTensorMapEncodeIm2col(CUtensorMap * tensorMap, CUtensorMapDataType tensorDataType, cuuint32_t tensorRank, void * globalAddress, const cuuint64_t * globalDim, const cuuint64_t * globalStrides, const int * pixelBoxLowerCorner, const int * pixelBoxUpperCorner, cuuint32_t channelsPerPixel, cuuint32_t pixelsPerColumn, const cuuint32_t * elementStrides, CUtensorMapInterleave interleave, CUtensorMapSwizzle swizzle, CUtensorMapL2promotion l2Promotion, CUtensorMapFloatOOBfill oobFill) {
-    HOOK_TRACE_PROFILE("cuTensorMapEncodeIm2col");
-    using func_ptr = CUresult (*)(CUtensorMap *, CUtensorMapDataType, cuuint32_t, void *, const cuuint64_t *, const cuuint64_t *, const int *, const int *, cuuint32_t, cuuint32_t, const cuuint32_t *, CUtensorMapInterleave, CUtensorMapSwizzle, CUtensorMapL2promotion, CUtensorMapFloatOOBfill);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTensorMapEncodeIm2col"));
-    HOOK_CHECK(func_entry);
-    return func_entry(tensorMap, tensorDataType, tensorRank, globalAddress, globalDim, globalStrides, pixelBoxLowerCorner, pixelBoxUpperCorner, channelsPerPixel, pixelsPerColumn, elementStrides, interleave, swizzle, l2Promotion, oobFill);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTensorMapReplaceAddress(CUtensorMap * tensorMap, void * globalAddress) {
-    HOOK_TRACE_PROFILE("cuTensorMapReplaceAddress");
-    using func_ptr = CUresult (*)(CUtensorMap *, void *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTensorMapReplaceAddress"));
-    HOOK_CHECK(func_entry);
-    return func_entry(tensorMap, globalAddress);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceCanAccessPeer(int * canAccessPeer, CUdevice dev, CUdevice peerDev) {
-    HOOK_TRACE_PROFILE("cuDeviceCanAccessPeer");
-    using func_ptr = CUresult (*)(int *, CUdevice, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceCanAccessPeer"));
-    HOOK_CHECK(func_entry);
-    return func_entry(canAccessPeer, dev, peerDev);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxEnablePeerAccess(CUcontext peerContext, unsigned int Flags) {
-    HOOK_TRACE_PROFILE("cuCtxEnablePeerAccess");
-    using func_ptr = CUresult (*)(CUcontext, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxEnablePeerAccess"));
-    HOOK_CHECK(func_entry);
-    return func_entry(peerContext, Flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxDisablePeerAccess(CUcontext peerContext) {
-    HOOK_TRACE_PROFILE("cuCtxDisablePeerAccess");
-    using func_ptr = CUresult (*)(CUcontext);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxDisablePeerAccess"));
-    HOOK_CHECK(func_entry);
-    return func_entry(peerContext);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetP2PAttribute(int * value, CUdevice_P2PAttribute attrib, CUdevice srcDevice, CUdevice dstDevice) {
-    HOOK_TRACE_PROFILE("cuDeviceGetP2PAttribute");
-    using func_ptr = CUresult (*)(int *, CUdevice_P2PAttribute, CUdevice, CUdevice);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetP2PAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(value, attrib, srcDevice, dstDevice);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphicsUnregisterResource(CUgraphicsResource resource) {
-    HOOK_TRACE_PROFILE("cuGraphicsUnregisterResource");
-    using func_ptr = CUresult (*)(CUgraphicsResource);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphicsUnregisterResource"));
-    HOOK_CHECK(func_entry);
-    return func_entry(resource);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphicsSubResourceGetMappedArray(CUarray * pArray, CUgraphicsResource resource, unsigned int arrayIndex, unsigned int mipLevel) {
-    HOOK_TRACE_PROFILE("cuGraphicsSubResourceGetMappedArray");
-    using func_ptr = CUresult (*)(CUarray *, CUgraphicsResource, unsigned int, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphicsSubResourceGetMappedArray"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pArray, resource, arrayIndex, mipLevel);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphicsResourceGetMappedMipmappedArray(CUmipmappedArray * pMipmappedArray, CUgraphicsResource resource) {
-    HOOK_TRACE_PROFILE("cuGraphicsResourceGetMappedMipmappedArray");
-    using func_ptr = CUresult (*)(CUmipmappedArray *, CUgraphicsResource);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphicsResourceGetMappedMipmappedArray"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pMipmappedArray, resource);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphicsResourceGetMappedPointer(CUdeviceptr * pDevPtr, size_t * pSize, CUgraphicsResource resource) {
-    HOOK_TRACE_PROFILE("cuGraphicsResourceGetMappedPointer");
-    using func_ptr = CUresult (*)(CUdeviceptr *, size_t *, CUgraphicsResource);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphicsResourceGetMappedPointer"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pDevPtr, pSize, resource);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphicsResourceSetMapFlags(CUgraphicsResource resource, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuGraphicsResourceSetMapFlags");
-    using func_ptr = CUresult (*)(CUgraphicsResource, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphicsResourceSetMapFlags"));
-    HOOK_CHECK(func_entry);
-    return func_entry(resource, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphicsMapResources(unsigned int count, CUgraphicsResource * resources, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuGraphicsMapResources");
-    using func_ptr = CUresult (*)(unsigned int, CUgraphicsResource *, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphicsMapResources"));
-    HOOK_CHECK(func_entry);
-    return func_entry(count, resources, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphicsUnmapResources(unsigned int count, CUgraphicsResource * resources, CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuGraphicsUnmapResources");
-    using func_ptr = CUresult (*)(unsigned int, CUgraphicsResource *, CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphicsUnmapResources"));
-    HOOK_CHECK(func_entry);
-    return func_entry(count, resources, hStream);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCoredumpGetAttribute(CUcoredumpSettings attrib, void * value, size_t * size) {
-    HOOK_TRACE_PROFILE("cuCoredumpGetAttribute");
-    using func_ptr = CUresult (*)(CUcoredumpSettings, void *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCoredumpGetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(attrib, value, size);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCoredumpGetAttributeGlobal(CUcoredumpSettings attrib, void * value, size_t * size) {
-    HOOK_TRACE_PROFILE("cuCoredumpGetAttributeGlobal");
-    using func_ptr = CUresult (*)(CUcoredumpSettings, void *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCoredumpGetAttributeGlobal"));
-    HOOK_CHECK(func_entry);
-    return func_entry(attrib, value, size);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCoredumpSetAttribute(CUcoredumpSettings attrib, void * value, size_t * size) {
-    HOOK_TRACE_PROFILE("cuCoredumpSetAttribute");
-    using func_ptr = CUresult (*)(CUcoredumpSettings, void *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCoredumpSetAttribute"));
-    HOOK_CHECK(func_entry);
-    return func_entry(attrib, value, size);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCoredumpSetAttributeGlobal(CUcoredumpSettings attrib, void * value, size_t * size) {
-    HOOK_TRACE_PROFILE("cuCoredumpSetAttributeGlobal");
-    using func_ptr = CUresult (*)(CUcoredumpSettings, void *, size_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCoredumpSetAttributeGlobal"));
-    HOOK_CHECK(func_entry);
-    return func_entry(attrib, value, size);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGetExportTable(const void * * ppExportTable, const CUuuid * pExportTableId) {
-    HOOK_TRACE_PROFILE("cuGetExportTable");
-
-    using func_ptr = CUresult (*)(const void * *, const CUuuid *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGetExportTable"));
-    HOOK_CHECK(func_entry);
-    CUresult result= func_entry(ppExportTable, pExportTableId);
-     CUuuid uuid=*pExportTableId;
-    printf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x\n",
-        (unsigned char)uuid.bytes[0], (unsigned char)uuid.bytes[1], 
-        (unsigned char)uuid.bytes[2], (unsigned char)uuid.bytes[3],
-        (unsigned char)uuid.bytes[4], (unsigned char)uuid.bytes[5],
-        (unsigned char)uuid.bytes[6], (unsigned char)uuid.bytes[7],
-        (unsigned char)uuid.bytes[8], (unsigned char)uuid.bytes[9],
-        (unsigned char)uuid.bytes[10], (unsigned char)uuid.bytes[11],
-        (unsigned char)uuid.bytes[12], (unsigned char)uuid.bytes[13],
-        (unsigned char)uuid.bytes[14], (unsigned char)uuid.bytes[15]
-    );
-    unsigned int index=0;
-    while(ppExportTable[index]!=nullptr){
-        printf("%d:%p\n",index,ppExportTable[index]);
-        index++;
-    }
-    
-    return result;
-}
-
-
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGreenCtxCreate(CUgreenCtx * phCtx, CUdevResourceDesc desc, CUdevice dev, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuGreenCtxCreate");
-    using func_ptr = CUresult (*)(CUgreenCtx *, CUdevResourceDesc, CUdevice, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGreenCtxCreate"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phCtx, desc, dev, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGreenCtxDestroy(CUgreenCtx hCtx) {
-    HOOK_TRACE_PROFILE("cuGreenCtxDestroy");
-    using func_ptr = CUresult (*)(CUgreenCtx);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGreenCtxDestroy"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hCtx);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxFromGreenCtx(CUcontext * pContext, CUgreenCtx hCtx) {
-    HOOK_TRACE_PROFILE("cuCtxFromGreenCtx");
-    using func_ptr = CUresult (*)(CUcontext *, CUgreenCtx);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxFromGreenCtx"));
-    HOOK_CHECK(func_entry);
-    return func_entry(pContext, hCtx);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetDevResource(CUdevice device, CUdevResource * resource, CUdevResourceType type) {
-    HOOK_TRACE_PROFILE("cuDeviceGetDevResource");
-    using func_ptr = CUresult (*)(CUdevice, CUdevResource *, CUdevResourceType);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDeviceGetDevResource"));
-    HOOK_CHECK(func_entry);
-    return func_entry(device, resource, type);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetDevResource(CUcontext hCtx, CUdevResource * resource, CUdevResourceType type) {
-    HOOK_TRACE_PROFILE("cuCtxGetDevResource");
-    using func_ptr = CUresult (*)(CUcontext, CUdevResource *, CUdevResourceType);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuCtxGetDevResource"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hCtx, resource, type);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGreenCtxGetDevResource(CUgreenCtx hCtx, CUdevResource * resource, CUdevResourceType type) {
-    HOOK_TRACE_PROFILE("cuGreenCtxGetDevResource");
-    using func_ptr = CUresult (*)(CUgreenCtx, CUdevResource *, CUdevResourceType);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGreenCtxGetDevResource"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hCtx, resource, type);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevSmResourceSplitByCount(CUdevResource * result, unsigned int * nbGroups, const CUdevResource * input, CUdevResource * remaining, unsigned int useFlags, unsigned int minCount) {
-    HOOK_TRACE_PROFILE("cuDevSmResourceSplitByCount");
-    using func_ptr = CUresult (*)(CUdevResource *, unsigned int *, const CUdevResource *, CUdevResource *, unsigned int, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDevSmResourceSplitByCount"));
-    HOOK_CHECK(func_entry);
-    return func_entry(result, nbGroups, input, remaining, useFlags, minCount);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevResourceGenerateDesc(CUdevResourceDesc * phDesc, CUdevResource * resources, unsigned int nbResources) {
-    HOOK_TRACE_PROFILE("cuDevResourceGenerateDesc");
-    using func_ptr = CUresult (*)(CUdevResourceDesc *, CUdevResource *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuDevResourceGenerateDesc"));
-    HOOK_CHECK(func_entry);
-    return func_entry(phDesc, resources, nbResources);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGreenCtxRecordEvent(CUgreenCtx hCtx, CUevent hEvent) {
-    HOOK_TRACE_PROFILE("cuGreenCtxRecordEvent");
-    using func_ptr = CUresult (*)(CUgreenCtx, CUevent);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGreenCtxRecordEvent"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hCtx, hEvent);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGreenCtxWaitEvent(CUgreenCtx hCtx, CUevent hEvent) {
-    HOOK_TRACE_PROFILE("cuGreenCtxWaitEvent");
-    using func_ptr = CUresult (*)(CUgreenCtx, CUevent);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGreenCtxWaitEvent"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hCtx, hEvent);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamGetGreenCtx(CUstream hStream, CUgreenCtx * phCtx) {
-    HOOK_TRACE_PROFILE("cuStreamGetGreenCtx");
-    using func_ptr = CUresult (*)(CUstream, CUgreenCtx *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetGreenCtx"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, phCtx);
-}
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuTexRefSetAddress2D_v2(CUtexref hTexRef, const CUDA_ARRAY_DESCRIPTOR * desc, CUdeviceptr dptr, size_t Pitch) {
-//     HOOK_TRACE_PROFILE("cuTexRefSetAddress2D_v2");
-//     using func_ptr = CUresult (*)(CUtexref, const CUDA_ARRAY_DESCRIPTOR *, CUdeviceptr, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuTexRefSetAddress2D_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(hTexRef, desc, dptr, Pitch);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyHtoD_v2(CUdeviceptr dstDevice, const void * srcHost, size_t ByteCount) {
-//     HOOK_TRACE_PROFILE("cuMemcpyHtoD_v2");
-//     using func_ptr = CUresult (*)(CUdeviceptr, const void *, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoD_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstDevice, srcHost, ByteCount);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyDtoH_v2(void * dstHost, CUdeviceptr srcDevice, size_t ByteCount) {
-//     HOOK_TRACE_PROFILE("cuMemcpyDtoH_v2");
-//     using func_ptr = CUresult (*)(void *, CUdeviceptr, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoH_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstHost, srcDevice, ByteCount);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyDtoD_v2(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t ByteCount) {
-//     HOOK_TRACE_PROFILE("cuMemcpyDtoD_v2");
-//     using func_ptr = CUresult (*)(CUdeviceptr, CUdeviceptr, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoD_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstDevice, srcDevice, ByteCount);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyDtoA_v2(CUarray dstArray, size_t dstOffset, CUdeviceptr srcDevice, size_t ByteCount) {
-//     HOOK_TRACE_PROFILE("cuMemcpyDtoA_v2");
-//     using func_ptr = CUresult (*)(CUarray, size_t, CUdeviceptr, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoA_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstArray, dstOffset, srcDevice, ByteCount);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyAtoD_v2(CUdeviceptr dstDevice, CUarray srcArray, size_t srcOffset, size_t ByteCount) {
-//     HOOK_TRACE_PROFILE("cuMemcpyAtoD_v2");
-//     using func_ptr = CUresult (*)(CUdeviceptr, CUarray, size_t, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoD_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstDevice, srcArray, srcOffset, ByteCount);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyHtoA_v2(CUarray dstArray, size_t dstOffset, const void * srcHost, size_t ByteCount) {
-//     HOOK_TRACE_PROFILE("cuMemcpyHtoA_v2");
-//     using func_ptr = CUresult (*)(CUarray, size_t, const void *, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoA_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstArray, dstOffset, srcHost, ByteCount);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyAtoH_v2(void * dstHost, CUarray srcArray, size_t srcOffset, size_t ByteCount) {
-//     HOOK_TRACE_PROFILE("cuMemcpyAtoH_v2");
-//     using func_ptr = CUresult (*)(void *, CUarray, size_t, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoH_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstHost, srcArray, srcOffset, ByteCount);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyAtoA_v2(CUarray dstArray, size_t dstOffset, CUarray srcArray, size_t srcOffset, size_t ByteCount) {
-//     HOOK_TRACE_PROFILE("cuMemcpyAtoA_v2");
-//     using func_ptr = CUresult (*)(CUarray, size_t, CUarray, size_t, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoA_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstArray, dstOffset, srcArray, srcOffset, ByteCount);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyHtoAAsync_v2(CUarray dstArray, size_t dstOffset, const void * srcHost, size_t ByteCount, CUstream hStream) {
-//     HOOK_TRACE_PROFILE("cuMemcpyHtoAAsync_v2");
-//     using func_ptr = CUresult (*)(CUarray, size_t, const void *, size_t, CUstream);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoAAsync_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstArray, dstOffset, srcHost, ByteCount, hStream);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyAtoHAsync_v2(void * dstHost, CUarray srcArray, size_t srcOffset, size_t ByteCount, CUstream hStream) {
-//     HOOK_TRACE_PROFILE("cuMemcpyAtoHAsync_v2");
-//     using func_ptr = CUresult (*)(void *, CUarray, size_t, size_t, CUstream);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyAtoHAsync_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstHost, srcArray, srcOffset, ByteCount, hStream);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpy2D_v2(const CUDA_MEMCPY2D * pCopy) {
-//     HOOK_TRACE_PROFILE("cuMemcpy2D_v2");
-//     using func_ptr = CUresult (*)(const CUDA_MEMCPY2D *);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy2D_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(pCopy);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpy2DUnaligned_v2(const CUDA_MEMCPY2D * pCopy) {
-//     HOOK_TRACE_PROFILE("cuMemcpy2DUnaligned_v2");
-//     using func_ptr = CUresult (*)(const CUDA_MEMCPY2D *);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy2DUnaligned_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(pCopy);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpy3D_v2(const CUDA_MEMCPY3D * pCopy) {
-//     HOOK_TRACE_PROFILE("cuMemcpy3D_v2");
-//     using func_ptr = CUresult (*)(const CUDA_MEMCPY3D *);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy3D_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(pCopy);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyHtoDAsync_v2(CUdeviceptr dstDevice, const void * srcHost, size_t ByteCount, CUstream hStream) {
-//     HOOK_TRACE_PROFILE("cuMemcpyHtoDAsync_v2");
-//     using func_ptr = CUresult (*)(CUdeviceptr, const void *, size_t, CUstream);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyHtoDAsync_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstDevice, srcHost, ByteCount, hStream);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyDtoHAsync_v2(void * dstHost, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream) {
-//     HOOK_TRACE_PROFILE("cuMemcpyDtoHAsync_v2");
-//     using func_ptr = CUresult (*)(void *, CUdeviceptr, size_t, CUstream);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoHAsync_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstHost, srcDevice, ByteCount, hStream);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyDtoDAsync_v2(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream) {
-//     HOOK_TRACE_PROFILE("cuMemcpyDtoDAsync_v2");
-//     using func_ptr = CUresult (*)(CUdeviceptr, CUdeviceptr, size_t, CUstream);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpyDtoDAsync_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstDevice, srcDevice, ByteCount, hStream);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpy2DAsync_v2(const CUDA_MEMCPY2D * pCopy, CUstream hStream) {
-//     HOOK_TRACE_PROFILE("cuMemcpy2DAsync_v2");
-//     using func_ptr = CUresult (*)(const CUDA_MEMCPY2D *, CUstream);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy2DAsync_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(pCopy, hStream);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpy3DAsync_v2(const CUDA_MEMCPY3D * pCopy, CUstream hStream) {
-//     HOOK_TRACE_PROFILE("cuMemcpy3DAsync_v2");
-//     using func_ptr = CUresult (*)(const CUDA_MEMCPY3D *, CUstream);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemcpy3DAsync_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(pCopy, hStream);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD8_v2(CUdeviceptr dstDevice, unsigned char uc, size_t N) {
-//     HOOK_TRACE_PROFILE("cuMemsetD8_v2");
-//     using func_ptr = CUresult (*)(CUdeviceptr, unsigned char, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD8_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstDevice, uc, N);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD16_v2(CUdeviceptr dstDevice, unsigned short us, size_t N) {
-//     HOOK_TRACE_PROFILE("cuMemsetD16_v2");
-//     using func_ptr = CUresult (*)(CUdeviceptr, unsigned short, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD16_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstDevice, us, N);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD32_v2(CUdeviceptr dstDevice, unsigned int ui, size_t N) {
-//     HOOK_TRACE_PROFILE("cuMemsetD32_v2");
-//     using func_ptr = CUresult (*)(CUdeviceptr, unsigned int, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD32_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstDevice, ui, N);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD2D8_v2(CUdeviceptr dstDevice, size_t dstPitch, unsigned char uc, size_t Width, size_t Height) {
-//     HOOK_TRACE_PROFILE("cuMemsetD2D8_v2");
-//     using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned char, size_t, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D8_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstDevice, dstPitch, uc, Width, Height);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD2D16_v2(CUdeviceptr dstDevice, size_t dstPitch, unsigned short us, size_t Width, size_t Height) {
-//     HOOK_TRACE_PROFILE("cuMemsetD2D16_v2");
-//     using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned short, size_t, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D16_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstDevice, dstPitch, us, Width, Height);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemsetD2D32_v2(CUdeviceptr dstDevice, size_t dstPitch, unsigned int ui, size_t Width, size_t Height) {
-//     HOOK_TRACE_PROFILE("cuMemsetD2D32_v2");
-//     using func_ptr = CUresult (*)(CUdeviceptr, size_t, unsigned int, size_t, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuMemsetD2D32_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(dstDevice, dstPitch, ui, Width, Height);
-// }
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamWriteValue32_ptsz(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamWriteValue32_ptsz");
-    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue32_ptsz"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, addr, value, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamWaitValue32_ptsz(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamWaitValue32_ptsz");
-    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue32_ptsz"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, addr, value, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamWriteValue64_ptsz(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamWriteValue64_ptsz");
-    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue64_ptsz"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, addr, value, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamWaitValue64_ptsz(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamWaitValue64_ptsz");
-    using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue64_ptsz"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, addr, value, flags);
-}
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamBatchMemOp_ptsz(CUstream stream, unsigned int count, CUstreamBatchMemOpParams * paramArray, unsigned int flags) {
-    HOOK_TRACE_PROFILE("cuStreamBatchMemOp_ptsz");
-    using func_ptr =  CUresult (*)(CUstream, unsigned int, CUstreamBatchMemOpParams *, unsigned int);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBatchMemOp_ptsz"));
-    HOOK_CHECK(func_entry);
-    return func_entry(stream, count, paramArray, flags);
-}
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamWriteValue32_v2(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
-//     HOOK_TRACE_PROFILE("cuStreamWriteValue32_v2");
-//     using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue32_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(stream, addr, value, flags);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamWaitValue32_v2(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags) {
-//     HOOK_TRACE_PROFILE("cuStreamWaitValue32_v2");
-//     using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint32_t, unsigned int);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue32_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(stream, addr, value, flags);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamWriteValue64_v2(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
-//     HOOK_TRACE_PROFILE("cuStreamWriteValue64_v2");
-//     using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWriteValue64_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(stream, addr, value, flags);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamWaitValue64_v2(CUstream stream, CUdeviceptr addr, cuuint64_t value, unsigned int flags) {
-//     HOOK_TRACE_PROFILE("cuStreamWaitValue64_v2");
-//     using func_ptr = CUresult (*)(CUstream, CUdeviceptr, cuuint64_t, unsigned int);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamWaitValue64_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(stream, addr, value, flags);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamBatchMemOp_v2(CUstream stream, unsigned int count, CUstreamBatchMemOpParams * paramArray, unsigned int flags) {
-//     HOOK_TRACE_PROFILE("cuStreamBatchMemOp_v2");
-//     using func_ptr = CUresult (*)(CUstream, unsigned int, CUstreamBatchMemOpParams *, unsigned int);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBatchMemOp_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(stream, count, paramArray, flags);
-// }
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamBeginCapture_ptsz(CUstream hStream) {
-    HOOK_TRACE_PROFILE("cuStreamBeginCapture_ptsz");
-    using func_ptr =  CUresult (*)(CUstream);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBeginCapture_ptsz"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream);
-}
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamBeginCapture_v2(CUstream hStream, CUstreamCaptureMode mode) {
-//     HOOK_TRACE_PROFILE("cuStreamBeginCapture_v2");
-//     using func_ptr = CUresult (*)(CUstream, CUstreamCaptureMode);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamBeginCapture_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(hStream, mode);
-// }
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamGetCaptureInfo_ptsz(CUstream hStream, CUstreamCaptureStatus * captureStatus_out, cuuint64_t * id_out) {
-    HOOK_TRACE_PROFILE("cuStreamGetCaptureInfo_ptsz");
-    using func_ptr = CUresult (*)(CUstream, CUstreamCaptureStatus *, cuuint64_t *);
-    static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetCaptureInfo_ptsz"));
-    HOOK_CHECK(func_entry);
-    return func_entry(hStream, captureStatus_out, id_out);
-}
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuStreamGetCaptureInfo_v2(CUstream hStream, CUstreamCaptureStatus * captureStatus_out, cuuint64_t * id_out, CUgraph * graph_out, const CUgraphNode * * dependencies_out, size_t * numDependencies_out) {
-//     HOOK_TRACE_PROFILE("cuStreamGetCaptureInfo_v2");
-//     using func_ptr = CUresult (*)(CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, size_t *);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuStreamGetCaptureInfo_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(hStream, captureStatus_out, id_out, graph_out, dependencies_out, numDependencies_out);
-// }
-
-// HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGraphInstantiate_v2(CUgraphExec * phGraphExec, CUgraph hGraph, CUgraphNode * phErrorNode, char * logBuffer, size_t bufferSize) {
-//     HOOK_TRACE_PROFILE("cuGraphInstantiate_v2");
-//     using func_ptr = CUresult (*)(CUgraphExec *, CUgraph, CUgraphNode *, char *, size_t);
-//     static auto func_entry = reinterpret_cast<func_ptr>(HOOK_CUDA_SYMBOL("cuGraphInstantiate_v2"));
-//     HOOK_CHECK(func_entry);
-//     return func_entry(phGraphExec, hGraph, phErrorNode, logBuffer, bufferSize);
-// }
-
-
-
-struct CStrHash {
-    std::size_t operator()(const char* str) const {
-        return std::hash<std::string>{}(str);  // 使用 std::string 的哈希值
-    }
-};
-
-struct CStrEqual {
-    bool operator()(const char* str1, const char* str2) const {
-        return std::strcmp(str1, str2) == 0;  // 比较字符串内容
-    }
-};
-
-static std::unordered_map<const char *, void *,CStrHash,CStrEqual> functionMap={
-    {"cuGetErrorString", reinterpret_cast<void*>(&cuGetErrorString)},
-    {"cuGetErrorName", reinterpret_cast<void*>(&cuGetErrorName)},
-    {"cuInit", reinterpret_cast<void*>(&cuInit)},
-    {"cuDriverGetVersion", reinterpret_cast<void*>(&cuDriverGetVersion)},
-    {"cuDeviceGet", reinterpret_cast<void*>(&cuDeviceGet)},
-    {"cuDeviceGetCount", reinterpret_cast<void*>(&cuDeviceGetCount)},
-    {"cuDeviceGetName", reinterpret_cast<void*>(&cuDeviceGetName)},
-    {"cuDeviceGetUuid", reinterpret_cast<void*>(&cuDeviceGetUuid)},
-    // {"cuDeviceGetUuid_v2", reinterpret_cast<void*>(&cuDeviceGetUuid_v2)},
-    {"cuDeviceGetLuid", reinterpret_cast<void*>(&cuDeviceGetLuid)},
-    {"cuDeviceTotalMem", reinterpret_cast<void*>(&cuDeviceTotalMem)},
-    {"cuDeviceGetTexture1DLinearMaxWidth", reinterpret_cast<void*>(&cuDeviceGetTexture1DLinearMaxWidth)},
-    {"cuDeviceGetAttribute", reinterpret_cast<void*>(&cuDeviceGetAttribute)},
-    {"cuDeviceGetNvSciSyncAttributes", reinterpret_cast<void*>(&cuDeviceGetNvSciSyncAttributes)},
-    {"cuDeviceSetMemPool", reinterpret_cast<void*>(&cuDeviceSetMemPool)},
-    {"cuDeviceGetMemPool", reinterpret_cast<void*>(&cuDeviceGetMemPool)},
-    {"cuDeviceGetDefaultMemPool", reinterpret_cast<void*>(&cuDeviceGetDefaultMemPool)},
-    {"cuDeviceGetExecAffinitySupport", reinterpret_cast<void*>(&cuDeviceGetExecAffinitySupport)},
-    {"cuFlushGPUDirectRDMAWrites", reinterpret_cast<void*>(&cuFlushGPUDirectRDMAWrites)},
-    {"cuDeviceGetProperties", reinterpret_cast<void*>(&cuDeviceGetProperties)},
-    {"cuDeviceComputeCapability", reinterpret_cast<void*>(&cuDeviceComputeCapability)},
-    {"cuDevicePrimaryCtxRetain", reinterpret_cast<void*>(&cuDevicePrimaryCtxRetain)},
-    {"cuDevicePrimaryCtxRelease", reinterpret_cast<void*>(&cuDevicePrimaryCtxRelease)},
-    {"cuDevicePrimaryCtxSetFlags", reinterpret_cast<void*>(&cuDevicePrimaryCtxSetFlags)},
-    {"cuDevicePrimaryCtxGetState", reinterpret_cast<void*>(&cuDevicePrimaryCtxGetState)},
-    {"cuDevicePrimaryCtxReset", reinterpret_cast<void*>(&cuDevicePrimaryCtxReset)},
-    {"cuCtxCreate", reinterpret_cast<void*>(&cuCtxCreate)},
-    {"cuCtxCreate_v3", reinterpret_cast<void*>(&cuCtxCreate_v3)},
-    {"cuCtxDestroy", reinterpret_cast<void*>(&cuCtxDestroy)},
-    {"cuCtxPushCurrent", reinterpret_cast<void*>(&cuCtxPushCurrent)},
-    {"cuCtxPopCurrent", reinterpret_cast<void*>(&cuCtxPopCurrent)},
-    {"cuCtxSetCurrent", reinterpret_cast<void*>(&cuCtxSetCurrent)},
-    {"cuCtxGetCurrent", reinterpret_cast<void*>(&cuCtxGetCurrent)},
-    {"cuCtxGetDevice", reinterpret_cast<void*>(&cuCtxGetDevice)},
-    {"cuCtxGetFlags", reinterpret_cast<void*>(&cuCtxGetFlags)},
-    {"cuCtxSetFlags", reinterpret_cast<void*>(&cuCtxSetFlags)},
-    {"cuCtxGetId", reinterpret_cast<void*>(&cuCtxGetId)},
-    {"cuCtxSynchronize", reinterpret_cast<void*>(&cuCtxSynchronize)},
-    {"cuCtxSetLimit", reinterpret_cast<void*>(&cuCtxSetLimit)},
-    {"cuCtxGetLimit", reinterpret_cast<void*>(&cuCtxGetLimit)},
-    {"cuCtxGetCacheConfig", reinterpret_cast<void*>(&cuCtxGetCacheConfig)},
-    {"cuCtxSetCacheConfig", reinterpret_cast<void*>(&cuCtxSetCacheConfig)},
-    {"cuCtxGetApiVersion", reinterpret_cast<void*>(&cuCtxGetApiVersion)},
-    {"cuCtxGetStreamPriorityRange", reinterpret_cast<void*>(&cuCtxGetStreamPriorityRange)},
-    {"cuCtxResetPersistingL2Cache", reinterpret_cast<void*>(&cuCtxResetPersistingL2Cache)},
-    {"cuCtxGetExecAffinity", reinterpret_cast<void*>(&cuCtxGetExecAffinity)},
-    {"cuCtxAttach", reinterpret_cast<void*>(&cuCtxAttach)},
-    {"cuCtxDetach", reinterpret_cast<void*>(&cuCtxDetach)},
-    {"cuCtxGetSharedMemConfig", reinterpret_cast<void*>(&cuCtxGetSharedMemConfig)},
-    {"cuCtxSetSharedMemConfig", reinterpret_cast<void*>(&cuCtxSetSharedMemConfig)},
-    {"cuModuleLoad", reinterpret_cast<void*>(&cuModuleLoad)},
-    {"cuModuleLoadData", reinterpret_cast<void*>(&cuModuleLoadData)},
-    {"cuModuleLoadDataEx", reinterpret_cast<void*>(&cuModuleLoadDataEx)},
-    {"cuModuleLoadFatBinary", reinterpret_cast<void*>(&cuModuleLoadFatBinary)},
-    {"cuModuleUnload", reinterpret_cast<void*>(&cuModuleUnload)},
-    {"cuModuleGetLoadingMode", reinterpret_cast<void*>(&cuModuleGetLoadingMode)},
-    {"cuModuleGetFunction", reinterpret_cast<void*>(&cuModuleGetFunction)},
-    {"cuModuleGetFunctionCount", reinterpret_cast<void*>(&cuModuleGetFunctionCount)},
-    {"cuModuleEnumerateFunctions", reinterpret_cast<void*>(&cuModuleEnumerateFunctions)},
-    {"cuModuleGetGlobal", reinterpret_cast<void*>(&cuModuleGetGlobal)},
-    {"cuLinkCreate", reinterpret_cast<void*>(&cuLinkCreate)},
-    {"cuLinkAddData", reinterpret_cast<void*>(&cuLinkAddData)},
-    {"cuLinkAddFile", reinterpret_cast<void*>(&cuLinkAddFile)},
-    {"cuLinkComplete", reinterpret_cast<void*>(&cuLinkComplete)},
-    {"cuLinkDestroy", reinterpret_cast<void*>(&cuLinkDestroy)},
-    {"cuModuleGetTexRef", reinterpret_cast<void*>(&cuModuleGetTexRef)},
-    {"cuModuleGetSurfRef", reinterpret_cast<void*>(&cuModuleGetSurfRef)},
-    {"cuLibraryLoadData", reinterpret_cast<void*>(&cuLibraryLoadData)},
-    {"cuLibraryLoadFromFile", reinterpret_cast<void*>(&cuLibraryLoadFromFile)},
-    {"cuLibraryUnload", reinterpret_cast<void*>(&cuLibraryUnload)},
-    {"cuLibraryGetKernel", reinterpret_cast<void*>(&cuLibraryGetKernel)},
-    {"cuLibraryGetKernelCount", reinterpret_cast<void*>(&cuLibraryGetKernelCount)},
-    {"cuLibraryEnumerateKernels", reinterpret_cast<void*>(&cuLibraryEnumerateKernels)},
-    {"cuLibraryGetModule", reinterpret_cast<void*>(&cuLibraryGetModule)},
-    {"cuKernelGetFunction", reinterpret_cast<void*>(&cuKernelGetFunction)},
-    {"cuLibraryGetGlobal", reinterpret_cast<void*>(&cuLibraryGetGlobal)},
-    {"cuLibraryGetManaged", reinterpret_cast<void*>(&cuLibraryGetManaged)},
-    {"cuLibraryGetUnifiedFunction", reinterpret_cast<void*>(&cuLibraryGetUnifiedFunction)},
-    {"cuKernelGetAttribute", reinterpret_cast<void*>(&cuKernelGetAttribute)},
-    {"cuKernelSetAttribute", reinterpret_cast<void*>(&cuKernelSetAttribute)},
-    {"cuKernelSetCacheConfig", reinterpret_cast<void*>(&cuKernelSetCacheConfig)},
-    {"cuKernelGetName", reinterpret_cast<void*>(&cuKernelGetName)},
-    {"cuKernelGetParamInfo", reinterpret_cast<void*>(&cuKernelGetParamInfo)},
-    {"cuMemGetInfo", reinterpret_cast<void*>(&cuMemGetInfo)},
-    {"cuMemAlloc", reinterpret_cast<void*>(&cuMemAlloc)},
-    {"cuMemAllocPitch", reinterpret_cast<void*>(&cuMemAllocPitch)},
-    {"cuMemFree", reinterpret_cast<void*>(&cuMemFree)},
-    {"cuMemGetAddressRange", reinterpret_cast<void*>(&cuMemGetAddressRange)},
-    {"cuMemAllocHost", reinterpret_cast<void*>(&cuMemAllocHost)},
-    {"cuMemFreeHost", reinterpret_cast<void*>(&cuMemFreeHost)},
-    {"cuMemHostAlloc", reinterpret_cast<void*>(&cuMemHostAlloc)},
-    {"cuMemHostGetDevicePointer", reinterpret_cast<void*>(&cuMemHostGetDevicePointer)},
-    {"cuMemHostGetFlags", reinterpret_cast<void*>(&cuMemHostGetFlags)},
-    {"cuMemAllocManaged", reinterpret_cast<void*>(&cuMemAllocManaged)},
-    {"cuDeviceRegisterAsyncNotification", reinterpret_cast<void*>(&cuDeviceRegisterAsyncNotification)},
-    {"cuDeviceUnregisterAsyncNotification", reinterpret_cast<void*>(&cuDeviceUnregisterAsyncNotification)},
-    {"cuDeviceGetByPCIBusId", reinterpret_cast<void*>(&cuDeviceGetByPCIBusId)},
-    {"cuDeviceGetPCIBusId", reinterpret_cast<void*>(&cuDeviceGetPCIBusId)},
-    {"cuIpcGetEventHandle", reinterpret_cast<void*>(&cuIpcGetEventHandle)},
-    {"cuIpcOpenEventHandle", reinterpret_cast<void*>(&cuIpcOpenEventHandle)},
-    {"cuIpcGetMemHandle", reinterpret_cast<void*>(&cuIpcGetMemHandle)},
-    {"cuIpcOpenMemHandle", reinterpret_cast<void*>(&cuIpcOpenMemHandle)},
-    {"cuIpcCloseMemHandle", reinterpret_cast<void*>(&cuIpcCloseMemHandle)},
-    {"cuMemHostRegister", reinterpret_cast<void*>(&cuMemHostRegister)},
-    {"cuMemHostUnregister", reinterpret_cast<void*>(&cuMemHostUnregister)},
-    {"cuMemcpy", reinterpret_cast<void*>(&cuMemcpy)},
-    {"cuMemcpyPeer", reinterpret_cast<void*>(&cuMemcpyPeer)},
-    {"cuMemcpyHtoD", reinterpret_cast<void*>(&cuMemcpyHtoD)},
-    {"cuMemcpyDtoH", reinterpret_cast<void*>(&cuMemcpyDtoH)},
-    {"cuMemcpyDtoD", reinterpret_cast<void*>(&cuMemcpyDtoD)},
-    {"cuMemcpyDtoA", reinterpret_cast<void*>(&cuMemcpyDtoA)},
-    {"cuMemcpyAtoD", reinterpret_cast<void*>(&cuMemcpyAtoD)},
-    {"cuMemcpyHtoA", reinterpret_cast<void*>(&cuMemcpyHtoA)},
-    {"cuMemcpyAtoH", reinterpret_cast<void*>(&cuMemcpyAtoH)},
-    {"cuMemcpyAtoA", reinterpret_cast<void*>(&cuMemcpyAtoA)},
-    {"cuMemcpy2D", reinterpret_cast<void*>(&cuMemcpy2D)},
-    {"cuMemcpy2DUnaligned", reinterpret_cast<void*>(&cuMemcpy2DUnaligned)},
-    {"cuMemcpy3D", reinterpret_cast<void*>(&cuMemcpy3D)},
-    {"cuMemcpy3DPeer", reinterpret_cast<void*>(&cuMemcpy3DPeer)},
-    {"cuMemcpyAsync", reinterpret_cast<void*>(&cuMemcpyAsync)},
-    {"cuMemcpyPeerAsync", reinterpret_cast<void*>(&cuMemcpyPeerAsync)},
-    {"cuMemcpyHtoDAsync", reinterpret_cast<void*>(&cuMemcpyHtoDAsync)},
-    {"cuMemcpyDtoHAsync", reinterpret_cast<void*>(&cuMemcpyDtoHAsync)},
-    {"cuMemcpyDtoDAsync", reinterpret_cast<void*>(&cuMemcpyDtoDAsync)},
-    {"cuMemcpyHtoAAsync", reinterpret_cast<void*>(&cuMemcpyHtoAAsync)},
-    {"cuMemcpyAtoHAsync", reinterpret_cast<void*>(&cuMemcpyAtoHAsync)},
-    {"cuMemcpy2DAsync", reinterpret_cast<void*>(&cuMemcpy2DAsync)},
-    {"cuMemcpy3DAsync", reinterpret_cast<void*>(&cuMemcpy3DAsync)},
-    {"cuMemcpy3DPeerAsync", reinterpret_cast<void*>(&cuMemcpy3DPeerAsync)},
-    {"cuMemsetD8", reinterpret_cast<void*>(&cuMemsetD8)},
-    {"cuMemsetD16", reinterpret_cast<void*>(&cuMemsetD16)},
-    {"cuMemsetD32", reinterpret_cast<void*>(&cuMemsetD32)},
-    {"cuMemsetD2D8", reinterpret_cast<void*>(&cuMemsetD2D8)},
-    {"cuMemsetD2D16", reinterpret_cast<void*>(&cuMemsetD2D16)},
-    {"cuMemsetD2D32", reinterpret_cast<void*>(&cuMemsetD2D32)},
-    {"cuMemsetD8Async", reinterpret_cast<void*>(&cuMemsetD8Async)},
-    {"cuMemsetD16Async", reinterpret_cast<void*>(&cuMemsetD16Async)},
-    {"cuMemsetD32Async", reinterpret_cast<void*>(&cuMemsetD32Async)},
-    {"cuMemsetD2D8Async", reinterpret_cast<void*>(&cuMemsetD2D8Async)},
-    {"cuMemsetD2D16Async", reinterpret_cast<void*>(&cuMemsetD2D16Async)},
-    {"cuMemsetD2D32Async", reinterpret_cast<void*>(&cuMemsetD2D32Async)},
-    {"cuArrayCreate", reinterpret_cast<void*>(&cuArrayCreate)},
-    {"cuArrayGetDescriptor", reinterpret_cast<void*>(&cuArrayGetDescriptor)},
-    {"cuArrayGetSparseProperties", reinterpret_cast<void*>(&cuArrayGetSparseProperties)},
-    {"cuMipmappedArrayGetSparseProperties", reinterpret_cast<void*>(&cuMipmappedArrayGetSparseProperties)},
-    {"cuArrayGetMemoryRequirements", reinterpret_cast<void*>(&cuArrayGetMemoryRequirements)},
-    {"cuMipmappedArrayGetMemoryRequirements", reinterpret_cast<void*>(&cuMipmappedArrayGetMemoryRequirements)},
-    {"cuArrayGetPlane", reinterpret_cast<void*>(&cuArrayGetPlane)},
-    {"cuArrayDestroy", reinterpret_cast<void*>(&cuArrayDestroy)},
-    {"cuArray3DCreate", reinterpret_cast<void*>(&cuArray3DCreate)},
-    {"cuArray3DGetDescriptor", reinterpret_cast<void*>(&cuArray3DGetDescriptor)},
-    {"cuMipmappedArrayCreate", reinterpret_cast<void*>(&cuMipmappedArrayCreate)},
-    {"cuMipmappedArrayGetLevel", reinterpret_cast<void*>(&cuMipmappedArrayGetLevel)},
-    {"cuMipmappedArrayDestroy", reinterpret_cast<void*>(&cuMipmappedArrayDestroy)},
-    {"cuMemGetHandleForAddressRange", reinterpret_cast<void*>(&cuMemGetHandleForAddressRange)},
-    {"cuMemAddressReserve", reinterpret_cast<void*>(&cuMemAddressReserve)},
-    {"cuMemAddressFree", reinterpret_cast<void*>(&cuMemAddressFree)},
-    {"cuMemCreate", reinterpret_cast<void*>(&cuMemCreate)},
-    {"cuMemRelease", reinterpret_cast<void*>(&cuMemRelease)},
-    {"cuMemMap", reinterpret_cast<void*>(&cuMemMap)},
-    {"cuMemMapArrayAsync", reinterpret_cast<void*>(&cuMemMapArrayAsync)},
-    {"cuMemUnmap", reinterpret_cast<void*>(&cuMemUnmap)},
-    {"cuMemSetAccess", reinterpret_cast<void*>(&cuMemSetAccess)},
-    {"cuMemGetAccess", reinterpret_cast<void*>(&cuMemGetAccess)},
-    {"cuMemExportToShareableHandle", reinterpret_cast<void*>(&cuMemExportToShareableHandle)},
-    {"cuMemImportFromShareableHandle", reinterpret_cast<void*>(&cuMemImportFromShareableHandle)},
-    {"cuMemGetAllocationGranularity", reinterpret_cast<void*>(&cuMemGetAllocationGranularity)},
-    {"cuMemGetAllocationPropertiesFromHandle", reinterpret_cast<void*>(&cuMemGetAllocationPropertiesFromHandle)},
-    {"cuMemRetainAllocationHandle", reinterpret_cast<void*>(&cuMemRetainAllocationHandle)},
-    {"cuMemFreeAsync", reinterpret_cast<void*>(&cuMemFreeAsync)},
-    {"cuMemAllocAsync", reinterpret_cast<void*>(&cuMemAllocAsync)},
-    {"cuMemPoolTrimTo", reinterpret_cast<void*>(&cuMemPoolTrimTo)},
-    {"cuMemPoolSetAttribute", reinterpret_cast<void*>(&cuMemPoolSetAttribute)},
-    {"cuMemPoolGetAttribute", reinterpret_cast<void*>(&cuMemPoolGetAttribute)},
-    {"cuMemPoolSetAccess", reinterpret_cast<void*>(&cuMemPoolSetAccess)},
-    {"cuMemPoolGetAccess", reinterpret_cast<void*>(&cuMemPoolGetAccess)},
-    {"cuMemPoolCreate", reinterpret_cast<void*>(&cuMemPoolCreate)},
-    {"cuMemPoolDestroy", reinterpret_cast<void*>(&cuMemPoolDestroy)},
-    {"cuMemAllocFromPoolAsync", reinterpret_cast<void*>(&cuMemAllocFromPoolAsync)},
-    {"cuMemPoolExportToShareableHandle", reinterpret_cast<void*>(&cuMemPoolExportToShareableHandle)},
-    {"cuMemPoolImportFromShareableHandle", reinterpret_cast<void*>(&cuMemPoolImportFromShareableHandle)},
-    {"cuMemPoolExportPointer", reinterpret_cast<void*>(&cuMemPoolExportPointer)},
-    {"cuMemPoolImportPointer", reinterpret_cast<void*>(&cuMemPoolImportPointer)},
-    {"cuMulticastCreate", reinterpret_cast<void*>(&cuMulticastCreate)},
-    {"cuMulticastAddDevice", reinterpret_cast<void*>(&cuMulticastAddDevice)},
-    {"cuMulticastBindMem", reinterpret_cast<void*>(&cuMulticastBindMem)},
-    {"cuMulticastBindAddr", reinterpret_cast<void*>(&cuMulticastBindAddr)},
-    {"cuMulticastUnbind", reinterpret_cast<void*>(&cuMulticastUnbind)},
-    {"cuMulticastGetGranularity", reinterpret_cast<void*>(&cuMulticastGetGranularity)},
-    {"cuPointerGetAttribute", reinterpret_cast<void*>(&cuPointerGetAttribute)},
-    {"cuMemPrefetchAsync", reinterpret_cast<void*>(&cuMemPrefetchAsync)},
-    {"cuMemPrefetchAsync_v2", reinterpret_cast<void*>(&cuMemPrefetchAsync_v2)},
-    {"cuMemAdvise", reinterpret_cast<void*>(&cuMemAdvise)},
-    {"cuMemAdvise_v2", reinterpret_cast<void*>(&cuMemAdvise_v2)},
-    {"cuMemRangeGetAttribute", reinterpret_cast<void*>(&cuMemRangeGetAttribute)},
-    {"cuMemRangeGetAttributes", reinterpret_cast<void*>(&cuMemRangeGetAttributes)},
-    {"cuPointerSetAttribute", reinterpret_cast<void*>(&cuPointerSetAttribute)},
-    {"cuPointerGetAttributes", reinterpret_cast<void*>(&cuPointerGetAttributes)},
-    {"cuStreamCreate", reinterpret_cast<void*>(&cuStreamCreate)},
-    {"cuStreamCreateWithPriority", reinterpret_cast<void*>(&cuStreamCreateWithPriority)},
-    {"cuStreamGetPriority", reinterpret_cast<void*>(&cuStreamGetPriority)},
-    {"cuStreamGetFlags", reinterpret_cast<void*>(&cuStreamGetFlags)},
-    {"cuStreamGetId", reinterpret_cast<void*>(&cuStreamGetId)},
-    {"cuStreamGetCtx", reinterpret_cast<void*>(&cuStreamGetCtx)},
-    {"cuStreamWaitEvent", reinterpret_cast<void*>(&cuStreamWaitEvent)},
-    {"cuStreamAddCallback", reinterpret_cast<void*>(&cuStreamAddCallback)},
-    {"cuStreamBeginCapture", reinterpret_cast<void*>(&cuStreamBeginCapture)},
-    {"cuStreamBeginCaptureToGraph", reinterpret_cast<void*>(&cuStreamBeginCaptureToGraph)},
-    {"cuThreadExchangeStreamCaptureMode", reinterpret_cast<void*>(&cuThreadExchangeStreamCaptureMode)},
-    {"cuStreamEndCapture", reinterpret_cast<void*>(&cuStreamEndCapture)},
-    {"cuStreamIsCapturing", reinterpret_cast<void*>(&cuStreamIsCapturing)},
-    {"cuStreamGetCaptureInfo", reinterpret_cast<void*>(&cuStreamGetCaptureInfo)},
-    {"cuStreamGetCaptureInfo_v3", reinterpret_cast<void*>(&cuStreamGetCaptureInfo_v3)},
-    {"cuStreamUpdateCaptureDependencies", reinterpret_cast<void*>(&cuStreamUpdateCaptureDependencies)},
-    {"cuStreamUpdateCaptureDependencies_v2", reinterpret_cast<void*>(&cuStreamUpdateCaptureDependencies_v2)},
-    {"cuStreamAttachMemAsync", reinterpret_cast<void*>(&cuStreamAttachMemAsync)},
-    {"cuStreamQuery", reinterpret_cast<void*>(&cuStreamQuery)},
-    {"cuStreamSynchronize", reinterpret_cast<void*>(&cuStreamSynchronize)},
-    {"cuStreamDestroy", reinterpret_cast<void*>(&cuStreamDestroy)},
-    {"cuStreamCopyAttributes", reinterpret_cast<void*>(&cuStreamCopyAttributes)},
-    {"cuStreamGetAttribute", reinterpret_cast<void*>(&cuStreamGetAttribute)},
-    {"cuStreamSetAttribute", reinterpret_cast<void*>(&cuStreamSetAttribute)},
-    {"cuEventCreate", reinterpret_cast<void*>(&cuEventCreate)},
-    {"cuEventRecord", reinterpret_cast<void*>(&cuEventRecord)},
-    {"cuEventRecordWithFlags", reinterpret_cast<void*>(&cuEventRecordWithFlags)},
-    {"cuEventQuery", reinterpret_cast<void*>(&cuEventQuery)},
-    {"cuEventSynchronize", reinterpret_cast<void*>(&cuEventSynchronize)},
-    {"cuEventDestroy", reinterpret_cast<void*>(&cuEventDestroy)},
-    {"cuEventElapsedTime", reinterpret_cast<void*>(&cuEventElapsedTime)},
-    {"cuImportExternalMemory", reinterpret_cast<void*>(&cuImportExternalMemory)},
-    {"cuExternalMemoryGetMappedBuffer", reinterpret_cast<void*>(&cuExternalMemoryGetMappedBuffer)},
-    {"cuExternalMemoryGetMappedMipmappedArray", reinterpret_cast<void*>(&cuExternalMemoryGetMappedMipmappedArray)},
-    {"cuDestroyExternalMemory", reinterpret_cast<void*>(&cuDestroyExternalMemory)},
-    {"cuImportExternalSemaphore", reinterpret_cast<void*>(&cuImportExternalSemaphore)},
-    {"cuSignalExternalSemaphoresAsync", reinterpret_cast<void*>(&cuSignalExternalSemaphoresAsync)},
-    {"cuWaitExternalSemaphoresAsync", reinterpret_cast<void*>(&cuWaitExternalSemaphoresAsync)},
-    {"cuDestroyExternalSemaphore", reinterpret_cast<void*>(&cuDestroyExternalSemaphore)},
-    {"cuStreamWaitValue32", reinterpret_cast<void*>(&cuStreamWaitValue32)},
-    {"cuStreamWaitValue64", reinterpret_cast<void*>(&cuStreamWaitValue64)},
-    {"cuStreamWriteValue32", reinterpret_cast<void*>(&cuStreamWriteValue32)},
-    {"cuStreamWriteValue64", reinterpret_cast<void*>(&cuStreamWriteValue64)},
-    {"cuStreamBatchMemOp", reinterpret_cast<void*>(&cuStreamBatchMemOp)},
-    {"cuFuncGetAttribute", reinterpret_cast<void*>(&cuFuncGetAttribute)},
-    {"cuFuncSetAttribute", reinterpret_cast<void*>(&cuFuncSetAttribute)},
-    {"cuFuncSetCacheConfig", reinterpret_cast<void*>(&cuFuncSetCacheConfig)},
-    {"cuFuncGetModule", reinterpret_cast<void*>(&cuFuncGetModule)},
-    {"cuFuncGetName", reinterpret_cast<void*>(&cuFuncGetName)},
-    {"cuFuncGetParamInfo", reinterpret_cast<void*>(&cuFuncGetParamInfo)},
-    {"cuFuncIsLoaded", reinterpret_cast<void*>(&cuFuncIsLoaded)},
-    {"cuFuncLoad", reinterpret_cast<void*>(&cuFuncLoad)},
-    {"cuLaunchKernel", reinterpret_cast<void*>(&cuLaunchKernel)},
-    {"cuLaunchKernelEx", reinterpret_cast<void*>(&cuLaunchKernelEx)},
-    {"cuLaunchCooperativeKernel", reinterpret_cast<void*>(&cuLaunchCooperativeKernel)},
-    {"cuLaunchCooperativeKernelMultiDevice", reinterpret_cast<void*>(&cuLaunchCooperativeKernelMultiDevice)},
-    {"cuLaunchHostFunc", reinterpret_cast<void*>(&cuLaunchHostFunc)},
-    {"cuFuncSetBlockShape", reinterpret_cast<void*>(&cuFuncSetBlockShape)},
-    {"cuFuncSetSharedSize", reinterpret_cast<void*>(&cuFuncSetSharedSize)},
-    {"cuParamSetSize", reinterpret_cast<void*>(&cuParamSetSize)},
-    {"cuParamSeti", reinterpret_cast<void*>(&cuParamSeti)},
-    {"cuParamSetf", reinterpret_cast<void*>(&cuParamSetf)},
-    {"cuParamSetv", reinterpret_cast<void*>(&cuParamSetv)},
-    {"cuLaunch", reinterpret_cast<void*>(&cuLaunch)},
-    {"cuLaunchGrid", reinterpret_cast<void*>(&cuLaunchGrid)},
-    {"cuLaunchGridAsync", reinterpret_cast<void*>(&cuLaunchGridAsync)},
-    {"cuParamSetTexRef", reinterpret_cast<void*>(&cuParamSetTexRef)},
-    {"cuFuncSetSharedMemConfig", reinterpret_cast<void*>(&cuFuncSetSharedMemConfig)},
-    {"cuGraphCreate", reinterpret_cast<void*>(&cuGraphCreate)},
-    {"cuGraphAddKernelNode", reinterpret_cast<void*>(&cuGraphAddKernelNode)},
-    {"cuGraphKernelNodeGetParams", reinterpret_cast<void*>(&cuGraphKernelNodeGetParams)},
-    {"cuGraphKernelNodeSetParams", reinterpret_cast<void*>(&cuGraphKernelNodeSetParams)},
-    {"cuGraphAddMemcpyNode", reinterpret_cast<void*>(&cuGraphAddMemcpyNode)},
-    {"cuGraphMemcpyNodeGetParams", reinterpret_cast<void*>(&cuGraphMemcpyNodeGetParams)},
-    {"cuGraphMemcpyNodeSetParams", reinterpret_cast<void*>(&cuGraphMemcpyNodeSetParams)},
-    {"cuGraphAddMemsetNode", reinterpret_cast<void*>(&cuGraphAddMemsetNode)},
-    {"cuGraphMemsetNodeGetParams", reinterpret_cast<void*>(&cuGraphMemsetNodeGetParams)},
-    {"cuGraphMemsetNodeSetParams", reinterpret_cast<void*>(&cuGraphMemsetNodeSetParams)},
-    {"cuGraphAddHostNode", reinterpret_cast<void*>(&cuGraphAddHostNode)},
-    {"cuGraphHostNodeGetParams", reinterpret_cast<void*>(&cuGraphHostNodeGetParams)},
-    {"cuGraphHostNodeSetParams", reinterpret_cast<void*>(&cuGraphHostNodeSetParams)},
-    {"cuGraphAddChildGraphNode", reinterpret_cast<void*>(&cuGraphAddChildGraphNode)},
-    {"cuGraphChildGraphNodeGetGraph", reinterpret_cast<void*>(&cuGraphChildGraphNodeGetGraph)},
-    {"cuGraphAddEmptyNode", reinterpret_cast<void*>(&cuGraphAddEmptyNode)},
-    {"cuGraphAddEventRecordNode", reinterpret_cast<void*>(&cuGraphAddEventRecordNode)},
-    {"cuGraphEventRecordNodeGetEvent", reinterpret_cast<void*>(&cuGraphEventRecordNodeGetEvent)},
-    {"cuGraphEventRecordNodeSetEvent", reinterpret_cast<void*>(&cuGraphEventRecordNodeSetEvent)},
-    {"cuGraphAddEventWaitNode", reinterpret_cast<void*>(&cuGraphAddEventWaitNode)},
-    {"cuGraphEventWaitNodeGetEvent", reinterpret_cast<void*>(&cuGraphEventWaitNodeGetEvent)},
-    {"cuGraphEventWaitNodeSetEvent", reinterpret_cast<void*>(&cuGraphEventWaitNodeSetEvent)},
-    {"cuGraphAddExternalSemaphoresSignalNode", reinterpret_cast<void*>(&cuGraphAddExternalSemaphoresSignalNode)},
-    {"cuGraphExternalSemaphoresSignalNodeGetParams", reinterpret_cast<void*>(&cuGraphExternalSemaphoresSignalNodeGetParams)},
-    {"cuGraphExternalSemaphoresSignalNodeSetParams", reinterpret_cast<void*>(&cuGraphExternalSemaphoresSignalNodeSetParams)},
-    {"cuGraphAddExternalSemaphoresWaitNode", reinterpret_cast<void*>(&cuGraphAddExternalSemaphoresWaitNode)},
-    {"cuGraphExternalSemaphoresWaitNodeGetParams", reinterpret_cast<void*>(&cuGraphExternalSemaphoresWaitNodeGetParams)},
-    {"cuGraphExternalSemaphoresWaitNodeSetParams", reinterpret_cast<void*>(&cuGraphExternalSemaphoresWaitNodeSetParams)},
-    {"cuGraphAddBatchMemOpNode", reinterpret_cast<void*>(&cuGraphAddBatchMemOpNode)},
-    {"cuGraphBatchMemOpNodeGetParams", reinterpret_cast<void*>(&cuGraphBatchMemOpNodeGetParams)},
-    {"cuGraphBatchMemOpNodeSetParams", reinterpret_cast<void*>(&cuGraphBatchMemOpNodeSetParams)},
-    {"cuGraphExecBatchMemOpNodeSetParams", reinterpret_cast<void*>(&cuGraphExecBatchMemOpNodeSetParams)},
-    {"cuGraphAddMemAllocNode", reinterpret_cast<void*>(&cuGraphAddMemAllocNode)},
-    {"cuGraphMemAllocNodeGetParams", reinterpret_cast<void*>(&cuGraphMemAllocNodeGetParams)},
-    {"cuGraphAddMemFreeNode", reinterpret_cast<void*>(&cuGraphAddMemFreeNode)},
-    {"cuGraphMemFreeNodeGetParams", reinterpret_cast<void*>(&cuGraphMemFreeNodeGetParams)},
-    {"cuDeviceGraphMemTrim", reinterpret_cast<void*>(&cuDeviceGraphMemTrim)},
-    {"cuDeviceGetGraphMemAttribute", reinterpret_cast<void*>(&cuDeviceGetGraphMemAttribute)},
-    {"cuDeviceSetGraphMemAttribute", reinterpret_cast<void*>(&cuDeviceSetGraphMemAttribute)},
-    {"cuGraphClone", reinterpret_cast<void*>(&cuGraphClone)},
-    {"cuGraphNodeFindInClone", reinterpret_cast<void*>(&cuGraphNodeFindInClone)},
-    {"cuGraphNodeGetType", reinterpret_cast<void*>(&cuGraphNodeGetType)},
-    {"cuGraphGetNodes", reinterpret_cast<void*>(&cuGraphGetNodes)},
-    {"cuGraphGetRootNodes", reinterpret_cast<void*>(&cuGraphGetRootNodes)},
-    {"cuGraphGetEdges", reinterpret_cast<void*>(&cuGraphGetEdges)},
-    // {"cuGraphGetEdges_v2", reinterpret_cast<void*>(&cuGraphGetEdges_v2)},
-    {"cuGraphNodeGetDependencies", reinterpret_cast<void*>(&cuGraphNodeGetDependencies)},
-    // {"cuGraphNodeGetDependencies_v2", reinterpret_cast<void*>(&cuGraphNodeGetDependencies_v2)},
-    {"cuGraphNodeGetDependentNodes", reinterpret_cast<void*>(&cuGraphNodeGetDependentNodes)},
-    // {"cuGraphNodeGetDependentNodes_v2", reinterpret_cast<void*>(&cuGraphNodeGetDependentNodes_v2)},
-    {"cuGraphAddDependencies", reinterpret_cast<void*>(&cuGraphAddDependencies)},
-    // {"cuGraphAddDependencies_v2", reinterpret_cast<void*>(&cuGraphAddDependencies_v2)},
-    {"cuGraphRemoveDependencies", reinterpret_cast<void*>(&cuGraphRemoveDependencies)},
-    // {"cuGraphRemoveDependencies_v2", reinterpret_cast<void*>(&cuGraphRemoveDependencies_v2)},
-    {"cuGraphDestroyNode", reinterpret_cast<void*>(&cuGraphDestroyNode)},
-    {"cuGraphInstantiate", reinterpret_cast<void*>(&cuGraphInstantiate)},
-    {"cuGraphInstantiateWithParams", reinterpret_cast<void*>(&cuGraphInstantiateWithParams)},
-    {"cuGraphExecGetFlags", reinterpret_cast<void*>(&cuGraphExecGetFlags)},
-    {"cuGraphExecKernelNodeSetParams", reinterpret_cast<void*>(&cuGraphExecKernelNodeSetParams)},
-    {"cuGraphExecMemcpyNodeSetParams", reinterpret_cast<void*>(&cuGraphExecMemcpyNodeSetParams)},
-    {"cuGraphExecMemsetNodeSetParams", reinterpret_cast<void*>(&cuGraphExecMemsetNodeSetParams)},
-    {"cuGraphExecHostNodeSetParams", reinterpret_cast<void*>(&cuGraphExecHostNodeSetParams)},
-    {"cuGraphExecChildGraphNodeSetParams", reinterpret_cast<void*>(&cuGraphExecChildGraphNodeSetParams)},
-    {"cuGraphExecEventRecordNodeSetEvent", reinterpret_cast<void*>(&cuGraphExecEventRecordNodeSetEvent)},
-    {"cuGraphExecEventWaitNodeSetEvent", reinterpret_cast<void*>(&cuGraphExecEventWaitNodeSetEvent)},
-    {"cuGraphExecExternalSemaphoresSignalNodeSetParams", reinterpret_cast<void*>(&cuGraphExecExternalSemaphoresSignalNodeSetParams)},
-    {"cuGraphExecExternalSemaphoresWaitNodeSetParams", reinterpret_cast<void*>(&cuGraphExecExternalSemaphoresWaitNodeSetParams)},
-    {"cuGraphNodeSetEnabled", reinterpret_cast<void*>(&cuGraphNodeSetEnabled)},
-    {"cuGraphNodeGetEnabled", reinterpret_cast<void*>(&cuGraphNodeGetEnabled)},
-    {"cuGraphUpload", reinterpret_cast<void*>(&cuGraphUpload)},
-    {"cuGraphLaunch", reinterpret_cast<void*>(&cuGraphLaunch)},
-    {"cuGraphExecDestroy", reinterpret_cast<void*>(&cuGraphExecDestroy)},
-    {"cuGraphDestroy", reinterpret_cast<void*>(&cuGraphDestroy)},
-    {"cuGraphExecUpdate", reinterpret_cast<void*>(&cuGraphExecUpdate)},
-    {"cuGraphKernelNodeCopyAttributes", reinterpret_cast<void*>(&cuGraphKernelNodeCopyAttributes)},
-    {"cuGraphKernelNodeGetAttribute", reinterpret_cast<void*>(&cuGraphKernelNodeGetAttribute)},
-    {"cuGraphKernelNodeSetAttribute", reinterpret_cast<void*>(&cuGraphKernelNodeSetAttribute)},
-    {"cuGraphDebugDotPrint", reinterpret_cast<void*>(&cuGraphDebugDotPrint)},
-    {"cuUserObjectCreate", reinterpret_cast<void*>(&cuUserObjectCreate)},
-    {"cuUserObjectRetain", reinterpret_cast<void*>(&cuUserObjectRetain)},
-    {"cuUserObjectRelease", reinterpret_cast<void*>(&cuUserObjectRelease)},
-    {"cuGraphRetainUserObject", reinterpret_cast<void*>(&cuGraphRetainUserObject)},
-    {"cuGraphReleaseUserObject", reinterpret_cast<void*>(&cuGraphReleaseUserObject)},
-    {"cuGraphAddNode", reinterpret_cast<void*>(&cuGraphAddNode)},
-    // {"cuGraphAddNode_v2", reinterpret_cast<void*>(&cuGraphAddNode_v2)},
-    {"cuGraphNodeSetParams", reinterpret_cast<void*>(&cuGraphNodeSetParams)},
-    {"cuGraphExecNodeSetParams", reinterpret_cast<void*>(&cuGraphExecNodeSetParams)},
-    {"cuGraphConditionalHandleCreate", reinterpret_cast<void*>(&cuGraphConditionalHandleCreate)},
-    {"cuOccupancyMaxActiveBlocksPerMultiprocessor", reinterpret_cast<void*>(&cuOccupancyMaxActiveBlocksPerMultiprocessor)},
-    {"cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags", reinterpret_cast<void*>(&cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags)},
-    {"cuOccupancyMaxPotentialBlockSize", reinterpret_cast<void*>(&cuOccupancyMaxPotentialBlockSize)},
-    {"cuOccupancyMaxPotentialBlockSizeWithFlags", reinterpret_cast<void*>(&cuOccupancyMaxPotentialBlockSizeWithFlags)},
-    {"cuOccupancyAvailableDynamicSMemPerBlock", reinterpret_cast<void*>(&cuOccupancyAvailableDynamicSMemPerBlock)},
-    {"cuOccupancyMaxPotentialClusterSize", reinterpret_cast<void*>(&cuOccupancyMaxPotentialClusterSize)},
-    {"cuOccupancyMaxActiveClusters", reinterpret_cast<void*>(&cuOccupancyMaxActiveClusters)},
-    {"cuTexRefSetArray", reinterpret_cast<void*>(&cuTexRefSetArray)},
-    {"cuTexRefSetMipmappedArray", reinterpret_cast<void*>(&cuTexRefSetMipmappedArray)},
-    {"cuTexRefSetAddress", reinterpret_cast<void*>(&cuTexRefSetAddress)},
-    {"cuTexRefSetAddress2D", reinterpret_cast<void*>(&cuTexRefSetAddress2D)},
-    {"cuTexRefSetFormat", reinterpret_cast<void*>(&cuTexRefSetFormat)},
-    {"cuTexRefSetAddressMode", reinterpret_cast<void*>(&cuTexRefSetAddressMode)},
-    {"cuTexRefSetFilterMode", reinterpret_cast<void*>(&cuTexRefSetFilterMode)},
-    {"cuTexRefSetMipmapFilterMode", reinterpret_cast<void*>(&cuTexRefSetMipmapFilterMode)},
-    {"cuTexRefSetMipmapLevelBias", reinterpret_cast<void*>(&cuTexRefSetMipmapLevelBias)},
-    {"cuTexRefSetMipmapLevelClamp", reinterpret_cast<void*>(&cuTexRefSetMipmapLevelClamp)},
-    {"cuTexRefSetMaxAnisotropy", reinterpret_cast<void*>(&cuTexRefSetMaxAnisotropy)},
-    {"cuTexRefSetBorderColor", reinterpret_cast<void*>(&cuTexRefSetBorderColor)},
-    {"cuTexRefSetFlags", reinterpret_cast<void*>(&cuTexRefSetFlags)},
-    {"cuTexRefGetAddress", reinterpret_cast<void*>(&cuTexRefGetAddress)},
-    {"cuTexRefGetArray", reinterpret_cast<void*>(&cuTexRefGetArray)},
-    {"cuTexRefGetMipmappedArray", reinterpret_cast<void*>(&cuTexRefGetMipmappedArray)},
-    {"cuTexRefGetAddressMode", reinterpret_cast<void*>(&cuTexRefGetAddressMode)},
-    {"cuTexRefGetFilterMode", reinterpret_cast<void*>(&cuTexRefGetFilterMode)},
-    {"cuTexRefGetFormat", reinterpret_cast<void*>(&cuTexRefGetFormat)},
-    {"cuTexRefGetMipmapFilterMode", reinterpret_cast<void*>(&cuTexRefGetMipmapFilterMode)},
-    {"cuTexRefGetMipmapLevelBias", reinterpret_cast<void*>(&cuTexRefGetMipmapLevelBias)},
-    {"cuTexRefGetMipmapLevelClamp", reinterpret_cast<void*>(&cuTexRefGetMipmapLevelClamp)},
-    {"cuTexRefGetMaxAnisotropy", reinterpret_cast<void*>(&cuTexRefGetMaxAnisotropy)},
-    {"cuTexRefGetBorderColor", reinterpret_cast<void*>(&cuTexRefGetBorderColor)},
-    {"cuTexRefGetFlags", reinterpret_cast<void*>(&cuTexRefGetFlags)},
-    {"cuTexRefCreate", reinterpret_cast<void*>(&cuTexRefCreate)},
-    {"cuTexRefDestroy", reinterpret_cast<void*>(&cuTexRefDestroy)},
-    {"cuSurfRefSetArray", reinterpret_cast<void*>(&cuSurfRefSetArray)},
-    {"cuSurfRefGetArray", reinterpret_cast<void*>(&cuSurfRefGetArray)},
-    {"cuTexObjectCreate", reinterpret_cast<void*>(&cuTexObjectCreate)},
-    {"cuTexObjectDestroy", reinterpret_cast<void*>(&cuTexObjectDestroy)},
-    {"cuTexObjectGetResourceDesc", reinterpret_cast<void*>(&cuTexObjectGetResourceDesc)},
-    {"cuTexObjectGetTextureDesc", reinterpret_cast<void*>(&cuTexObjectGetTextureDesc)},
-    {"cuTexObjectGetResourceViewDesc", reinterpret_cast<void*>(&cuTexObjectGetResourceViewDesc)},
-    {"cuSurfObjectCreate", reinterpret_cast<void*>(&cuSurfObjectCreate)},
-    {"cuSurfObjectDestroy", reinterpret_cast<void*>(&cuSurfObjectDestroy)},
-    {"cuSurfObjectGetResourceDesc", reinterpret_cast<void*>(&cuSurfObjectGetResourceDesc)},
-    {"cuTensorMapEncodeTiled", reinterpret_cast<void*>(&cuTensorMapEncodeTiled)},
-    {"cuTensorMapEncodeIm2col", reinterpret_cast<void*>(&cuTensorMapEncodeIm2col)},
-    {"cuTensorMapReplaceAddress", reinterpret_cast<void*>(&cuTensorMapReplaceAddress)},
-    {"cuDeviceCanAccessPeer", reinterpret_cast<void*>(&cuDeviceCanAccessPeer)},
-    {"cuCtxEnablePeerAccess", reinterpret_cast<void*>(&cuCtxEnablePeerAccess)},
-    {"cuCtxDisablePeerAccess", reinterpret_cast<void*>(&cuCtxDisablePeerAccess)},
-    {"cuDeviceGetP2PAttribute", reinterpret_cast<void*>(&cuDeviceGetP2PAttribute)},
-    {"cuGraphicsUnregisterResource", reinterpret_cast<void*>(&cuGraphicsUnregisterResource)},
-    {"cuGraphicsSubResourceGetMappedArray", reinterpret_cast<void*>(&cuGraphicsSubResourceGetMappedArray)},
-    {"cuGraphicsResourceGetMappedMipmappedArray", reinterpret_cast<void*>(&cuGraphicsResourceGetMappedMipmappedArray)},
-    {"cuGraphicsResourceGetMappedPointer", reinterpret_cast<void*>(&cuGraphicsResourceGetMappedPointer)},
-    {"cuGraphicsResourceSetMapFlags", reinterpret_cast<void*>(&cuGraphicsResourceSetMapFlags)},
-    {"cuGraphicsMapResources", reinterpret_cast<void*>(&cuGraphicsMapResources)},
-    {"cuGraphicsUnmapResources", reinterpret_cast<void*>(&cuGraphicsUnmapResources)},
-    {"cuCoredumpGetAttribute", reinterpret_cast<void*>(&cuCoredumpGetAttribute)},
-    {"cuCoredumpGetAttributeGlobal", reinterpret_cast<void*>(&cuCoredumpGetAttributeGlobal)},
-    {"cuCoredumpSetAttribute", reinterpret_cast<void*>(&cuCoredumpSetAttribute)},
-    {"cuCoredumpSetAttributeGlobal", reinterpret_cast<void*>(&cuCoredumpSetAttributeGlobal)},
-    {"cuGetExportTable", reinterpret_cast<void*>(&cuGetExportTable)},
-    {"cuGreenCtxCreate", reinterpret_cast<void*>(&cuGreenCtxCreate)},
-    {"cuGreenCtxDestroy", reinterpret_cast<void*>(&cuGreenCtxDestroy)},
-    {"cuCtxFromGreenCtx", reinterpret_cast<void*>(&cuCtxFromGreenCtx)},
-    {"cuDeviceGetDevResource", reinterpret_cast<void*>(&cuDeviceGetDevResource)},
-    {"cuCtxGetDevResource", reinterpret_cast<void*>(&cuCtxGetDevResource)},
-    {"cuGreenCtxGetDevResource", reinterpret_cast<void*>(&cuGreenCtxGetDevResource)},
-    {"cuDevSmResourceSplitByCount", reinterpret_cast<void*>(&cuDevSmResourceSplitByCount)},
-    {"cuDevResourceGenerateDesc", reinterpret_cast<void*>(&cuDevResourceGenerateDesc)},
-    {"cuGreenCtxRecordEvent", reinterpret_cast<void*>(&cuGreenCtxRecordEvent)},
-    {"cuGreenCtxWaitEvent", reinterpret_cast<void*>(&cuGreenCtxWaitEvent)},
-    {"cuStreamGetGreenCtx", reinterpret_cast<void*>(&cuStreamGetGreenCtx)},
-    // {"cuTexRefSetAddress2D_v2", reinterpret_cast<void*>(&cuTexRefSetAddress2D_v2)},
-    // {"cuMemcpyHtoD_v2", reinterpret_cast<void*>(&cuMemcpyHtoD_v2)},
-    // {"cuMemcpyDtoH_v2", reinterpret_cast<void*>(&cuMemcpyDtoH_v2)},
-    // {"cuMemcpyDtoD_v2", reinterpret_cast<void*>(&cuMemcpyDtoD_v2)},
-    // {"cuMemcpyDtoA_v2", reinterpret_cast<void*>(&cuMemcpyDtoA_v2)},
-    // {"cuMemcpyAtoD_v2", reinterpret_cast<void*>(&cuMemcpyAtoD_v2)},
-    // {"cuMemcpyHtoA_v2", reinterpret_cast<void*>(&cuMemcpyHtoA_v2)},
-    // {"cuMemcpyAtoH_v2", reinterpret_cast<void*>(&cuMemcpyAtoH_v2)},
-    // {"cuMemcpyAtoA_v2", reinterpret_cast<void*>(&cuMemcpyAtoA_v2)},
-    // {"cuMemcpyHtoAAsync_v2", reinterpret_cast<void*>(&cuMemcpyHtoAAsync_v2)},
-    // {"cuMemcpyAtoHAsync_v2", reinterpret_cast<void*>(&cuMemcpyAtoHAsync_v2)},
-    // {"cuMemcpy2D_v2", reinterpret_cast<void*>(&cuMemcpy2D_v2)},
-    // {"cuMemcpy2DUnaligned_v2", reinterpret_cast<void*>(&cuMemcpy2DUnaligned_v2)},
-    // {"cuMemcpy3D_v2", reinterpret_cast<void*>(&cuMemcpy3D_v2)},
-    // {"cuMemcpyHtoDAsync_v2", reinterpret_cast<void*>(&cuMemcpyHtoDAsync_v2)},
-    // {"cuMemcpyDtoHAsync_v2", reinterpret_cast<void*>(&cuMemcpyDtoHAsync_v2)},
-    // {"cuMemcpyDtoDAsync_v2", reinterpret_cast<void*>(&cuMemcpyDtoDAsync_v2)},
-    // {"cuMemcpy2DAsync_v2", reinterpret_cast<void*>(&cuMemcpy2DAsync_v2)},
-    // {"cuMemcpy3DAsync_v2", reinterpret_cast<void*>(&cuMemcpy3DAsync_v2)},
-    // {"cuMemsetD8_v2", reinterpret_cast<void*>(&cuMemsetD8_v2)},
-    // {"cuMemsetD16_v2", reinterpret_cast<void*>(&cuMemsetD16_v2)},
-    // {"cuMemsetD32_v2", reinterpret_cast<void*>(&cuMemsetD32_v2)},
-    // {"cuMemsetD2D8_v2", reinterpret_cast<void*>(&cuMemsetD2D8_v2)},
-    // {"cuMemsetD2D16_v2", reinterpret_cast<void*>(&cuMemsetD2D16_v2)},
-    // {"cuMemsetD2D32_v2", reinterpret_cast<void*>(&cuMemsetD2D32_v2)},
-    {"cuStreamWriteValue32_ptsz", reinterpret_cast<void*>(&cuStreamWriteValue32_ptsz)},
-    {"cuStreamWaitValue32_ptsz", reinterpret_cast<void*>(&cuStreamWaitValue32_ptsz)},
-    {"cuStreamWriteValue64_ptsz", reinterpret_cast<void*>(&cuStreamWriteValue64_ptsz)},
-    {"cuStreamWaitValue64_ptsz", reinterpret_cast<void*>(&cuStreamWaitValue64_ptsz)},
-    {"cuStreamBatchMemOp_ptsz", reinterpret_cast<void*>(&cuStreamBatchMemOp_ptsz)},
-    // {"cuStreamWriteValue32_v2", reinterpret_cast<void*>(&cuStreamWriteValue32_v2)},
-    // {"cuStreamWaitValue32_v2", reinterpret_cast<void*>(&cuStreamWaitValue32_v2)},
-    // {"cuStreamWriteValue64_v2", reinterpret_cast<void*>(&cuStreamWriteValue64_v2)},
-    // {"cuStreamWaitValue64_v2", reinterpret_cast<void*>(&cuStreamWaitValue64_v2)},
-    // {"cuStreamBatchMemOp_v2", reinterpret_cast<void*>(&cuStreamBatchMemOp_v2)},
-    {"cuStreamBeginCapture_ptsz", reinterpret_cast<void*>(&cuStreamBeginCapture_ptsz)},
-    // {"cuStreamBeginCapture_v2", reinterpret_cast<void*>(&cuStreamBeginCapture_v2)},
-    {"cuStreamGetCaptureInfo_ptsz", reinterpret_cast<void*>(&cuStreamGetCaptureInfo_ptsz)},
-    // {"cuStreamGetCaptureInfo_v2", reinterpret_cast<void*>(&cuStreamGetCaptureInfo_v2)},
-    // {"cuGraphInstantiate_v2", reinterpret_cast<void*>(&cuGraphInstantiate_v2)},
-};
-
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuGetProcAddress(const char * symbol, void * * pfn, int cudaVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus) {
-    HOOK_TRACE_PROFILE("cuGetProcAddress ?");
-    if (!strcmp(symbol, "cuGetProcAddress")) {
-        *pfn = reinterpret_cast<void *>(&cuGetProcAddress);
-        printf("%p:%p\n",*pfn,&cuGetProcAddress);
-        return CUDA_SUCCESS;
-    }
-    
-    auto funcIter=functionMap.find(symbol);
-    if (funcIter!=functionMap.end()){
-        printf("hook %s: %p\n",symbol,funcIter->second);
-
-        *pfn=funcIter->second;
-        return CUDA_SUCCESS;
-    }else{
-        printf("failure:%s\n",symbol);
-        return CUDA_ERROR_NOT_FOUND;
-    }
-
-
-};
