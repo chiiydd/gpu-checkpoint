@@ -1,10 +1,8 @@
 #include<cuda.h>
-
 #include <cstdlib>
 #include <cstring>
 #include<stdio.h>
 #include<communication.h>
-
 #include<sys/socket.h>
 #include<sys/un.h>
 #include <unistd.h>
@@ -34,8 +32,27 @@ std::string to_string(CuDriverCall call) {
         case CuDriverCall::CuDevicePrimaryCtxRelease: return "CuDevicePrimaryCtxRelease";
         case CuDriverCall::CuCtxPushCurrent: return "CuCtxPushCurrent";
         case CuDriverCall::CuInit: return "CuInit";
+        case CuDriverCall::CuCtxCreate: return "CuCtxCreate";
+        case CuDriverCall::CuLibraryGetModule: return "CuLibraryGetModule";
+        case CuDriverCall::CuModuleGetFunction: return "CuModuleGetFunction";
+        case CuDriverCall::CuLaunchKernel: return "CuLaunchKernel";
         default: return "Unknown";
     }
+}
+void   launch_kernel_proxy(CuDriverCallStructure * request,CuDriverCallReplyStructure * reply,void * parametersMetadata){
+    void **cuda_args;
+    uint16_t *arg_offsets;
+    size_t param_num = *((size_t*)parametersMetadata);
+    arg_offsets = (uint16_t*)(parametersMetadata+sizeof(size_t));
+    cuda_args = (void **)malloc(param_num*sizeof(void*));
+    for (size_t i = 0; i < param_num; ++i) {
+        cuda_args[i] = parametersMetadata+sizeof(size_t)+param_num*sizeof(uint16_t)+arg_offsets[i];
+    }
+
+    reply->result = cuLaunchKernel(request->params.cuLaunchKernel.f, 
+            request->params.cuLaunchKernel.gridDimX,request->params.cuLaunchKernel.gridDimY, request->params.cuLaunchKernel.gridDimZ, 
+            request->params.cuLaunchKernel.blockDimX, request->params.cuLaunchKernel.blockDimY, request->params.cuLaunchKernel.blockDimZ,
+            request->params.cuLaunchKernel.sharedMemBytes, request->params.cuLaunchKernel.hStream, cuda_args, NULL);
 }
 CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCallReplyStructure * reply);
 int proxy_init(){
@@ -125,6 +142,11 @@ void proxy_start(){
 CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCallReplyStructure * reply){
     
     void * buffer;
+    char * name;
+    CUjit_option * jitOptions;
+    void ** jitOptionValues;
+    CUlibraryOption * libraryOptions;
+    void ** libraryOptionValues;
     switch (request->op) {
     
         case CuDriverCall::CuDriverGetVersion:
@@ -132,13 +154,24 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
             break;
         case CuDriverCall::CuInit:
                 reply->result=cuInit(request->params.cuInit.flags);
+                printf("CuInit:%d\n",reply->result);
             break;
         
+        case CuDriverCall::CuDeviceGetUuid:
+                CUuuid uuid;
+                reply->result=cuDeviceGetUuid(&uuid, request->params.cuDeviceGetUuid.dev);
+                if(reply->result==CUDA_SUCCESS){
+                    memcpy(reply->returnParams.uuid,uuid.bytes,sizeof(uuid.bytes));
+                }
+            break;
         case CuDriverCall::CuGetExportTable:
             break;
         
         case CuDriverCall::CuModuleGetLoadingMode:
             reply->result=cuModuleGetLoadingMode(&reply->returnParams.mode);
+            printf("cuModuleGetLoadingMode:%d\n",reply->returnParams.mode);
+            printf("cuModuleGetLoadingMode result:%d\n",reply->result);
+            break;
         case  CuDriverCall::CuMemAlloc:
 
             reply->result=cuMemAlloc_v2(&reply->returnParams.dptr, request->params.cuMemAlloc.size);
@@ -191,9 +224,9 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
             if(write(socket_handle, buffer, sizeof(buffer))<0){
                 perror("CuDeviceGetName:writing to cilent fails.\n");
             }
+            free(buffer);
             break;
-        case CuDriverCall::CuDeviceGetUuid:
-            break;
+
         case CuDriverCall::CuDevicePrimaryCtxRelease:
             reply->result=cuDevicePrimaryCtxRelease(request->params.cuDevicePrimaryCtxRelease.dev);
             break;
@@ -205,9 +238,63 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
             break;
 
         case CuDriverCall::CuLibraryLoadData:
-            
+            if(request->params.cuLibraryLoadData.numJitOptions!=0){
+                jitOptions=(CUjit_option *)malloc(sizeof(CUjit_option)*request->params.cuLibraryLoadData.numJitOptions);
+                if(read(socket_handle,jitOptions,sizeof(CUjit_option)*request->params.cuLibraryLoadData.numJitOptions)<0){
+                    perror("CuLibraryLoadData:reading from cilent fails.\n");
+                    exit(EXIT_FAILURE);
+                }
+                jitOptionValues=(void **)malloc(sizeof(void *)*request->params.cuLibraryLoadData.numJitOptions);
+                for(int i=0;i<request->params.cuLibraryLoadData.numJitOptions;i++){
+                    jitOptionValues[i]=malloc(sizeof(int));
+                    if(read(socket_handle,jitOptionValues[i],sizeof(int))<0){
+                        perror("CuLibraryLoadData:reading from cilent fails.\n");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+            }
+            if(request->params.cuLibraryLoadData.numLibraryOptions!=0){
+                libraryOptions=(CUlibraryOption *)malloc(sizeof(CUlibraryOption)*request->params.cuLibraryLoadData.numLibraryOptions);
+                if(read(socket_handle,libraryOptions,sizeof(CUjit_option)*request->params.cuLibraryLoadData.numLibraryOptions)<0){
+                    perror("CuLibraryLoadData:reading from cilent fails.\n");
+                    exit(EXIT_FAILURE);
+                }
+                libraryOptionValues=(void **)malloc(sizeof(void *)*request->params.cuLibraryLoadData.numLibraryOptions);
+                for(int i=0;i<request->params.cuLibraryLoadData.numLibraryOptions;i++){
+                    libraryOptionValues[i]=malloc(sizeof(int));
+                    if(read(socket_handle,libraryOptionValues[i],sizeof(int))<0){
+                        perror("CuLibraryLoadData:reading from cilent fails.\n");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+            }
+            buffer=malloc(request->params.cuLibraryLoadData.fatbinSize);
+            if(read(socket_handle,buffer,request->params.cuLibraryLoadData.fatbinSize)<0){
+                perror("CuLibraryLoadData:reading fat binary from cilent fails.\n");
+                exit(EXIT_FAILURE);
+            }
+            reply->result=cuLibraryLoadData(&reply->returnParams.lib,buffer,jitOptions,jitOptionValues,request->params.cuLibraryLoadData.numJitOptions,libraryOptions,libraryOptionValues,request->params.cuLibraryLoadData.numLibraryOptions);
+            free(buffer);
             break;
-        
+        case CuDriverCall::CuLaunchKernel:
+            if(read(socket_handle,buffer,request->params.cuLaunchKernel.parametersMetadataLen)<0){
+                perror("CuLaunchKernel:reading parametersMetadata from cilent fails.\n");
+                exit(EXIT_FAILURE);
+            }
+            launch_kernel_proxy(request, reply, buffer);
+            break;
+        case CuDriverCall::CuLibraryGetModule:
+            reply->result= cuLibraryGetModule(&reply->returnParams.mod,request->params.cuLibraryGetModule.library);
+            break;
+        case CuDriverCall::CuModuleGetFunction:
+            name=(char *)malloc(request->params.cuModuleGetFunction.nameLength);
+            if(read(socket_handle, name, request->params.cuModuleGetFunction.nameLength)<0){
+                perror("CuModuleGetFunction:reading from cilent fails.\n");
+                exit(EXIT_FAILURE);
+            }
+            reply->result=cuModuleGetFunction(&reply->returnParams.hfunc,request->params.cuModuleGetFunction.mod,request->params.cuModuleGetFunction.name);
+            free(name);
+            break;
         default:
             break;
     }

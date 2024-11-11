@@ -1,30 +1,384 @@
+#include <cstddef>
 #include <cstring>
-#include <cuda_original.h>
+#include <cuda.h>
 #include <cstdio>
 #include "cuda_hook.h"
 
 #include <string>
 #include <unordered_map>
+#include <elf.h>
+#include <iostream>
 #include "macro_common.h"
-
-
+#include "communication.h"
+#include "communicator.h"
+#include "cpu-elf2.h"
 
 std::unordered_map<std::string, CuDriverFunction> cuDriverFunctionTable;
 // 定义一个普通函数指针来存储 cuInit 的拦截实现
 
+list kernel_infos;
+std::string getCUjitOptionName(CUjit_option option) {
+    switch (option) {
+        case CU_JIT_MAX_REGISTERS: return "CU_JIT_MAX_REGISTERS";
+        case CU_JIT_THREADS_PER_BLOCK: return "CU_JIT_THREADS_PER_BLOCK";
+        case CU_JIT_WALL_TIME: return "CU_JIT_WALL_TIME";
+        case CU_JIT_INFO_LOG_BUFFER: return "CU_JIT_INFO_LOG_BUFFER";
+        case CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES: return "CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES";
+        case CU_JIT_ERROR_LOG_BUFFER: return "CU_JIT_ERROR_LOG_BUFFER";
+        case CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES: return "CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES";
+        case CU_JIT_OPTIMIZATION_LEVEL: return "CU_JIT_OPTIMIZATION_LEVEL";
+        case CU_JIT_TARGET_FROM_CUCONTEXT: return "CU_JIT_TARGET_FROM_CUCONTEXT";
+        case CU_JIT_TARGET: return "CU_JIT_TARGET";
+        case CU_JIT_FALLBACK_STRATEGY: return "CU_JIT_FALLBACK_STRATEGY";
+        case CU_JIT_GENERATE_DEBUG_INFO: return "CU_JIT_GENERATE_DEBUG_INFO";
+        case CU_JIT_LOG_VERBOSE: return "CU_JIT_LOG_VERBOSE";
+        case CU_JIT_GENERATE_LINE_INFO: return "CU_JIT_GENERATE_LINE_INFO";
+        case CU_JIT_CACHE_MODE: return "CU_JIT_CACHE_MODE";
+        case CU_JIT_NEW_SM3X_OPT: return "CU_JIT_NEW_SM3X_OPT";
+        case CU_JIT_FAST_COMPILE: return "CU_JIT_FAST_COMPILE";
+        case CU_JIT_GLOBAL_SYMBOL_NAMES: return "CU_JIT_GLOBAL_SYMBOL_NAMES";
+        case CU_JIT_GLOBAL_SYMBOL_ADDRESSES: return "CU_JIT_GLOBAL_SYMBOL_ADDRESSES";
+        case CU_JIT_GLOBAL_SYMBOL_COUNT: return "CU_JIT_GLOBAL_SYMBOL_COUNT";
+        case CU_JIT_LTO: return "CU_JIT_LTO";
+        case CU_JIT_FTZ: return "CU_JIT_FTZ";
+        case CU_JIT_PREC_DIV: return "CU_JIT_PREC_DIV";
+        case CU_JIT_PREC_SQRT: return "CU_JIT_PREC_SQRT";
+        case CU_JIT_FMA: return "CU_JIT_FMA";
+        case CU_JIT_REFERENCED_KERNEL_NAMES: return "CU_JIT_REFERENCED_KERNEL_NAMES";
+        case CU_JIT_REFERENCED_KERNEL_COUNT: return "CU_JIT_REFERENCED_KERNEL_COUNT";
+        case CU_JIT_REFERENCED_VARIABLE_NAMES: return "CU_JIT_REFERENCED_VARIABLE_NAMES";
+        case CU_JIT_REFERENCED_VARIABLE_COUNT: return "CU_JIT_REFERENCED_VARIABLE_COUNT";
+        case CU_JIT_OPTIMIZE_UNUSED_DEVICE_VARIABLES: return "CU_JIT_OPTIMIZE_UNUSED_DEVICE_VARIABLES";
+        case CU_JIT_POSITION_INDEPENDENT_CODE: return "CU_JIT_POSITION_INDEPENDENT_CODE";
+        case CU_JIT_MIN_CTA_PER_SM: return "CU_JIT_MIN_CTA_PER_SM";
+        case CU_JIT_MAX_THREADS_PER_BLOCK: return "CU_JIT_MAX_THREADS_PER_BLOCK";
+        case CU_JIT_OVERRIDE_DIRECTIVE_VALUES: return "CU_JIT_OVERRIDE_DIRECTIVE_VALUES";
+        case CU_JIT_NUM_OPTIONS: return "CU_JIT_NUM_OPTIONS";
+        default: return "Unknown Option";
+    }
+}
+
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuInit(unsigned int Flags) {
+    
+    HOOK_TRACE_PROFILE("cuInit");
+
+    CuDriverCallStructure request={
+        .op= CuDriverCall::CuInit,
+        .params={.cuInit{.flags=Flags}},
+    };
+    CuDriverCallReplyStructure reply;
+    printf("cuInit flags:%u\n",Flags);
+    communicate_with_server(NULL, &request, &reply);
+    return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetLoadingMode(CUmoduleLoadingMode * mode) {
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuModuleGetLoadingMode,
+    };
+    CuDriverCallReplyStructure reply;
+    
+    communicate_with_server(NULL, &request, &reply);
+    *mode=reply.returnParams.mode;
+    return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetCount(int * count) {
+    HOOK_TRACE_PROFILE("cuDeviceGetCount");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDeviceGetCount,
+        .params={.empty{}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *count=reply.returnParams.count;
+
+    return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetName(char * name, int len, CUdevice dev) {
+    HOOK_TRACE_PROFILE("cuDeviceGetName");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDeviceGetName,
+        .params={.cuDeviceGetName={.name=name,.len=len,.device=dev}}
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetUuid (CUuuid * uuid,CUdevice dev){
+	HOOK_TRACE_PROFILE("cuDeviceGetUuid");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuDeviceGetUuid,
+		.params={.cuDeviceGetUuid={.dev=dev}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	memcpy(uuid->bytes,reply.returnParams.uuid,16);
+	return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDriverGetVersion(int * driverVersion) {
+    HOOK_TRACE_PROFILE("cuDriverGetVersion");
+    CuDriverCallStructure request={
+        .op=CuDriverCall::CuDriverGetVersion,
+        .params={.empty{}},
+    };
+    CuDriverCallReplyStructure reply;
+
+    communicate_with_server(NULL, &request,&reply);
+    
+    *driverVersion=reply.returnParams.driverVersion;
+    printf("driverVersion: %d\n", *driverVersion);
+    return reply.result;
+
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGet(CUdevice * device, int ordinal) {
+    HOOK_TRACE_PROFILE("cuDeviceGet");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDeviceGet,
+        .params={.cuDeviceGet={.ordinal=ordinal}},
+    };
+    CuDriverCallReplyStructure reply;
+    request.op=CuDriverCall::CuDeviceGet;
+    communicate_with_server(nullptr, &request, &reply);
+
+    *device=reply.returnParams.device;
+	// printf("cuDeviceGet device:%d\n",*device);
+	// printf("cuDeviceGet result:%d\n",reply.result);
+    return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetAttribute(int * pi, CUdevice_attribute attrib, CUdevice dev) {
+    HOOK_TRACE_PROFILE("cuDeviceGetAttribute");
+    CuDriverCallStructure request={
+        .op=CuDriverCall::CuDeviceGetAttribute,
+        .params={.cuDeviceGetAttribute={.attrib=attrib,.dev=dev}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *pi=reply.returnParams.pi;
+    return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxSetCurrent(CUcontext ctx) {
+    HOOK_TRACE_PROFILE("cuCtxSetCurrent");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuCtxSetCurrent,
+        .params={.cuCtxSetCurrent={.ctx=ctx}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetCurrent(CUcontext * pctx) {
+    HOOK_TRACE_PROFILE("cuCtxGetCurrent");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuCtxGetCurrent,
+        .params={.empty{}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *pctx=reply.returnParams.ctx;
+    return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRetain(CUcontext * pctx, CUdevice dev) {
+    HOOK_TRACE_PROFILE("cuDevicePrimaryCtxRetain");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDevicePrimaryCtxRetain,
+        .params={.cuDevicePrimaryCtxRetain={.dev=dev}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *pctx=reply.returnParams.ctx;
+    return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
+    HOOK_TRACE_PROFILE("cuDevicePrimaryCtxRelease");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDevicePrimaryCtxRelease,
+        .params={.cuDevicePrimaryCtxRelease={.dev=dev}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    return reply.result;
+}
+
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemcpyHtoD( CUdeviceptr dstDevice,const void * srcHost,size_t ByteCount){
+	HOOK_TRACE_PROFILE("cuMemcpyHtoD");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuMemcpyHtoD,
+		.params={.cuMemcpyHtoD={.dstDevice=dstDevice,.srcHost=srcHost,.ByteCount=ByteCount}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetModule(CUmodule * pMod, CUlibrary library) {
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuLibraryGetModule,
+		.params={.cuLibraryGetModule={
+			.library=library,
+		}}
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	*pMod=reply.returnParams.mod;
+	return reply.result;
+
+}
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetFunction(CUfunction * hfunc, CUmodule hmod, const char * name) {
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuModuleGetFunction,
+		.params={.cuModuleGetFunction{
+			.mod=hmod,
+			.name=name,
+			.nameLength=strlen(name)+1
+		}}
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	*hfunc=reply.returnParams.hfunc;
+	return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunchKernel(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void * * kernelParams, void * * extra) {
+
+    size_t i;
+    char *buf;
+    int found_kernel = 0;
+    kernel_info_t *info;
+
+    for (i=0; i < kernel_infos.length; ++i) {
+        if (list_at(&kernel_infos, i, (void**)&info) != 0) {
+            HLOG("error getting element at %d", i);
+            return CUDA_ERROR_INVALID_DEVICE;
+        }
+        if (f != NULL && info != NULL && info->host_fun == f) {
+            HLOG("calling kernel \"%s\" (param_size: %zd, param_num: %zd)", info->name, info->param_size, info->param_num);
+            found_kernel = 1;
+            break;
+        }
+    }
+
+    if (!found_kernel) {
+        HLOG("request to call unknown kernel.");
+        return CUDA_ERROR_INVALID_VALUE;
+    }
+
+
+	
+    size_t parameters_metadata_len = sizeof(size_t)+info->param_num*sizeof(uint16_t)+info->param_size;
+    void * parameters_metadata = malloc(parameters_metadata_len);
+    memcpy(parameters_metadata, &info->param_num, sizeof(size_t));
+    memcpy(parameters_metadata + sizeof(size_t), info->param_offsets, info->param_num*sizeof(uint16_t));
+    for (size_t j=0, size=0; j < info->param_num; ++j) {
+        size = info->param_sizes[j];
+        //printf("p%d - size: %d, offset: %d\n", j, size, infos[i].param_offsets[j]);
+        memcpy(parameters_metadata + sizeof(size_t) + info->param_num*sizeof(uint16_t) +
+               info->param_offsets[j],
+        		kernelParams[j],
+               size);
+    }
+
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuLaunchKernel,
+		.params={.cuLaunchKernel={
+			.f=f,
+			.gridDimX=gridDimX,
+			.gridDimY=gridDimY,
+			.gridDimZ=gridDimZ,
+			.blockDimX=blockDimX,
+			.blockDimY=blockDimY,
+			.blockDimZ=blockDimZ,
+			.sharedMemBytes=sharedMemBytes,
+			.hStream=hStream,
+			.parametersMetadataLen=parameters_metadata_len,
+		}}
+	};
+	CuDriverCallReplyStructure reply;
+	
+	communicate_with_server_launchkernel(nullptr, &request, &reply , parameters_metadata);
+    free(parameters_metadata);
+    return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryLoadData(CUlibrary * library, const void * code, CUjit_option * jitOptions, void * * jitOptionsValues, unsigned int numJitOptions, CUlibraryOption * libraryOptions, void * * libraryOptionValues, unsigned int numLibraryOptions) {
+	// FatBinaryWrapper *wrapper = (FatBinaryWrapper *)code;
+	
+	// printf("----------------------------------------------\n");
+	// printf("code address = %p\n", code);
+	// printf("fat binary wrapper's magic = %x\n", wrapper->magic);
+	// printf("fat binary wrapper's version = %d\n", wrapper->version);
+	// printf("fat binary wrapper's data = %p\n", wrapper->data);
+	// printf("fat binary wrapper's filename_or_fatbins = %p\n", wrapper->filename_or_fatbins);
+	// if (wrapper->version==2){
+	// 	printf("fat binary wrapper's filename_or_fatbins = %s\n", wrapper->filename_or_fatbins);
+	// }
+	// printf("----------------------------------------------\n");
+	// FatBinaryHeader *header = (FatBinaryHeader *)wrapper->data;
+	// printf("fat binary's magic = %x\n", header->magic);
+	// printf("fat binary's version: %d\n", header->version);
+	// printf("fat binary's header size: %d\n", header->headerSize);
+	// printf("fat binary's size: %ld\n", header->fatSize);
+	// printf("----------------------------------------------\n");
+	
+	// unsigned long long codeAddress=	(unsigned long long)code;
+	// unsigned long long fatbinAddress=	(unsigned long long)wrapper->data;
+
+
+	// // printf("number of jit options: %d\n", numJitOptions);
+	// // printf("number of jit option loading: %d\n", numLibraryOptions);
+	// // printf(" LibraryOption:%d\n",libraryOptions[0]);
+	// // printf(" LibraryOptionValues:%p\n",libraryOptionValues[0]);
+
+	// printf("fatbin address = %p\n", wrapper->data);
+	// printf("header size=%d\n",header->headerSize);
+	// FatEntryHeader * fatbinEntry=(FatEntryHeader *) ((char *)wrapper->data+header->headerSize);
+	// printf("fabin entry address:%p\n",fatbinEntry);
+	// Elf64_Ehdr *ehdr = (Elf64_Ehdr*)((char *)fatbinEntry+fatbinEntry->headerSize);
+	// printf("entry headersize:%d\n",fatbinEntry->headerSize);
+	// printf("ehdr address:%p\n",ehdr);
+	// printf("ehdr->e_ident:%s\n",ehdr->e_ident);
+
+	// readFatbinaryEntryHeader((void *)wrapper->data);
+	// printHex((void *)wrapper->data, 2000);
+	
+	uint8_t *code_data = new uint8_t;
+	unsigned long  fatbin_size;
+    if (elf2_get_fatbin_info((struct fat_header *)code,
+                                &kernel_infos,
+                                (uint8_t **)&code_data,
+                                &fatbin_size) != 0) {
+
+		printf("eeorrr\n");
+    }
+	free(code_data);
+	FatBinaryWrapper *wrapper = (FatBinaryWrapper *)code;
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuLibraryLoadData,
+		.params={
+			.cuLibraryLoadData={
+				.wrapper=*wrapper,
+				.fatbinSize=fatbin_size,
+				.numJitOptions=numJitOptions,
+				.numLibraryOptions=numLibraryOptions,
+			}	
+		}
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server_extra(nullptr, &request, &reply,jitOptions,jitOptionsValues,libraryOptions,libraryOptionValues);
+	return reply.result;
+}
 DEF_FN(CUresult,cuGetErrorString ,CUresult,error,const char * *,pStr);
 DEF_FN(CUresult,cuGetErrorName ,CUresult,error,const char * *,pStr);
-DEF_FN(CUresult,cuInit ,unsigned int,Flags);
-DEF_FN(CUresult,cuDriverGetVersion ,int *,driverVersion);
-DEF_FN(CUresult,cuDeviceGet ,CUdevice *,device,int,ordinal);
-DEF_FN(CUresult,cuDeviceGetCount ,int *,count);
-DEF_FN(CUresult,cuDeviceGetName ,char *,name,int,len,CUdevice,dev);
-DEF_FN(CUresult,cuDeviceGetUuid ,CUuuid *,uuid,CUdevice,dev);
-DEF_FN(CUresult,cuDeviceGetUuid_v2 ,CUuuid *,uuid,CUdevice,dev);
+// DEF_FN(CUresult,cuDeviceGetUuid_v2 ,CUuuid *,uuid,CUdevice,dev);
 DEF_FN(CUresult,cuDeviceGetLuid ,char *,luid,unsigned int *,deviceNodeMask,CUdevice,dev);
 DEF_FN(CUresult,cuDeviceTotalMem_v2 ,size_t *,bytes,CUdevice,dev);
 DEF_FN(CUresult,cuDeviceGetTexture1DLinearMaxWidth ,size_t *,maxWidthInElements,CUarray_format,format,unsigned,numChannels,CUdevice,dev);
-DEF_FN(CUresult,cuDeviceGetAttribute ,int *,pi,CUdevice_attribute,attrib,CUdevice,dev);
 DEF_FN(CUresult,cuDeviceGetNvSciSyncAttributes ,void *,nvSciSyncAttrList,CUdevice,dev,int,flags);
 DEF_FN(CUresult,cuDeviceSetMemPool ,CUdevice,dev,CUmemoryPool,pool);
 DEF_FN(CUresult,cuDeviceGetMemPool ,CUmemoryPool *,pool,CUdevice,dev);
@@ -33,8 +387,6 @@ DEF_FN(CUresult,cuDeviceGetExecAffinitySupport ,int *,pi,CUexecAffinityType,type
 DEF_FN(CUresult,cuFlushGPUDirectRDMAWrites ,CUflushGPUDirectRDMAWritesTarget,target,CUflushGPUDirectRDMAWritesScope,scope);
 DEF_FN(CUresult,cuDeviceGetProperties ,CUdevprop *,prop,CUdevice,dev);
 DEF_FN(CUresult,cuDeviceComputeCapability ,int *,major,int *,minor,CUdevice,dev);
-DEF_FN(CUresult,cuDevicePrimaryCtxRetain ,CUcontext *,pctx,CUdevice,dev);
-DEF_FN(CUresult,cuDevicePrimaryCtxRelease_v2 ,CUdevice,dev);
 DEF_FN(CUresult,cuDevicePrimaryCtxSetFlags_v2 ,CUdevice,dev,unsigned int,flags);
 DEF_FN(CUresult,cuDevicePrimaryCtxGetState ,CUdevice,dev,unsigned int *,flags,int *,active);
 DEF_FN(CUresult,cuDevicePrimaryCtxReset_v2 ,CUdevice,dev);
@@ -43,8 +395,6 @@ DEF_FN(CUresult,cuCtxCreate_v3 ,CUcontext *,pctx,CUexecAffinityParam *,paramsArr
 DEF_FN(CUresult,cuCtxDestroy_v2 ,CUcontext,ctx);
 DEF_FN(CUresult,cuCtxPushCurrent_v2 ,CUcontext,ctx);
 DEF_FN(CUresult,cuCtxPopCurrent_v2 ,CUcontext *,pctx);
-DEF_FN(CUresult,cuCtxSetCurrent ,CUcontext,ctx);
-DEF_FN(CUresult,cuCtxGetCurrent ,CUcontext *,pctx);
 DEF_FN(CUresult,cuCtxGetDevice ,CUdevice *,device);
 DEF_FN(CUresult,cuCtxGetFlags ,unsigned int *,flags);
 DEF_FN(CUresult,cuCtxSetFlags ,unsigned int,flags);
@@ -66,9 +416,6 @@ DEF_FN(CUresult,cuModuleLoad ,CUmodule *,module,const char *,fname);
 DEF_FN(CUresult,cuModuleLoadData ,CUmodule *,module,const void *,image);
 DEF_FN(CUresult,cuModuleLoadDataEx ,CUmodule *,module,const void *,image,unsigned int,numOptions,CUjit_option *,options,void * *,optionValues);
 DEF_FN(CUresult,cuModuleLoadFatBinary ,CUmodule *,module,const void *,fatCubin);
-DEF_FN(CUresult,cuModuleUnload ,CUmodule,hmod);
-DEF_FN(CUresult,cuModuleGetLoadingMode ,CUmoduleLoadingMode *,mode);
-DEF_FN(CUresult,cuModuleGetFunction ,CUfunction *,hfunc,CUmodule,hmod,const char *,name);
 DEF_FN(CUresult,cuModuleGetFunctionCount ,unsigned int *,count,CUmodule,mod);
 DEF_FN(CUresult,cuModuleEnumerateFunctions ,CUfunction *,functions,unsigned int,numFunctions,CUmodule,mod);
 DEF_FN(CUresult,cuModuleGetGlobal_v2 ,CUdeviceptr *,dptr,size_t *,bytes,CUmodule,hmod,const char *,name);
@@ -79,13 +426,11 @@ DEF_FN(CUresult,cuLinkComplete ,CUlinkState,state,void * *,cubinOut,size_t *,siz
 DEF_FN(CUresult,cuLinkDestroy ,CUlinkState,state);
 DEF_FN(CUresult,cuModuleGetTexRef ,CUtexref *,pTexRef,CUmodule,hmod,const char *,name);
 DEF_FN(CUresult,cuModuleGetSurfRef ,CUsurfref *,pSurfRef,CUmodule,hmod,const char *,name);
-DEF_FN(CUresult,cuLibraryLoadData ,CUlibrary *,library,const void *,code,CUjit_option *,jitOptions,void * *,jitOptionsValues,unsigned int,numJitOptions,CUlibraryOption *,libraryOptions,void * *,libraryOptionValues,unsigned int,numLibraryOptions);
 DEF_FN(CUresult,cuLibraryLoadFromFile ,CUlibrary *,library,const char *,fileName,CUjit_option *,jitOptions,void * *,jitOptionsValues,unsigned int,numJitOptions,CUlibraryOption *,libraryOptions,void * *,libraryOptionValues,unsigned int,numLibraryOptions);
 DEF_FN(CUresult,cuLibraryUnload ,CUlibrary,library);
 DEF_FN(CUresult,cuLibraryGetKernel ,CUkernel *,pKernel,CUlibrary,library,const char *,name);
 DEF_FN(CUresult,cuLibraryGetKernelCount ,unsigned int *,count,CUlibrary,lib);
 DEF_FN(CUresult,cuLibraryEnumerateKernels ,CUkernel *,kernels,unsigned int,numKernels,CUlibrary,lib);
-DEF_FN(CUresult,cuLibraryGetModule ,CUmodule *,pMod,CUlibrary,library);
 DEF_FN(CUresult,cuKernelGetFunction ,CUfunction *,pFunc,CUkernel,kernel);
 DEF_FN(CUresult,cuLibraryGetGlobal ,CUdeviceptr *,dptr,size_t *,bytes,CUlibrary,library,const char *,name);
 DEF_FN(CUresult,cuLibraryGetManaged ,CUdeviceptr *,dptr,size_t *,bytes,CUlibrary,library,const char *,name);
@@ -119,7 +464,6 @@ DEF_FN(CUresult,cuMemHostRegister_v2 ,void *,p,size_t,bytesize,unsigned int,Flag
 DEF_FN(CUresult,cuMemHostUnregister ,void *,p);
 DEF_FN(CUresult,cuMemcpy ,CUdeviceptr,dst,CUdeviceptr,src,size_t,ByteCount);
 DEF_FN(CUresult,cuMemcpyPeer ,CUdeviceptr,dstDevice,CUcontext,dstContext,CUdeviceptr,srcDevice,CUcontext,srcContext,size_t,ByteCount);
-DEF_FN(CUresult,cuMemcpyHtoD_v2 ,CUdeviceptr,dstDevice,const void *,srcHost,size_t,ByteCount);
 DEF_FN(CUresult,cuMemcpyDtoH_v2 ,void *,dstHost,CUdeviceptr,srcDevice,size_t,ByteCount);
 DEF_FN(CUresult,cuMemcpyDtoD_v2 ,CUdeviceptr,dstDevice,CUdeviceptr,srcDevice,size_t,ByteCount);
 DEF_FN(CUresult,cuMemcpyDtoA_v2 ,CUarray,dstArray,size_t,dstOffset,CUdeviceptr,srcDevice,size_t,ByteCount);
@@ -262,7 +606,6 @@ DEF_FN(CUresult,cuFuncGetName ,const char * *,name,CUfunction,hfunc);
 DEF_FN(CUresult,cuFuncGetParamInfo ,CUfunction,func,size_t,paramIndex,size_t *,paramOffset,size_t *,paramSize);
 DEF_FN(CUresult,cuFuncIsLoaded ,CUfunctionLoadingState *,state,CUfunction,function);
 DEF_FN(CUresult,cuFuncLoad ,CUfunction,function);
-DEF_FN(CUresult,cuLaunchKernel ,CUfunction,f,unsigned int,gridDimX,unsigned int,gridDimY,unsigned int,gridDimZ,unsigned int,blockDimX,unsigned int,blockDimY,unsigned int,blockDimZ,unsigned int,sharedMemBytes,CUstream,hStream,void * *,kernelParams,void * *,extra);
 DEF_FN(CUresult,cuLaunchKernelEx ,const CUlaunchConfig *,config,CUfunction,f,void * *,kernelParams,void * *,extra);
 DEF_FN(CUresult,cuLaunchCooperativeKernel ,CUfunction,f,unsigned int,gridDimX,unsigned int,gridDimY,unsigned int,gridDimZ,unsigned int,blockDimX,unsigned int,blockDimY,unsigned int,blockDimZ,unsigned int,sharedMemBytes,CUstream,hStream,void * *,kernelParams);
 DEF_FN(CUresult,cuLaunchCooperativeKernelMultiDevice ,CUDA_LAUNCH_PARAMS *,launchParamsList,unsigned int,numDevices,unsigned int,flags);
@@ -445,23 +788,43 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
     CUresult result = realCuGetProcAddress(symbol, pfn, cudaVersion, flags, symbolStatus);
     printf("Intercepted cuGetProcAddress: Requesting symbol %s (flags=%lu, version=%d): %p\n", symbol, flags, cudaVersion, *pfn);
 
+	if (cuDriverFunctionTable.empty()){
+		cuDriverFunctionTable.insert({
+		{"cuInit", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuInit))},
+		{"cuModuleGetLoadingMode", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuModuleGetLoadingMode))},
+		{"cuDeviceGetCount", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuDeviceGetCount))},
+		{"cuDeviceGetName", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuDeviceGetName))},
+		{"cuDeviceGetUuid",CuDriverFunction(0,0,reinterpret_cast<void *>(&cuDeviceGetUuid))},
+		{"cuDriverGetVersion", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuDriverGetVersion))},
+		{"cuDeviceGet", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuDeviceGet))},
+		{"cuDeviceGetAttribute", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuDeviceGetAttribute))},
+		{"cuCtxSetCurrent", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuCtxSetCurrent))},
+		{"cuCtxGetCurrent", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuCtxGetCurrent))},
+		{"cuDevicePrimaryCtxRetain", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuDevicePrimaryCtxRetain))},
+		{"cuDevicePrimaryCtxRelease", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuDevicePrimaryCtxRelease))},
+		{"cuMemcpyHtoD", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuMemcpyHtoD))},
+		{"cuLibraryLoadData",CuDriverFunction(0,0,reinterpret_cast<void*>(&cuLibraryLoadData))},
+		{"cuLibraryGetModule",CuDriverFunction(0,0,reinterpret_cast<void*>(&cuLibraryGetModule))},
+		{"cuModuleGetFunction",CuDriverFunction(0,0,reinterpret_cast<void*>(&cuModuleGetFunction))},
+
+	});
+	}
     if (strcmp(symbol, "cuGetProcAddress") == 0) {
         *pfn = (void*)&cuGetProcAddress;  // 拦截自身
-    } 
+
+    }
+	else if(cuDriverFunctionTable.find(symbol)!=cuDriverFunctionTable.end()){
+		printf("cuGetProcAddress read from cuDiverFunctionTable: Requesting symbol %s (flags=%lu, version=%d): %p\n", symbol,cuDriverFunctionTable[symbol].flags, cuDriverFunctionTable[symbol].cudaVersion, cuDriverFunctionTable[symbol].funcPtr);
+		*pfn=(void*)cuDriverFunctionTable[symbol].funcPtr;
+	}
 
 	ELSE_IF(cuGetErrorString,CUresult, const char * *)
 	ELSE_IF(cuGetErrorName,CUresult, const char * *)
-	ELSE_IF(cuInit,unsigned int)
-	ELSE_IF(cuDriverGetVersion,int *)
-	ELSE_IF(cuDeviceGet,CUdevice *, int)
-	ELSE_IF(cuDeviceGetCount,int *)
-	ELSE_IF(cuDeviceGetName,char *, int, CUdevice)
-	ELSE_IF(cuDeviceGetUuid,CUuuid *, CUdevice)
-	ELSE_IF(cuDeviceGetUuid_v2,CUuuid *, CUdevice)
+	// ELSE_IF(cuDeviceGetUuid,CUuuid *, CUdevice)
+	// ELSE_IF(cuDeviceGetUuid_v2,CUuuid *, CUdevice)
 	ELSE_IF(cuDeviceGetLuid,char *, unsigned int *, CUdevice)
 	ELSE_IF(cuDeviceTotalMem_v2,size_t *, CUdevice)
 	ELSE_IF(cuDeviceGetTexture1DLinearMaxWidth,size_t *, CUarray_format, unsigned, CUdevice)
-	ELSE_IF(cuDeviceGetAttribute,int *, CUdevice_attribute, CUdevice)
 	ELSE_IF(cuDeviceGetNvSciSyncAttributes,void *, CUdevice, int)
 	ELSE_IF(cuDeviceSetMemPool,CUdevice, CUmemoryPool)
 	ELSE_IF(cuDeviceGetMemPool,CUmemoryPool *, CUdevice)
@@ -470,8 +833,6 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuFlushGPUDirectRDMAWrites,CUflushGPUDirectRDMAWritesTarget, CUflushGPUDirectRDMAWritesScope)
 	ELSE_IF(cuDeviceGetProperties,CUdevprop *, CUdevice)
 	ELSE_IF(cuDeviceComputeCapability,int *, int *, CUdevice)
-	ELSE_IF(cuDevicePrimaryCtxRetain,CUcontext *, CUdevice)
-	ELSE_IF(cuDevicePrimaryCtxRelease_v2,CUdevice)
 	ELSE_IF(cuDevicePrimaryCtxSetFlags_v2,CUdevice, unsigned int)
 	ELSE_IF(cuDevicePrimaryCtxGetState,CUdevice, unsigned int *, int *)
 	ELSE_IF(cuDevicePrimaryCtxReset_v2,CUdevice)
@@ -480,8 +841,6 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuCtxDestroy_v2,CUcontext)
 	ELSE_IF(cuCtxPushCurrent_v2,CUcontext)
 	ELSE_IF(cuCtxPopCurrent_v2,CUcontext *)
-	ELSE_IF(cuCtxSetCurrent,CUcontext)
-	ELSE_IF(cuCtxGetCurrent,CUcontext *)
 	ELSE_IF(cuCtxGetDevice,CUdevice *)
 	ELSE_IF(cuCtxGetFlags,unsigned int *)
 	ELSE_IF(cuCtxSetFlags,unsigned int)
@@ -503,9 +862,6 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuModuleLoadData,CUmodule *, const void *)
 	ELSE_IF(cuModuleLoadDataEx,CUmodule *, const void *, unsigned int, CUjit_option *, void * *)
 	ELSE_IF(cuModuleLoadFatBinary,CUmodule *, const void *)
-	ELSE_IF(cuModuleUnload,CUmodule)
-	ELSE_IF(cuModuleGetLoadingMode,CUmoduleLoadingMode *)
-	ELSE_IF(cuModuleGetFunction,CUfunction *, CUmodule, const char *)
 	ELSE_IF(cuModuleGetFunctionCount,unsigned int *, CUmodule)
 	ELSE_IF(cuModuleEnumerateFunctions,CUfunction *, unsigned int, CUmodule)
 	ELSE_IF(cuModuleGetGlobal_v2,CUdeviceptr *, size_t *, CUmodule, const char *)
@@ -516,13 +872,11 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuLinkDestroy,CUlinkState)
 	ELSE_IF(cuModuleGetTexRef,CUtexref *, CUmodule, const char *)
 	ELSE_IF(cuModuleGetSurfRef,CUsurfref *, CUmodule, const char *)
-	ELSE_IF(cuLibraryLoadData,CUlibrary *, const void *, CUjit_option *, void * *, unsigned int, CUlibraryOption *, void * *, unsigned int)
 	ELSE_IF(cuLibraryLoadFromFile,CUlibrary *, const char *, CUjit_option *, void * *, unsigned int, CUlibraryOption *, void * *, unsigned int)
 	ELSE_IF(cuLibraryUnload,CUlibrary)
 	ELSE_IF(cuLibraryGetKernel,CUkernel *, CUlibrary, const char *)
 	ELSE_IF(cuLibraryGetKernelCount,unsigned int *, CUlibrary)
 	ELSE_IF(cuLibraryEnumerateKernels,CUkernel *, unsigned int, CUlibrary)
-	ELSE_IF(cuLibraryGetModule,CUmodule *, CUlibrary)
 	ELSE_IF(cuKernelGetFunction,CUfunction *, CUkernel)
 	ELSE_IF(cuLibraryGetGlobal,CUdeviceptr *, size_t *, CUlibrary, const char *)
 	ELSE_IF(cuLibraryGetManaged,CUdeviceptr *, size_t *, CUlibrary, const char *)
@@ -556,7 +910,7 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuMemHostUnregister,void *)
 	ELSE_IF(cuMemcpy,CUdeviceptr, CUdeviceptr, size_t)
 	ELSE_IF(cuMemcpyPeer,CUdeviceptr, CUcontext, CUdeviceptr, CUcontext, size_t)
-	ELSE_IF(cuMemcpyHtoD_v2,CUdeviceptr, const void *, size_t)
+	// ELSE_IF(cuMemcpyHtoD_v2,CUdeviceptr, const void *, size_t)
 	ELSE_IF(cuMemcpyDtoH_v2,void *, CUdeviceptr, size_t)
 	ELSE_IF(cuMemcpyDtoD_v2,CUdeviceptr, CUdeviceptr, size_t)
 	ELSE_IF(cuMemcpyDtoA_v2,CUarray, size_t, CUdeviceptr, size_t)
@@ -699,7 +1053,7 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuFuncGetParamInfo,CUfunction, size_t, size_t *, size_t *)
 	ELSE_IF(cuFuncIsLoaded,CUfunctionLoadingState *, CUfunction)
 	ELSE_IF(cuFuncLoad,CUfunction)
-	ELSE_IF(cuLaunchKernel,CUfunction, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, CUstream, void * *, void * *)
+
 	ELSE_IF(cuLaunchKernelEx,const CUlaunchConfig *, CUfunction, void * *, void * *)
 	ELSE_IF(cuLaunchCooperativeKernel,CUfunction, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, CUstream, void * *)
 	ELSE_IF(cuLaunchCooperativeKernelMultiDevice,CUDA_LAUNCH_PARAMS *, unsigned int, unsigned int)
@@ -877,7 +1231,6 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuGreenCtxRecordEvent,CUgreenCtx, CUevent)
 	ELSE_IF(cuGreenCtxWaitEvent,CUgreenCtx, CUevent)
 	ELSE_IF(cuStreamGetGreenCtx,CUstream, CUgreenCtx *)
-
 
 
 

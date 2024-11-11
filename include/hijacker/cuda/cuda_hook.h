@@ -1,6 +1,6 @@
 #ifndef __CUDA_CUDA_HOOK_H__
 #define __CUDA_CUDA_HOOK_H__
-#include "cuda_original.h"
+#include "cuda.h"
 
 
 class CuDriverFunction{

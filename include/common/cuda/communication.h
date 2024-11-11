@@ -2,6 +2,7 @@
 #define COMMUNICATION_H
 #include <cstddef>
 #include "cuda_subset.h"
+#include "fatbinary.h"
 enum class CuDriverCall{
     CuMemAlloc,
     CuMemFree,
@@ -25,6 +26,11 @@ enum class CuDriverCall{
     CuCtxPushCurrent,
     CuInit,
     CuCtxCreate,
+    CuLibraryGetModule,
+    CuModuleGetFunction,
+    CuLaunchKernel,
+    
+    
 };
 
 
@@ -46,8 +52,8 @@ struct CuDriverCallStructure {
             CUdeviceptr dptr;
         }cuMemFree;
         struct{
-            const void * srcHost;
             CUdeviceptr dstDevice;
+            const void * srcHost;
             size_t ByteCount;
         }cuMemcpyHtoD;
         struct{
@@ -65,8 +71,9 @@ struct CuDriverCallStructure {
             int len;
             CUdevice device;
         }cuDeviceGetName;
+
         struct {
-            CUdevice device;
+            CUdevice dev;
         }cuDeviceGetUuid;
         struct {
             const void * * ppExportTable;
@@ -99,16 +106,6 @@ struct CuDriverCallStructure {
 
         }cuCtxGetDevice;
         struct{
-            CUlibrary * library;
-            const void * code;
-            CUjit_option * jitOptions;
-             void * * jitOptionsValues;
-             unsigned int numJitOptions;
-             CUlibraryOption * libraryOptions;
-              void * * libraryOptionValues;
-              unsigned int numLibraryOptions;
-        }cuLibraryLoadData;
-        struct{
             CUcontext ctx;
         }cuCtxPushCurrent;
         struct{
@@ -117,7 +114,34 @@ struct CuDriverCallStructure {
         struct{
             CUdevice dev;
         }cuDevicePrimaryCtxRelease;
+        struct{
+            FatBinaryWrapper wrapper;
+            unsigned long fatbinSize;
+            unsigned int numJitOptions;
+            unsigned int numLibraryOptions;
+        }cuLibraryLoadData;
+        struct{
+            CUlibrary library;
+        }cuLibraryGetModule;
 
+        struct{
+            CUmodule mod;
+            const char * name;
+            unsigned long nameLength;
+        }cuModuleGetFunction;
+
+        struct{
+                CUfunction f;
+                unsigned int gridDimX;
+                unsigned int gridDimY;
+                unsigned int gridDimZ;
+                unsigned int blockDimX;
+                unsigned int blockDimY;
+                unsigned int blockDimZ;
+                unsigned int sharedMemBytes;
+                CUstream hStream;
+                size_t parametersMetadataLen;
+        }cuLaunchKernel;
     }params;
 };
 
@@ -135,12 +159,14 @@ struct CuDriverCallReplyStructure{
             CUdevice device;
             CUdeviceptr dptr;
             int pi;
-
+            CUfunction hfunc; //cuModuleGetFunction
             CUcontext ctx;
+            CUmodule mod;
+            CUlibrary lib;
 
             size_t  bytes;
+            char uuid[16];
         }returnParams;
 };
-
 
 #endif
