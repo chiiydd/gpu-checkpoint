@@ -137,6 +137,7 @@ else if (strcmp(symbol, #NAME) == 0) { \
     HOOK_TRACE_PROFILE(#NAME);\
     RET ret;\
     if (real##NAME !=nullptr){\
+        HLOG("<%s> call.", #NAME);\
         ret=real##NAME(P_NAMES);\
         RESULT_CHECK(ret);\
         return ret;\

@@ -877,6 +877,34 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuGreenCtxRecordEvent,CUgreenCtx, CUevent)
 	ELSE_IF(cuGreenCtxWaitEvent,CUgreenCtx, CUevent)
 	ELSE_IF(cuStreamGetGreenCtx,CUstream, CUgreenCtx *)
+	else if(strcmp(symbol,"cuMemAlloc") == 0) {
+	    auto it =cuDriverFunctionTable.find(symbol); 
+    if(it == cuDriverFunctionTable.end()){
+        realcuMemAlloc_v2 = reinterpret_cast<CUresult(*)(CUdeviceptr *, size_t)>(*pfn);
+        CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuMemAlloc_v2));
+        cuDriverFunctionTable["cuMemAlloc"] =cuDriverFunction;
+        *pfn = reinterpret_cast<void*>(cuMemAlloc_v2);
+    }else{ 
+        if(it->second.cudaVersion!= cudaVersion){
+            printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
+            it->second.cudaVersion = cudaVersion;
+        }
+    }
+	}
+	else if(strcmp(symbol,"cuMemcpyHtoD") == 0) {
+	    auto it =cuDriverFunctionTable.find(symbol); 
+		if(it == cuDriverFunctionTable.end()){
+			realcuMemcpyHtoD_v2 = reinterpret_cast<CUresult(*)(CUdeviceptr, const void *, size_t)>(*pfn);
+			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuMemcpyHtoD_v2));
+			cuDriverFunctionTable["cuMemcpyHtoD"] =cuDriverFunction;
+			*pfn = reinterpret_cast<void*>(cuMemcpyHtoD_v2);
+		}else{
+			if(it->second.cudaVersion!= cudaVersion){
+				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
+				it->second.cudaVersion = cudaVersion;
+			}
+		}
+	}
 
 
 
