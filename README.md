@@ -41,6 +41,10 @@ cmake -B build
 cd build 
 make
 ```
+会在`build`目录下生成`libhijacker.so`文件,以及`build/bin`目录下生成 `gpu-proxy`和`test`文件。
+
+
+
 测试
 ```bash
 #启动 gpu-proxy
@@ -52,6 +56,5 @@ cd build
 make proxy-test
 
 ```
-会在build 目录下生成`libhijacker.so`文件
 
 
