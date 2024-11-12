@@ -126,6 +126,8 @@ else if (strcmp(symbol, #NAME) == 0) { \
         if(it->second.cudaVersion!= cudaVersion){\
             printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);\
             it->second.cudaVersion = cudaVersion;\
+            it->second.funcPtr = reinterpret_cast<void*>(real##NAME);\
+            *pfn = reinterpret_cast<void*>(NAME);\
         }\
     }\
 }

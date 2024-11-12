@@ -888,6 +888,8 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
         if(it->second.cudaVersion!= cudaVersion){
             printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
             it->second.cudaVersion = cudaVersion;
+            it->second.funcPtr = reinterpret_cast<void*>(realcuMemAlloc_v2);
+            *pfn = reinterpret_cast<void*>(cuMemAlloc_v2);
         }
     }
 	}
@@ -902,6 +904,8 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 			if(it->second.cudaVersion!= cudaVersion){
 				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
 				it->second.cudaVersion = cudaVersion;
+				it->second.funcPtr = reinterpret_cast<void*>(realcuMemcpyHtoD_v2);
+				*pfn = reinterpret_cast<void*>(cuMemcpyHtoD_v2);
 			}
 		}
 	}
