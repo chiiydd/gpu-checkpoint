@@ -17,3 +17,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 add_subdirectory(src/hijacker)
 add_subdirectory(src/gpu-proxy)
 add_subdirectory(test)
+
+
+add_custom_target(proxy-test
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    COMMAND LD_PRELOAD=${CMAKE_BINARY_DIR}/libhijacker.so ./test
+)
