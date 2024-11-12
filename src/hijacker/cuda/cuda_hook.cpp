@@ -149,6 +149,18 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGet(CUdevice * device, int ordinal
 	printf("[cuDeviceGet] get device:%d\n",*device);
     return reply.result;
 }
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceTotalMem (size_t * bytes,CUdevice dev){
+	HOOK_TRACE_PROFILE("cuDeviceTotalMem");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuDeviceTotalMem,
+		.params={.cuDeviceTotalMem={.dev=dev}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	*bytes=reply.returnParams.bytes;
+	printf("[cuDeviceTotalMem] dev[%d] total memory:%ld\n",dev,*bytes);
+}
+
 
 HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetAttribute(int * pi, CUdevice_attribute attrib, CUdevice dev) {
     HOOK_TRACE_PROFILE("cuDeviceGetAttribute");

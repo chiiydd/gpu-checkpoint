@@ -62,7 +62,9 @@ struct CuDriverCallStructure {
             size_t ByteCount;
         }cuMemcpyDtoH;
 
-
+        struct{
+            CUdevice dev;
+        }cuDeviceTotalMem;
         struct{
             int ordinal;
         }cuDeviceGet;
@@ -82,9 +84,7 @@ struct CuDriverCallStructure {
         struct {
             CUmoduleLoadingMode * mode;
         }cuModuleGetLoadingMode;
-        struct {
-            CUdevice dev;
-        }cuDeviceTotalMem;
+
         struct{
             CUdevice_attribute attrib;
             CUdevice dev;
