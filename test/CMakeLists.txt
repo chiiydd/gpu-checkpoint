@@ -1,3 +1,5 @@
 
-add_executable(test test.cpp)
-target_link_libraries(test PUBLIC -lcuda)
+add_executable(test test.cu)
+set_target_properties(test PROPERTIES CUDA_ARCHITECTURES "75")
+
+# target_link_libraries(test PUBLIC -lcuda)

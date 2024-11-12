@@ -19,6 +19,10 @@ add_subdirectory(src/gpu-proxy)
 add_subdirectory(test)
 
 
+add_custom_target(proxy-start
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    COMMAND ./gpu-proxy
+)
 add_custom_target(proxy-test
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     COMMAND LD_PRELOAD=${CMAKE_BINARY_DIR}/libhijacker.so ./test
