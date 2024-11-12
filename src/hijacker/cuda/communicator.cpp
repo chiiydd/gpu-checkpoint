@@ -7,7 +7,7 @@ int communicate_with_server(const char *socket_name, CuDriverCallStructure *send
     int skt_client;
     struct sockaddr_un sa_client;
 
-    printf("Sending OP:%d\n",send_structure->op);
+    printf("[communicate_with_server] Sending OP:%d\n",send_structure->op);
     // 如果没有指定socket_name，使用默认值
     if (!socket_name) {
         socket_name = "CUDA_PROXY_SOCKET";
@@ -77,7 +77,7 @@ int communicate_with_server(const char *socket_name, CuDriverCallStructure *send
         return -1;
     }
 
-    printf("result: %d\n", recv_structure->result);
+    printf("[communicate_with_server] get result:%d\n", recv_structure->result);
 
     // 关闭socket
     close(skt_client);
@@ -87,7 +87,7 @@ int communicate_with_server_extra(const char *socket_name, CuDriverCallStructure
     int skt_client;
     struct sockaddr_un sa_client;
 
-    printf("Sending OP:%d\n",send_structure->op);
+    printf("[communicate_with_server_extra] Sending OP:%d\n",send_structure->op);
     // 如果没有指定socket_name，使用默认值
     if (!socket_name) {
         socket_name = "CUDA_PROXY_SOCKET";
@@ -159,7 +159,7 @@ int communicate_with_server_extra(const char *socket_name, CuDriverCallStructure
         return -1;
     }
 
-    printf("result: %d\n", recv_structure->result);
+    printf("[communicate_with_server_extra] get result:%d\n", recv_structure->result);
 
     // 关闭socket
     close(skt_client);
@@ -170,7 +170,8 @@ int communicate_with_server_launchkernel(const char *socket_name, CuDriverCallSt
     int skt_client;
     struct sockaddr_un sa_client;
 
-    printf("Sending OP:%d\n",send_structure->op);
+    printf("[communicate_with_server_launchkernel] Sending OP:%d\n",send_structure->op);
+
     // 如果没有指定socket_name，使用默认值
     if (!socket_name) {
         socket_name = "CUDA_PROXY_SOCKET";
@@ -221,7 +222,7 @@ int communicate_with_server_launchkernel(const char *socket_name, CuDriverCallSt
         return -1;
     }
 
-    printf("result: %d\n", recv_structure->result);
+    printf("[communicate_with_server_launchkernel] get result:%d\n", recv_structure->result);
 
     // 关闭socket
     close(skt_client);

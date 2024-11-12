@@ -68,7 +68,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuInit(unsigned int Flags) {
         .params={.cuInit{.flags=Flags}},
     };
     CuDriverCallReplyStructure reply;
-    printf("cuInit flags:%u\n",Flags);
+    printf("[cuInit] flags:%u\n",Flags);
     communicate_with_server(NULL, &request, &reply);
     return reply.result;
 }
@@ -103,6 +103,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetName(char * name, int len, CUde
     };
     CuDriverCallReplyStructure reply;
     communicate_with_server(nullptr, &request, &reply);
+	printf("[cuDeviceGetName] get name:%s\n",name);
     return reply.result;
 }
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetUuid (CUuuid * uuid,CUdevice dev){
@@ -114,6 +115,7 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetUuid (CUuuid * uuid,CUdevice dev
 	CuDriverCallReplyStructure reply;
 	communicate_with_server(nullptr, &request, &reply);
 	memcpy(uuid->bytes,reply.returnParams.uuid,16);
+	printf("[cuDeviceGetUuid] get uuid:%s\n",uuid->bytes);
 	return reply.result;
 }
 
@@ -128,7 +130,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDriverGetVersion(int * driverVersion) {
     communicate_with_server(NULL, &request,&reply);
     
     *driverVersion=reply.returnParams.driverVersion;
-    printf("driverVersion: %d\n", *driverVersion);
+    printf("[cuDriverGetVersion] get driverVersion: %d\n", *driverVersion);
     return reply.result;
 
 }
@@ -144,8 +146,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGet(CUdevice * device, int ordinal
     communicate_with_server(nullptr, &request, &reply);
 
     *device=reply.returnParams.device;
-	// printf("cuDeviceGet device:%d\n",*device);
-	// printf("cuDeviceGet result:%d\n",reply.result);
+	printf("[cuDeviceGet] get device:%d\n",*device);
     return reply.result;
 }
 
@@ -158,6 +159,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetAttribute(int * pi, CUdevice_at
     CuDriverCallReplyStructure reply;
     communicate_with_server(nullptr, &request, &reply);
     *pi=reply.returnParams.pi;
+	printf("[cuDeviceGetAttribute] get attribute:%d\n",*pi);
     return reply.result;
 }
 HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxSetCurrent(CUcontext ctx) {
@@ -168,6 +170,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxSetCurrent(CUcontext ctx) {
     };
     CuDriverCallReplyStructure reply;
     communicate_with_server(nullptr, &request, &reply);
+	printf("[cuCtxSetCurrent] try to set current context:%p\n",ctx);
     return reply.result;
 }
 
@@ -180,6 +183,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetCurrent(CUcontext * pctx) {
     CuDriverCallReplyStructure reply;
     communicate_with_server(nullptr, &request, &reply);
     *pctx=reply.returnParams.ctx;
+	printf("[cuCtxGetCurrent] get current context:%p\n",*pctx);
     return reply.result;
 }
 
@@ -192,6 +196,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRetain(CUcontext * pctx,
     CuDriverCallReplyStructure reply;
     communicate_with_server(nullptr, &request, &reply);
     *pctx=reply.returnParams.ctx;
+	printf("[cuDevicePrimaryCtxRetain] retain device[%d] primary context:%p\n",dev,*pctx);
     return reply.result;
 }
 HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
@@ -202,6 +207,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
     };
     CuDriverCallReplyStructure reply;
     communicate_with_server(nullptr, &request, &reply);
+	printf("[cuDevicePrimaryCtxRelease] release device[%d] primary context\n",dev);
     return reply.result;
 }
 
@@ -214,6 +220,7 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemcpyHtoD( CUdeviceptr dstDevice,const v
 	};
 	CuDriverCallReplyStructure reply;
 	communicate_with_server(nullptr, &request, &reply);
+	printf("[cuMemcpyHtoD] copy %ld bytes from %p to %p\n",ByteCount,srcHost,dstDevice);
 	return reply.result;
 }
 
@@ -227,6 +234,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetModule(CUmodule * pMod, CUlibr
 	CuDriverCallReplyStructure reply;
 	communicate_with_server(nullptr, &request, &reply);
 	*pMod=reply.returnParams.mod;
+	printf("[cuLibraryGetModule] get module from library[%p]:%p\n",library,*pMod);
 	return reply.result;
 
 }
@@ -242,6 +250,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetFunction(CUfunction * hfunc, CU
 	CuDriverCallReplyStructure reply;
 	communicate_with_server(nullptr, &request, &reply);
 	*hfunc=reply.returnParams.hfunc;
+	printf("[cuModuleGetFunction] get function %s from module[%p]:%p\n",name,hmod,*hfunc);
 	return reply.result;
 }
 
