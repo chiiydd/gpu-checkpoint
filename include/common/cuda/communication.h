@@ -45,7 +45,7 @@ struct CuDriverCallStructure {
             unsigned int flags;
         }cuInit;
         struct{
-            size_t size;
+            size_t bytesize;
         }cuMemAlloc;
 
         struct{

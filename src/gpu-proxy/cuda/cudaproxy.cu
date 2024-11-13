@@ -174,7 +174,7 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
             break;
         case  CuDriverCall::CuMemAlloc:
 
-            reply->result=cuMemAlloc_v2(&reply->returnParams.dptr, request->params.cuMemAlloc.size);
+            reply->result=cuMemAlloc_v2(&reply->returnParams.dptr, request->params.cuMemAlloc.bytesize);
             break;
         case CuDriverCall::CuMemFree:
             reply->result=cuMemFree_v2(request->params.cuMemFree.dptr);

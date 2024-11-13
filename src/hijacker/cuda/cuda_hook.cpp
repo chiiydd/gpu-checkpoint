@@ -135,6 +135,30 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDriverGetVersion(int * driverVersion) {
 
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemAlloc(CUdeviceptr * dptr, size_t bytesize) {
+	HOOK_TRACE_PROFILE("cuMemAlloc");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuMemAlloc,
+		.params={.cuMemAlloc={.bytesize=bytesize}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	*dptr=reply.returnParams.dptr;
+	printf("[cuMemAlloc] allocate %ld bytes memory at %p\n",bytesize,*dptr);
+	return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemFree(CUdeviceptr dptr) {
+	HOOK_TRACE_PROFILE("cuMemFree");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuMemFree,
+		.params={.cuMemFree={.dptr=dptr}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	printf("[cuMemFree] free memory at %p\n",dptr);
+	return reply.result;
+}
+
 HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGet(CUdevice * device, int ordinal) {
     HOOK_TRACE_PROFILE("cuDeviceGet");
     CuDriverCallStructure request{
@@ -462,9 +486,9 @@ DEF_FN(CUresult,cuKernelSetCacheConfig ,CUkernel,kernel,CUfunc_cache,config,CUde
 DEF_FN(CUresult,cuKernelGetName ,const char * *,name,CUkernel,hfunc);
 DEF_FN(CUresult,cuKernelGetParamInfo ,CUkernel,kernel,size_t,paramIndex,size_t *,paramOffset,size_t *,paramSize);
 DEF_FN(CUresult,cuMemGetInfo_v2 ,size_t *,free,size_t *,total);
-DEF_FN(CUresult,cuMemAlloc_v2 ,CUdeviceptr *,dptr,size_t,bytesize);
+// DEF_FN(CUresult,cuMemAlloc_v2 ,CUdeviceptr *,dptr,size_t,bytesize);
 DEF_FN(CUresult,cuMemAllocPitch_v2 ,CUdeviceptr *,dptr,size_t *,pPitch,size_t,WidthInBytes,size_t,Height,unsigned int,ElementSizeBytes);
-DEF_FN(CUresult,cuMemFree_v2 ,CUdeviceptr,dptr);
+// DEF_FN(CUresult,cuMemFree_v2 ,CUdeviceptr,dptr);
 DEF_FN(CUresult,cuMemGetAddressRange_v2 ,CUdeviceptr *,pbase,size_t *,psize,CUdeviceptr,dptr);
 DEF_FN(CUresult,cuMemAllocHost_v2 ,void * *,pp,size_t,bytesize);
 DEF_FN(CUresult,cuMemFreeHost ,void *,p);
@@ -811,10 +835,10 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 
 	if (cuDriverFunctionTable.empty()){
 		cuDriverFunctionTable.insert({
+		{"cuDeviceGetName", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuDeviceGetName))},
 		{"cuInit", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuInit))},
 		{"cuModuleGetLoadingMode", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuModuleGetLoadingMode))},
 		{"cuDeviceGetCount", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuDeviceGetCount))},
-		{"cuDeviceGetName", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuDeviceGetName))},
 		{"cuDeviceGetUuid",CuDriverFunction(0,0,reinterpret_cast<void *>(&cuDeviceGetUuid))},
 		{"cuDriverGetVersion", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuDriverGetVersion))},
 		{"cuDeviceGet", CuDriverFunction(0, 0, reinterpret_cast<void*>(&cuDeviceGet))},
@@ -827,6 +851,8 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 		{"cuLibraryLoadData",CuDriverFunction(0,0,reinterpret_cast<void*>(&cuLibraryLoadData))},
 		{"cuLibraryGetModule",CuDriverFunction(0,0,reinterpret_cast<void*>(&cuLibraryGetModule))},
 		{"cuModuleGetFunction",CuDriverFunction(0,0,reinterpret_cast<void*>(&cuModuleGetFunction))},
+		{"cuMemAlloc",CuDriverFunction(0,0,reinterpret_cast<void*>(&cuMemAlloc))},
+		{"cuMemFree",CuDriverFunction(0,0,reinterpret_cast<void*>(&cuMemFree))},
 
 	});
 	}
@@ -908,9 +934,9 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuKernelGetName,const char * *, CUkernel)
 	ELSE_IF(cuKernelGetParamInfo,CUkernel, size_t, size_t *, size_t *)
 	ELSE_IF(cuMemGetInfo_v2,size_t *, size_t *)
-	ELSE_IF(cuMemAlloc_v2,CUdeviceptr *, size_t)
+	// ELSE_IF(cuMemAlloc_v2,CUdeviceptr *, size_t)
 	ELSE_IF(cuMemAllocPitch_v2,CUdeviceptr *, size_t *, size_t, size_t, unsigned int)
-	ELSE_IF(cuMemFree_v2,CUdeviceptr)
+	// ELSE_IF(cuMemFree_v2,CUdeviceptr)
 	ELSE_IF(cuMemGetAddressRange_v2,CUdeviceptr *, size_t *, CUdeviceptr)
 	ELSE_IF(cuMemAllocHost_v2,void * *, size_t)
 	ELSE_IF(cuMemFreeHost,void *)
@@ -1252,8 +1278,9 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuGreenCtxRecordEvent,CUgreenCtx, CUevent)
 	ELSE_IF(cuGreenCtxWaitEvent,CUgreenCtx, CUevent)
 	ELSE_IF(cuStreamGetGreenCtx,CUstream, CUgreenCtx *)
-
-
+	else{
+		printf("CUDA Driver API NOT HOOK:%s\n",symbol);
+	}
 
 
 
