@@ -1061,6 +1061,38 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 			}
 		}
 	}
+	else if(strcmp(symbol,"cuMemHostGetDevicePointer")==0){
+		auto it =cuDriverFunctionTable.find(symbol);
+		if(it == cuDriverFunctionTable.end()){
+			realcuMemHostGetDevicePointer_v2 = reinterpret_cast<CUresult(*)(CUdeviceptr *, void *, unsigned int)>(*pfn);
+			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuMemHostGetDevicePointer_v2));
+			cuDriverFunctionTable["cuMemHostGetDevicePointer"] =cuDriverFunction;
+			*pfn = reinterpret_cast<void*>(cuMemHostGetDevicePointer_v2);
+		}else{
+			if(it->second.cudaVersion!= cudaVersion){
+				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
+				it->second.cudaVersion = cudaVersion;
+				it->second.funcPtr = reinterpret_cast<void*>(realcuMemHostGetDevicePointer_v2);
+				*pfn = reinterpret_cast<void*>(cuMemHostGetDevicePointer_v2);
+			}
+		}
+	}
+	else if(strcmp(symbol,"cuMemHostRegister")==0){
+		auto it =cuDriverFunctionTable.find(symbol);
+		if(it == cuDriverFunctionTable.end()){
+			realcuMemHostRegister_v2 = reinterpret_cast<CUresult(*)(void *, size_t, unsigned int)>(*pfn);
+			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuMemHostRegister_v2));
+			cuDriverFunctionTable["cuMemHostRegister"] =cuDriverFunction;
+			*pfn = reinterpret_cast<void*>(cuMemHostRegister_v2);
+		}else{
+			if(it->second.cudaVersion!= cudaVersion){
+				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
+				it->second.cudaVersion = cudaVersion;
+				it->second.funcPtr = reinterpret_cast<void*>(realcuMemHostRegister_v2);
+				*pfn = reinterpret_cast<void*>(cuMemHostRegister_v2);
+			}
+		}
+	}
 
 	else{
 		printf("NOT FOUND %s\n",symbol);
