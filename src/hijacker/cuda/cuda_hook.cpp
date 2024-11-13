@@ -1073,8 +1073,8 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
 				it->second.cudaVersion = cudaVersion;
 				it->second.funcPtr = reinterpret_cast<void*>(realcuMemHostGetDevicePointer_v2);
-				*pfn = reinterpret_cast<void*>(cuMemHostGetDevicePointer_v2);
 			}
+				*pfn = reinterpret_cast<void*>(cuMemHostGetDevicePointer_v2);
 		}
 	}
 	else if(strcmp(symbol,"cuMemHostRegister")==0){
@@ -1089,8 +1089,40 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
 				it->second.cudaVersion = cudaVersion;
 				it->second.funcPtr = reinterpret_cast<void*>(realcuMemHostRegister_v2);
-				*pfn = reinterpret_cast<void*>(cuMemHostRegister_v2);
 			}
+				*pfn = reinterpret_cast<void*>(cuMemHostRegister_v2);
+		}
+	}
+	else if(strcmp(symbol,"cuLinkAddData")==0){
+		auto it =cuDriverFunctionTable.find(symbol);
+		if(it == cuDriverFunctionTable.end()){
+			realcuLinkAddData_v2 = reinterpret_cast<CUresult(*)(CUlinkState, CUjitInputType, void *, size_t, const char *, unsigned int, CUjit_option *, void **)>(*pfn);
+			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuLinkAddData_v2));
+			cuDriverFunctionTable["cuLinkAddData"] =cuDriverFunction;
+			*pfn = reinterpret_cast<void*>(cuLinkAddData_v2);
+		}else{
+			if(it->second.cudaVersion!= cudaVersion){
+				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
+				it->second.cudaVersion = cudaVersion;
+				it->second.funcPtr = reinterpret_cast<void*>(realcuLinkAddData_v2);
+			}
+				*pfn = reinterpret_cast<void*>(cuLinkAddData_v2);
+		}
+	}
+	else if(strcmp(symbol,"cuLinkAddFile")==0){
+		auto it =cuDriverFunctionTable.find(symbol);
+		if(it == cuDriverFunctionTable.end()){
+			realcuLinkAddFile_v2 = reinterpret_cast<CUresult(*)(CUlinkState, CUjitInputType, const char *, unsigned int, CUjit_option *, void **)>(*pfn);
+			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuLinkAddFile_v2));
+			cuDriverFunctionTable["cuLinkAddFile"] =cuDriverFunction;
+			*pfn = reinterpret_cast<void*>(cuLinkAddFile_v2);
+		}else{
+			if(it->second.cudaVersion!= cudaVersion){
+				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
+				it->second.cudaVersion = cudaVersion;
+				it->second.funcPtr = reinterpret_cast<void*>(realcuLinkAddFile_v2);
+			}
+			*pfn = reinterpret_cast<void*>(cuLinkAddFile_v2);
 		}
 	}
 
