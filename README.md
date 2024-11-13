@@ -43,7 +43,11 @@ make
 ```
 会在`build`目录下生成`libhijacker.so`文件,以及`build/bin`目录下生成 `gpu-proxy`和`test`文件。
 
+目前的测试环境：
 
+|  Driver Version | CUDA Version|
+|---|---|
+|550.107.02   |  12.4     |
 
 测试
 ```bash
