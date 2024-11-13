@@ -398,7 +398,7 @@ DEF_FN(CUresult,cuGetErrorString ,CUresult,error,const char * *,pStr);
 DEF_FN(CUresult,cuGetErrorName ,CUresult,error,const char * *,pStr);
 // DEF_FN(CUresult,cuDeviceGetUuid_v2 ,CUuuid *,uuid,CUdevice,dev);
 DEF_FN(CUresult,cuDeviceGetLuid ,char *,luid,unsigned int *,deviceNodeMask,CUdevice,dev);
-DEF_FN(CUresult,cuDeviceTotalMem_v2 ,size_t *,bytes,CUdevice,dev);
+// DEF_FN(CUresult,cuDeviceTotalMem_v2 ,size_t *,bytes,CUdevice,dev);
 DEF_FN(CUresult,cuDeviceGetTexture1DLinearMaxWidth ,size_t *,maxWidthInElements,CUarray_format,format,unsigned,numChannels,CUdevice,dev);
 DEF_FN(CUresult,cuDeviceGetNvSciSyncAttributes ,void *,nvSciSyncAttrList,CUdevice,dev,int,flags);
 DEF_FN(CUresult,cuDeviceSetMemPool ,CUdevice,dev,CUmemoryPool,pool);
@@ -844,7 +844,7 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	// ELSE_IF(cuDeviceGetUuid,CUuuid *, CUdevice)
 	// ELSE_IF(cuDeviceGetUuid_v2,CUuuid *, CUdevice)
 	ELSE_IF(cuDeviceGetLuid,char *, unsigned int *, CUdevice)
-	ELSE_IF(cuDeviceTotalMem_v2,size_t *, CUdevice)
+	// ELSE_IF(cuDeviceTotalMem_v2,size_t *, CUdevice)
 	ELSE_IF(cuDeviceGetTexture1DLinearMaxWidth,size_t *, CUarray_format, unsigned, CUdevice)
 	ELSE_IF(cuDeviceGetNvSciSyncAttributes,void *, CUdevice, int)
 	ELSE_IF(cuDeviceSetMemPool,CUdevice, CUmemoryPool)
