@@ -68,7 +68,7 @@ inline long int get_tid() {
     void operator=(const TypeName &) = delete;
 
 
-#define HOOK_BUILD_DEBUG
+// #define HOOK_BUILD_DEBUG
 
 class TraceProfile {
 public:
@@ -130,6 +130,28 @@ else if (strcmp(symbol, #NAME) == 0) { \
             real##NAME = reinterpret_cast<CUresult(*)(__VA_ARGS__)>(*pfn);\
         }\
             *pfn = reinterpret_cast<void*>(NAME);\
+    }\
+}
+
+#define APPEND_V2(NAME) NAME##_v2 
+#define TO_STRING(NAME) #NAME
+
+#define ELSE_IF_V2(NAME,...) \
+else if (strcmp(symbol, #NAME) == 0) { \
+    auto it =cuDriverFunctionTable.find(symbol); \
+    if(it == cuDriverFunctionTable.end()){\
+        real##NAME##_v2 = reinterpret_cast<CUresult(*)(__VA_ARGS__)>(*pfn);\
+        CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(real##NAME##_v2));\
+        cuDriverFunctionTable[#NAME] =cuDriverFunction;\
+        *pfn = reinterpret_cast<void*>(APPEND_V2(NAME));\
+    }else{ \
+        if(it->second.cudaVersion!= cudaVersion){\
+            printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);\
+            it->second.cudaVersion = cudaVersion;\
+            it->second.funcPtr = reinterpret_cast<void*>(real##NAME##_v2);\
+            real##NAME##_v2 = reinterpret_cast<CUresult(*)(__VA_ARGS__)>(*pfn);\
+        }\
+            *pfn = reinterpret_cast<void*>(APPEND_V2(NAME));\
     }\
 }
 

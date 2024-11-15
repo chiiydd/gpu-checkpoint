@@ -449,6 +449,7 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
         *pfn = (void*)&cuGetProcAddress;  // 拦截自身
     } 
 
+    
 	ELSE_IF(cuGetErrorString,CUresult, const char * *)
 	ELSE_IF(cuGetErrorName,CUresult, const char * *)
 	ELSE_IF(cuInit,unsigned int)
@@ -459,7 +460,8 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuDeviceGetUuid,CUuuid *, CUdevice)
 	ELSE_IF(cuDeviceGetUuid_v2,CUuuid *, CUdevice)
 	ELSE_IF(cuDeviceGetLuid,char *, unsigned int *, CUdevice)
-	ELSE_IF(cuDeviceTotalMem_v2,size_t *, CUdevice)
+	#undef cuDeviceTotalMem
+        ELSE_IF_V2(cuDeviceTotalMem,size_t *, CUdevice)
 	ELSE_IF(cuDeviceGetTexture1DLinearMaxWidth,size_t *, CUarray_format, unsigned, CUdevice)
 	ELSE_IF(cuDeviceGetAttribute,int *, CUdevice_attribute, CUdevice)
 	ELSE_IF(cuDeviceGetNvSciSyncAttributes,void *, CUdevice, int)
@@ -471,15 +473,21 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuDeviceGetProperties,CUdevprop *, CUdevice)
 	ELSE_IF(cuDeviceComputeCapability,int *, int *, CUdevice)
 	ELSE_IF(cuDevicePrimaryCtxRetain,CUcontext *, CUdevice)
-	ELSE_IF(cuDevicePrimaryCtxRelease_v2,CUdevice)
-	ELSE_IF(cuDevicePrimaryCtxSetFlags_v2,CUdevice, unsigned int)
+	#undef cuDevicePrimaryCtxRelease
+        ELSE_IF_V2(cuDevicePrimaryCtxRelease,CUdevice)
+	#undef cuDevicePrimaryCtxSetFlags
+        ELSE_IF_V2(cuDevicePrimaryCtxSetFlags,CUdevice, unsigned int)
 	ELSE_IF(cuDevicePrimaryCtxGetState,CUdevice, unsigned int *, int *)
-	ELSE_IF(cuDevicePrimaryCtxReset_v2,CUdevice)
-	ELSE_IF(cuCtxCreate_v2,CUcontext *, unsigned int, CUdevice)
+	#undef cuDevicePrimaryCtxReset
+        ELSE_IF_V2(cuDevicePrimaryCtxReset,CUdevice)
+	#undef cuCtxCreate
+        ELSE_IF_V2(cuCtxCreate,CUcontext *, unsigned int, CUdevice)
 	ELSE_IF(cuCtxCreate_v3,CUcontext *, CUexecAffinityParam *, int, unsigned int, CUdevice)
 	ELSE_IF(cuCtxDestroy_v2,CUcontext)
-	ELSE_IF(cuCtxPushCurrent_v2,CUcontext)
-	ELSE_IF(cuCtxPopCurrent_v2,CUcontext *)
+	#undef cuCtxPushCurrent
+        ELSE_IF_V2(cuCtxPushCurrent,CUcontext)
+	#undef cuCtxPopCurrent
+        ELSE_IF_V2(cuCtxPopCurrent,CUcontext *)
 	ELSE_IF(cuCtxSetCurrent,CUcontext)
 	ELSE_IF(cuCtxGetCurrent,CUcontext *)
 	ELSE_IF(cuCtxGetDevice,CUdevice *)
@@ -508,10 +516,14 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuModuleGetFunction,CUfunction *, CUmodule, const char *)
 	ELSE_IF(cuModuleGetFunctionCount,unsigned int *, CUmodule)
 	ELSE_IF(cuModuleEnumerateFunctions,CUfunction *, unsigned int, CUmodule)
-	ELSE_IF(cuModuleGetGlobal_v2,CUdeviceptr *, size_t *, CUmodule, const char *)
-	ELSE_IF(cuLinkCreate_v2,unsigned int, CUjit_option *, void * *, CUlinkState *)
-	ELSE_IF(cuLinkAddData_v2,CUlinkState, CUjitInputType, void *, size_t, const char *, unsigned int, CUjit_option *, void * *)
-	ELSE_IF(cuLinkAddFile_v2,CUlinkState, CUjitInputType, const char *, unsigned int, CUjit_option *, void * *)
+	#undef cuModuleGetGlobal
+        ELSE_IF_V2(cuModuleGetGlobal,CUdeviceptr *, size_t *, CUmodule, const char *)
+	#undef cuLinkCreate
+        ELSE_IF_V2(cuLinkCreate,unsigned int, CUjit_option *, void * *, CUlinkState *)
+	#undef cuLinkAddData
+        ELSE_IF_V2(cuLinkAddData,CUlinkState, CUjitInputType, void *, size_t, const char *, unsigned int, CUjit_option *, void * *)
+	#undef cuLinkAddFile
+        ELSE_IF_V2(cuLinkAddFile,CUlinkState, CUjitInputType, const char *, unsigned int, CUjit_option *, void * *)
 	ELSE_IF(cuLinkComplete,CUlinkState, void * *, size_t *)
 	ELSE_IF(cuLinkDestroy,CUlinkState)
 	ELSE_IF(cuModuleGetTexRef,CUtexref *, CUmodule, const char *)
@@ -532,15 +544,21 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuKernelSetCacheConfig,CUkernel, CUfunc_cache, CUdevice)
 	ELSE_IF(cuKernelGetName,const char * *, CUkernel)
 	ELSE_IF(cuKernelGetParamInfo,CUkernel, size_t, size_t *, size_t *)
-	ELSE_IF(cuMemGetInfo_v2,size_t *, size_t *)
-	ELSE_IF(cuMemAlloc_v2,CUdeviceptr *, size_t)
-	ELSE_IF(cuMemAllocPitch_v2,CUdeviceptr *, size_t *, size_t, size_t, unsigned int)
-	ELSE_IF(cuMemFree_v2,CUdeviceptr)
-	ELSE_IF(cuMemGetAddressRange_v2,CUdeviceptr *, size_t *, CUdeviceptr)
+	#undef cuMemGetInfo
+        ELSE_IF_V2(cuMemGetInfo,size_t *, size_t *)
+	#undef cuMemAlloc
+        ELSE_IF_V2(cuMemAlloc,CUdeviceptr *, size_t)
+	#undef cuMemAllocPitch
+        ELSE_IF_V2(cuMemAllocPitch,CUdeviceptr *, size_t *, size_t, size_t, unsigned int)
+	#undef cuMemFree
+        ELSE_IF_V2(cuMemFree,CUdeviceptr)
+	#undef cuMemGetAddressRange
+        ELSE_IF_V2(cuMemGetAddressRange,CUdeviceptr *, size_t *, CUdeviceptr)
 	ELSE_IF(cuMemAllocHost_v2,void * *, size_t)
 	ELSE_IF(cuMemFreeHost,void *)
 	ELSE_IF(cuMemHostAlloc,void * *, size_t, unsigned int)
-	ELSE_IF(cuMemHostGetDevicePointer_v2,CUdeviceptr *, void *, unsigned int)
+	#undef cuMemHostGetDevicePointer
+        ELSE_IF_V2(cuMemHostGetDevicePointer,CUdeviceptr *, void *, unsigned int)
 	ELSE_IF(cuMemHostGetFlags,unsigned int *, void *)
 	ELSE_IF(cuMemAllocManaged,CUdeviceptr *, size_t, unsigned int)
 	ELSE_IF(cuDeviceRegisterAsyncNotification,CUdevice, CUasyncCallback, void *, CUasyncCallbackHandle *)
@@ -550,38 +568,52 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuIpcGetEventHandle,CUipcEventHandle *, CUevent)
 	ELSE_IF(cuIpcOpenEventHandle,CUevent *, CUipcEventHandle)
 	ELSE_IF(cuIpcGetMemHandle,CUipcMemHandle *, CUdeviceptr)
-	ELSE_IF(cuIpcOpenMemHandle_v2,CUdeviceptr *, CUipcMemHandle, unsigned int)
+	#undef cuIpcOpenMemHandle
+        ELSE_IF_V2(cuIpcOpenMemHandle,CUdeviceptr *, CUipcMemHandle, unsigned int)
 	ELSE_IF(cuIpcCloseMemHandle,CUdeviceptr)
-	ELSE_IF(cuMemHostRegister_v2,void *, size_t, unsigned int)
+	#undef cuMemHostRegister
+        ELSE_IF_V2(cuMemHostRegister,void *, size_t, unsigned int)
 	ELSE_IF(cuMemHostUnregister,void *)
 	ELSE_IF(cuMemcpy,CUdeviceptr, CUdeviceptr, size_t)
 	ELSE_IF(cuMemcpyPeer,CUdeviceptr, CUcontext, CUdeviceptr, CUcontext, size_t)
-	ELSE_IF(cuMemcpyHtoD_v2,CUdeviceptr, const void *, size_t)
-	ELSE_IF(cuMemcpyDtoH_v2,void *, CUdeviceptr, size_t)
-	ELSE_IF(cuMemcpyDtoD_v2,CUdeviceptr, CUdeviceptr, size_t)
+	#undef cuMemcpyHtoD
+        ELSE_IF_V2(cuMemcpyHtoD,CUdeviceptr, const void *, size_t)
+	#undef cuMemcpyDtoH
+        ELSE_IF_V2(cuMemcpyDtoH,void *, CUdeviceptr, size_t)
+	#undef cuMemcpyDtoD
+        ELSE_IF_V2(cuMemcpyDtoD,CUdeviceptr, CUdeviceptr, size_t)
 	ELSE_IF(cuMemcpyDtoA_v2,CUarray, size_t, CUdeviceptr, size_t)
 	ELSE_IF(cuMemcpyAtoD_v2,CUdeviceptr, CUarray, size_t, size_t)
 	ELSE_IF(cuMemcpyHtoA_v2,CUarray, size_t, const void *, size_t)
 	ELSE_IF(cuMemcpyAtoH_v2,void *, CUarray, size_t, size_t)
 	ELSE_IF(cuMemcpyAtoA_v2,CUarray, size_t, CUarray, size_t, size_t)
 	ELSE_IF(cuMemcpy2D_v2,const CUDA_MEMCPY2D *)
-	ELSE_IF(cuMemcpy2DUnaligned_v2,const CUDA_MEMCPY2D *)
-	ELSE_IF(cuMemcpy3D_v2,const CUDA_MEMCPY3D *)
+	#undef cuMemcpy2DUnaligned
+        ELSE_IF_V2(cuMemcpy2DUnaligned,const CUDA_MEMCPY2D *)
+	#undef cuMemcpy3D
+        ELSE_IF_V2(cuMemcpy3D,const CUDA_MEMCPY3D *)
 	ELSE_IF(cuMemcpy3DPeer,const CUDA_MEMCPY3D_PEER *)
 	ELSE_IF(cuMemcpyAsync,CUdeviceptr, CUdeviceptr, size_t, CUstream)
 	ELSE_IF(cuMemcpyPeerAsync,CUdeviceptr, CUcontext, CUdeviceptr, CUcontext, size_t, CUstream)
-	ELSE_IF(cuMemcpyHtoDAsync_v2,CUdeviceptr, const void *, size_t, CUstream)
-	ELSE_IF(cuMemcpyDtoHAsync_v2,void *, CUdeviceptr, size_t, CUstream)
-	ELSE_IF(cuMemcpyDtoDAsync_v2,CUdeviceptr, CUdeviceptr, size_t, CUstream)
+	#undef cuMemcpyHtoDAsync
+        ELSE_IF_V2(cuMemcpyHtoDAsync,CUdeviceptr, const void *, size_t, CUstream)
+	#undef cuMemcpyDtoHAsync
+        ELSE_IF_V2(cuMemcpyDtoHAsync,void *, CUdeviceptr, size_t, CUstream)
+	#undef cuMemcpyDtoDAsync
+        ELSE_IF_V2(cuMemcpyDtoDAsync,CUdeviceptr, CUdeviceptr, size_t, CUstream)
 	ELSE_IF(cuMemcpyHtoAAsync_v2,CUarray, size_t, const void *, size_t, CUstream)
 	ELSE_IF(cuMemcpyAtoHAsync_v2,void *, CUarray, size_t, size_t, CUstream)
-	ELSE_IF(cuMemcpy2DAsync_v2,const CUDA_MEMCPY2D *, CUstream)
-	ELSE_IF(cuMemcpy3DAsync_v2,const CUDA_MEMCPY3D *, CUstream)
+	#undef cuMemcpy2DAsync
+        ELSE_IF_V2(cuMemcpy2DAsync,const CUDA_MEMCPY2D *, CUstream)
+	#undef cuMemcpy3DAsync
+        ELSE_IF_V2(cuMemcpy3DAsync,const CUDA_MEMCPY3D *, CUstream)
 	ELSE_IF(cuMemcpy3DPeerAsync,const CUDA_MEMCPY3D_PEER *, CUstream)
-	ELSE_IF(cuMemsetD8_v2,CUdeviceptr, unsigned char, size_t)
+	#undef cuMemsetD8
+        ELSE_IF_V2(cuMemsetD8,CUdeviceptr, unsigned char, size_t)
 	ELSE_IF(cuMemsetD16_v2,CUdeviceptr, unsigned short, size_t)
 	ELSE_IF(cuMemsetD32_v2,CUdeviceptr, unsigned int, size_t)
-	ELSE_IF(cuMemsetD2D8_v2,CUdeviceptr, size_t, unsigned char, size_t, size_t)
+	#undef cuMemsetD2D8
+        ELSE_IF_V2(cuMemsetD2D8,CUdeviceptr, size_t, unsigned char, size_t, size_t)
 	ELSE_IF(cuMemsetD2D16_v2,CUdeviceptr, size_t, unsigned short, size_t, size_t)
 	ELSE_IF(cuMemsetD2D32_v2,CUdeviceptr, size_t, unsigned int, size_t, size_t)
 	ELSE_IF(cuMemsetD8Async,CUdeviceptr, unsigned char, size_t, CUstream)
@@ -590,16 +622,20 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuMemsetD2D8Async,CUdeviceptr, size_t, unsigned char, size_t, size_t, CUstream)
 	ELSE_IF(cuMemsetD2D16Async,CUdeviceptr, size_t, unsigned short, size_t, size_t, CUstream)
 	ELSE_IF(cuMemsetD2D32Async,CUdeviceptr, size_t, unsigned int, size_t, size_t, CUstream)
-	ELSE_IF(cuArrayCreate_v2,CUarray *, const CUDA_ARRAY_DESCRIPTOR *)
-	ELSE_IF(cuArrayGetDescriptor_v2,CUDA_ARRAY_DESCRIPTOR *, CUarray)
+	#undef cuArrayCreate
+        ELSE_IF_V2(cuArrayCreate,CUarray *, const CUDA_ARRAY_DESCRIPTOR *)
+	#undef cuArrayGetDescriptor
+        ELSE_IF_V2(cuArrayGetDescriptor,CUDA_ARRAY_DESCRIPTOR *, CUarray)
 	ELSE_IF(cuArrayGetSparseProperties,CUDA_ARRAY_SPARSE_PROPERTIES *, CUarray)
 	ELSE_IF(cuMipmappedArrayGetSparseProperties,CUDA_ARRAY_SPARSE_PROPERTIES *, CUmipmappedArray)
 	ELSE_IF(cuArrayGetMemoryRequirements,CUDA_ARRAY_MEMORY_REQUIREMENTS *, CUarray, CUdevice)
 	ELSE_IF(cuMipmappedArrayGetMemoryRequirements,CUDA_ARRAY_MEMORY_REQUIREMENTS *, CUmipmappedArray, CUdevice)
 	ELSE_IF(cuArrayGetPlane,CUarray *, CUarray, unsigned int)
 	ELSE_IF(cuArrayDestroy,CUarray)
-	ELSE_IF(cuArray3DCreate_v2,CUarray *, const CUDA_ARRAY3D_DESCRIPTOR *)
-	ELSE_IF(cuArray3DGetDescriptor_v2,CUDA_ARRAY3D_DESCRIPTOR *, CUarray)
+	#undef cuArray3DCreate
+        ELSE_IF_V2(cuArray3DCreate,CUarray *, const CUDA_ARRAY3D_DESCRIPTOR *)
+	#undef cuArray3DGetDescriptor
+        ELSE_IF_V2(cuArray3DGetDescriptor,CUDA_ARRAY3D_DESCRIPTOR *, CUarray)
 	ELSE_IF(cuMipmappedArrayCreate,CUmipmappedArray *, const CUDA_ARRAY3D_DESCRIPTOR *, unsigned int)
 	ELSE_IF(cuMipmappedArrayGetLevel,CUarray *, CUmipmappedArray, unsigned int)
 	ELSE_IF(cuMipmappedArrayDestroy,CUmipmappedArray)
@@ -655,19 +691,22 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuStreamGetCtx,CUstream, CUcontext *)
 	ELSE_IF(cuStreamWaitEvent,CUstream, CUevent, unsigned int)
 	ELSE_IF(cuStreamAddCallback,CUstream, CUstreamCallback, void *, unsigned int)
-	ELSE_IF(cuStreamBeginCapture_v2,CUstream, CUstreamCaptureMode)
+	#undef cuStreamBeginCapture
+        ELSE_IF_V2(cuStreamBeginCapture,CUstream, CUstreamCaptureMode)
 	ELSE_IF(cuStreamBeginCaptureToGraph,CUstream, CUgraph, const CUgraphNode *, const CUgraphEdgeData *, size_t, CUstreamCaptureMode)
 	ELSE_IF(cuThreadExchangeStreamCaptureMode,CUstreamCaptureMode *)
 	ELSE_IF(cuStreamEndCapture,CUstream, CUgraph *)
 	ELSE_IF(cuStreamIsCapturing,CUstream, CUstreamCaptureStatus *)
-	ELSE_IF(cuStreamGetCaptureInfo_v2,CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, size_t *)
+	#undef cuStreamGetCaptureInfo
+        ELSE_IF_V2(cuStreamGetCaptureInfo,CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, size_t *)
 	ELSE_IF(cuStreamGetCaptureInfo_v3,CUstream, CUstreamCaptureStatus *, cuuint64_t *, CUgraph *, const CUgraphNode * *, const CUgraphEdgeData * *, size_t *)
 	ELSE_IF(cuStreamUpdateCaptureDependencies,CUstream, CUgraphNode *, size_t, unsigned int)
 	ELSE_IF(cuStreamUpdateCaptureDependencies_v2,CUstream, CUgraphNode *, const CUgraphEdgeData *, size_t, unsigned int)
 	ELSE_IF(cuStreamAttachMemAsync,CUstream, CUdeviceptr, size_t, unsigned int)
 	ELSE_IF(cuStreamQuery,CUstream)
 	ELSE_IF(cuStreamSynchronize,CUstream)
-	ELSE_IF(cuStreamDestroy_v2,CUstream)
+	#undef cuStreamDestroy
+        ELSE_IF_V2(cuStreamDestroy,CUstream)
 	ELSE_IF(cuStreamCopyAttributes,CUstream, CUstream)
 	ELSE_IF(cuStreamGetAttribute,CUstream, CUstreamAttrID, CUstreamAttrValue *)
 	ELSE_IF(cuStreamSetAttribute,CUstream, CUstreamAttrID, const CUstreamAttrValue *)
@@ -676,7 +715,8 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuEventRecordWithFlags,CUevent, CUstream, unsigned int)
 	ELSE_IF(cuEventQuery,CUevent)
 	ELSE_IF(cuEventSynchronize,CUevent)
-	ELSE_IF(cuEventDestroy_v2,CUevent)
+	#undef cuEventDestroy
+        ELSE_IF_V2(cuEventDestroy,CUevent)
 	ELSE_IF(cuEventElapsedTime,float *, CUevent, CUevent)
 	ELSE_IF(cuImportExternalMemory,CUexternalMemory *, const CUDA_EXTERNAL_MEMORY_HANDLE_DESC *)
 	ELSE_IF(cuExternalMemoryGetMappedBuffer,CUdeviceptr *, CUexternalMemory, const CUDA_EXTERNAL_MEMORY_BUFFER_DESC *)
@@ -686,11 +726,16 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuSignalExternalSemaphoresAsync,const CUexternalSemaphore *, const CUDA_EXTERNAL_SEMAPHORE_SIGNAL_PARAMS *, unsigned int, CUstream)
 	ELSE_IF(cuWaitExternalSemaphoresAsync,const CUexternalSemaphore *, const CUDA_EXTERNAL_SEMAPHORE_WAIT_PARAMS *, unsigned int, CUstream)
 	ELSE_IF(cuDestroyExternalSemaphore,CUexternalSemaphore)
-	ELSE_IF(cuStreamWaitValue32_v2,CUstream, CUdeviceptr, cuuint32_t, unsigned int)
-	ELSE_IF(cuStreamWaitValue64_v2,CUstream, CUdeviceptr, cuuint64_t, unsigned int)
-	ELSE_IF(cuStreamWriteValue32_v2,CUstream, CUdeviceptr, cuuint32_t, unsigned int)
-	ELSE_IF(cuStreamWriteValue64_v2,CUstream, CUdeviceptr, cuuint64_t, unsigned int)
-	ELSE_IF(cuStreamBatchMemOp_v2,CUstream, unsigned int, CUstreamBatchMemOpParams *, unsigned int)
+	#undef cuStreamWaitValue32
+        ELSE_IF_V2(cuStreamWaitValue32,CUstream, CUdeviceptr, cuuint32_t, unsigned int)
+	#undef cuStreamWaitValue64
+        ELSE_IF_V2(cuStreamWaitValue64,CUstream, CUdeviceptr, cuuint64_t, unsigned int)
+	#undef cuStreamWriteValue32
+        ELSE_IF_V2(cuStreamWriteValue32,CUstream, CUdeviceptr, cuuint32_t, unsigned int)
+	#undef cuStreamWriteValue64
+        ELSE_IF_V2(cuStreamWriteValue64,CUstream, CUdeviceptr, cuuint64_t, unsigned int)
+	#undef cuStreamBatchMemOp
+        ELSE_IF_V2(cuStreamBatchMemOp,CUstream, unsigned int, CUstreamBatchMemOpParams *, unsigned int)
 	ELSE_IF(cuFuncGetAttribute,int *, CUfunction_attribute, CUfunction)
 	ELSE_IF(cuFuncSetAttribute,CUfunction, CUfunction_attribute, int)
 	ELSE_IF(cuFuncSetCacheConfig,CUfunction, CUfunc_cache)
@@ -716,9 +761,12 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuParamSetTexRef,CUfunction, int, CUtexref)
 	ELSE_IF(cuFuncSetSharedMemConfig,CUfunction, CUsharedconfig)
 	ELSE_IF(cuGraphCreate,CUgraph *, unsigned int)
-	ELSE_IF(cuGraphAddKernelNode_v2,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_KERNEL_NODE_PARAMS *)
-	ELSE_IF(cuGraphKernelNodeGetParams_v2,CUgraphNode, CUDA_KERNEL_NODE_PARAMS *)
-	ELSE_IF(cuGraphKernelNodeSetParams_v2,CUgraphNode, const CUDA_KERNEL_NODE_PARAMS *)
+	#undef cuGraphAddKernelNode
+        ELSE_IF_V2(cuGraphAddKernelNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_KERNEL_NODE_PARAMS *)
+	#undef cuGraphKernelNodeGetParams
+        ELSE_IF_V2(cuGraphKernelNodeGetParams,CUgraphNode, CUDA_KERNEL_NODE_PARAMS *)
+	#undef cuGraphKernelNodeSetParams
+        ELSE_IF_V2(cuGraphKernelNodeSetParams,CUgraphNode, const CUDA_KERNEL_NODE_PARAMS *)
 	ELSE_IF(cuGraphAddMemcpyNode,CUgraphNode *, CUgraph, const CUgraphNode *, size_t, const CUDA_MEMCPY3D *, CUcontext)
 	ELSE_IF(cuGraphMemcpyNodeGetParams,CUgraphNode, CUDA_MEMCPY3D *)
 	ELSE_IF(cuGraphMemcpyNodeSetParams,CUgraphNode, const CUDA_MEMCPY3D *)
@@ -773,7 +821,8 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuGraphInstantiateWithFlags,CUgraphExec *, CUgraph, unsigned long long)
 	ELSE_IF(cuGraphInstantiateWithParams,CUgraphExec *, CUgraph, CUDA_GRAPH_INSTANTIATE_PARAMS *)
 	ELSE_IF(cuGraphExecGetFlags,CUgraphExec, cuuint64_t *)
-	ELSE_IF(cuGraphExecKernelNodeSetParams_v2,CUgraphExec, CUgraphNode, const CUDA_KERNEL_NODE_PARAMS *)
+	#undef cuGraphExecKernelNodeSetParams
+        ELSE_IF_V2(cuGraphExecKernelNodeSetParams,CUgraphExec, CUgraphNode, const CUDA_KERNEL_NODE_PARAMS *)
 	ELSE_IF(cuGraphExecMemcpyNodeSetParams,CUgraphExec, CUgraphNode, const CUDA_MEMCPY3D *, CUcontext)
 	ELSE_IF(cuGraphExecMemsetNodeSetParams,CUgraphExec, CUgraphNode, const CUDA_MEMSET_NODE_PARAMS *, CUcontext)
 	ELSE_IF(cuGraphExecHostNodeSetParams,CUgraphExec, CUgraphNode, const CUDA_HOST_NODE_PARAMS *)
@@ -788,7 +837,8 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuGraphLaunch,CUgraphExec, CUstream)
 	ELSE_IF(cuGraphExecDestroy,CUgraphExec)
 	ELSE_IF(cuGraphDestroy,CUgraph)
-	ELSE_IF(cuGraphExecUpdate_v2,CUgraphExec, CUgraph, CUgraphExecUpdateResultInfo *)
+	#undef cuGraphExecUpdate
+        ELSE_IF_V2(cuGraphExecUpdate,CUgraphExec, CUgraph, CUgraphExecUpdateResultInfo *)
 	ELSE_IF(cuGraphKernelNodeCopyAttributes,CUgraphNode, CUgraphNode)
 	ELSE_IF(cuGraphKernelNodeGetAttribute,CUgraphNode, CUkernelNodeAttrID, CUkernelNodeAttrValue *)
 	ELSE_IF(cuGraphKernelNodeSetAttribute,CUgraphNode, CUkernelNodeAttrID, const CUkernelNodeAttrValue *)
@@ -857,8 +907,10 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuGraphicsUnregisterResource,CUgraphicsResource)
 	ELSE_IF(cuGraphicsSubResourceGetMappedArray,CUarray *, CUgraphicsResource, unsigned int, unsigned int)
 	ELSE_IF(cuGraphicsResourceGetMappedMipmappedArray,CUmipmappedArray *, CUgraphicsResource)
-	ELSE_IF(cuGraphicsResourceGetMappedPointer_v2,CUdeviceptr *, size_t *, CUgraphicsResource)
-	ELSE_IF(cuGraphicsResourceSetMapFlags_v2,CUgraphicsResource, unsigned int)
+	#undef cuGraphicsResourceGetMappedPointer
+        ELSE_IF_V2(cuGraphicsResourceGetMappedPointer,CUdeviceptr *, size_t *, CUgraphicsResource)
+	#undef cuGraphicsResourceSetMapFlags
+        ELSE_IF_V2(cuGraphicsResourceSetMapFlags,CUgraphicsResource, unsigned int)
 	ELSE_IF(cuGraphicsMapResources,unsigned int, CUgraphicsResource *, CUstream)
 	ELSE_IF(cuGraphicsUnmapResources,unsigned int, CUgraphicsResource *, CUstream)
 	ELSE_IF(cuCoredumpGetAttribute,CUcoredumpSettings, void *, size_t *)
@@ -877,254 +929,8 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 	ELSE_IF(cuGreenCtxRecordEvent,CUgreenCtx, CUevent)
 	ELSE_IF(cuGreenCtxWaitEvent,CUgreenCtx, CUevent)
 	ELSE_IF(cuStreamGetGreenCtx,CUstream, CUgreenCtx *)
-	else if(strcmp(symbol,"cuMemAlloc") == 0) {
-	    auto it =cuDriverFunctionTable.find(symbol); 
-		if(it == cuDriverFunctionTable.end()){
-			realcuMemAlloc_v2 = reinterpret_cast<CUresult(*)(CUdeviceptr *, size_t)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuMemAlloc_v2));
-			cuDriverFunctionTable["cuMemAlloc"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuMemAlloc_v2);
-		}else{ 
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				realcuMemAlloc_v2 = reinterpret_cast<CUresult(*)(CUdeviceptr *, size_t)>(*pfn);
-				it->second.funcPtr = reinterpret_cast<void*>(realcuMemAlloc_v2);
-				*pfn = reinterpret_cast<void*>(cuMemAlloc_v2);
-			}
-		}
-	}
-	else if (strcmp(symbol,"cuCtxCreate")==0){
-		auto it =cuDriverFunctionTable.find(symbol);
-		if(it == cuDriverFunctionTable.end()){
-			realcuCtxCreate_v2 = reinterpret_cast<CUresult(*)(CUcontext *, unsigned int, CUdevice)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuCtxCreate_v2));
-			cuDriverFunctionTable["cuCtxCreate"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuCtxCreate_v2);
-		}
-		else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				realcuCtxCreate_v2 = reinterpret_cast<CUresult(*)(CUcontext *, unsigned int, CUdevice)>(*pfn);
-				it->second.funcPtr = reinterpret_cast<void*>(realcuCtxCreate_v2);\
-				*pfn = reinterpret_cast<void*>(cuCtxCreate_v2);\
-			}
-		}
-	}
-	else if(strcmp(symbol,"cuMemcpyHtoD") == 0) {
-	    auto it =cuDriverFunctionTable.find(symbol); 
-		if(it == cuDriverFunctionTable.end()){
-			realcuMemcpyHtoD_v2 = reinterpret_cast<CUresult(*)(CUdeviceptr, const void *, size_t)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuMemcpyHtoD_v2));
-			cuDriverFunctionTable["cuMemcpyHtoD"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuMemcpyHtoD_v2);
-		}else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				realcuMemcpyHtoD_v2 = reinterpret_cast<CUresult(*)(CUdeviceptr, const void *, size_t)>(*pfn);
-				it->second.funcPtr = reinterpret_cast<void*>(realcuMemcpyHtoD_v2);
-				*pfn = reinterpret_cast<void*>(cuMemcpyHtoD_v2);
-			}
-		}
-	}
-	else if (strcmp(symbol,"cuCtxPopCurrent")==0){
-		auto it =cuDriverFunctionTable.find(symbol);
-		if(it == cuDriverFunctionTable.end()){
-			realcuCtxPopCurrent_v2 = reinterpret_cast<CUresult(*)(CUcontext *)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuCtxPopCurrent_v2));
-			cuDriverFunctionTable["cuCtxPopCurrent"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuCtxPopCurrent_v2);
-		}
-		else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				realcuCtxPopCurrent_v2 = reinterpret_cast<CUresult(*)(CUcontext *)>(*pfn);
-				it->second.funcPtr = reinterpret_cast<void*>(realcuCtxPopCurrent_v2);\
-				*pfn = reinterpret_cast<void*>(cuCtxPopCurrent_v2);\
-			}
-		}
-	}
-	else if (strcmp(symbol,"cuCtxPushCurrent")==0){
-		auto it =cuDriverFunctionTable.find(symbol);
-		if(it == cuDriverFunctionTable.end()){
-			realcuCtxPushCurrent_v2 = reinterpret_cast<CUresult(*)(CUcontext)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuCtxPushCurrent_v2));
-			cuDriverFunctionTable["cuCtxPushCurrent"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuCtxPushCurrent_v2);
-		}
-		else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				realcuCtxPushCurrent_v2 = reinterpret_cast<CUresult(*)(CUcontext)>(*pfn);
-				it->second.funcPtr = reinterpret_cast<void*>(realcuCtxPushCurrent_v2);\
-				*pfn = reinterpret_cast<void*>(cuCtxPushCurrent_v2);\
-			}
-		}
-	}
-	else if(strcmp(symbol,"cuDevicePrimaryCtxRelease") == 0) {
-	    auto it =cuDriverFunctionTable.find(symbol);
-		if(it == cuDriverFunctionTable.end()){
-			realcuDevicePrimaryCtxRelease_v2 = reinterpret_cast<CUresult(*)(CUdevice)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuDevicePrimaryCtxRelease_v2));
-			cuDriverFunctionTable["cuDevicePrimaryCtxRelease"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuDevicePrimaryCtxRelease);
-		}else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				it->second.funcPtr = reinterpret_cast<void*>(realcuDevicePrimaryCtxRelease_v2);\
-				*pfn = reinterpret_cast<void*>(cuDevicePrimaryCtxRelease_v2);\
-			}
-		}
-	}
-	else if(strcmp(symbol,"cuDevicePrimaryCtxReset") == 0) {
-	    auto it =cuDriverFunctionTable.find(symbol);
-		if(it == cuDriverFunctionTable.end()){
-			realcuDevicePrimaryCtxReset_v2 = reinterpret_cast<CUresult(*)(CUdevice)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuDevicePrimaryCtxReset_v2));
-			cuDriverFunctionTable["cuDevicePrimaryCtxReset"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuDevicePrimaryCtxReset);
-		}else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				it->second.funcPtr = reinterpret_cast<void*>(realcuDevicePrimaryCtxReset_v2);
-				*pfn = reinterpret_cast<void*>(cuDevicePrimaryCtxReset_v2);
-			}
-		}
-	}
-	else if(strcmp(symbol,"cuDeviceTotalMem")==0){
-		auto it =cuDriverFunctionTable.find(symbol);
-		if(it == cuDriverFunctionTable.end()){
-			realcuDeviceTotalMem_v2 = reinterpret_cast<CUresult(*)(size_t *, CUdevice)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuDeviceTotalMem_v2));
-			cuDriverFunctionTable["cuDeviceTotalMem"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuDeviceTotalMem_v2);
-		}else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				it->second.funcPtr = reinterpret_cast<void*>(realcuDeviceTotalMem_v2);
-				*pfn = reinterpret_cast<void*>(cuDeviceTotalMem_v2);
-			}
-		}
-	}
-	else if(strcmp(symbol,"cuMemGetInfo")==0){
-		auto it =cuDriverFunctionTable.find(symbol);
-		if(it == cuDriverFunctionTable.end()){
-			realcuMemGetInfo_v2 = reinterpret_cast<CUresult(*)(size_t *, size_t *)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuMemGetInfo_v2));
-			cuDriverFunctionTable["cuMemGetInfo"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuMemGetInfo_v2);
-		}else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				it->second.funcPtr = reinterpret_cast<void*>(realcuMemGetInfo_v2);
-				*pfn = reinterpret_cast<void*>(cuMemGetInfo_v2);
-			}
-		}
-	}
-	else if(strcmp(symbol,"cuDevicePrimaryCtxSetFlags")==0){
-		auto it =cuDriverFunctionTable.find(symbol);
-		if(it == cuDriverFunctionTable.end()){
-			realcuDevicePrimaryCtxSetFlags_v2 = reinterpret_cast<CUresult(*)(CUdevice, unsigned int)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuDevicePrimaryCtxSetFlags_v2));
-			cuDriverFunctionTable["cuDevicePrimaryCtxSetFlags"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuDevicePrimaryCtxSetFlags_v2);
-		}else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				it->second.funcPtr = reinterpret_cast<void*>(realcuDevicePrimaryCtxSetFlags_v2);
-				*pfn = reinterpret_cast<void*>(cuDevicePrimaryCtxSetFlags_v2);
-			}
-		}
-	}
-	else if(strcmp(symbol,"cuModuleGetGlobal")==0){
-		auto it =cuDriverFunctionTable.find(symbol);
-		if(it == cuDriverFunctionTable.end()){
-			realcuModuleGetGlobal_v2 = reinterpret_cast<CUresult(*)(CUdeviceptr *, size_t *, CUmodule, const char *)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuModuleGetGlobal_v2));
-			cuDriverFunctionTable["cuModuleGetGlobal"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuModuleGetGlobal_v2);
-		}else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				it->second.funcPtr = reinterpret_cast<void*>(realcuModuleGetGlobal_v2);
-				*pfn = reinterpret_cast<void*>(cuModuleGetGlobal_v2);
-			}
-		}
-	}
-	else if(strcmp(symbol,"cuMemHostGetDevicePointer")==0){
-		auto it =cuDriverFunctionTable.find(symbol);
-		if(it == cuDriverFunctionTable.end()){
-			realcuMemHostGetDevicePointer_v2 = reinterpret_cast<CUresult(*)(CUdeviceptr *, void *, unsigned int)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuMemHostGetDevicePointer_v2));
-			cuDriverFunctionTable["cuMemHostGetDevicePointer"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuMemHostGetDevicePointer_v2);
-		}else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				it->second.funcPtr = reinterpret_cast<void*>(realcuMemHostGetDevicePointer_v2);
-			}
-				*pfn = reinterpret_cast<void*>(cuMemHostGetDevicePointer_v2);
-		}
-	}
-	else if(strcmp(symbol,"cuMemHostRegister")==0){
-		auto it =cuDriverFunctionTable.find(symbol);
-		if(it == cuDriverFunctionTable.end()){
-			realcuMemHostRegister_v2 = reinterpret_cast<CUresult(*)(void *, size_t, unsigned int)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuMemHostRegister_v2));
-			cuDriverFunctionTable["cuMemHostRegister"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuMemHostRegister_v2);
-		}else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				it->second.funcPtr = reinterpret_cast<void*>(realcuMemHostRegister_v2);
-			}
-				*pfn = reinterpret_cast<void*>(cuMemHostRegister_v2);
-		}
-	}
-	else if(strcmp(symbol,"cuLinkAddData")==0){
-		auto it =cuDriverFunctionTable.find(symbol);
-		if(it == cuDriverFunctionTable.end()){
-			realcuLinkAddData_v2 = reinterpret_cast<CUresult(*)(CUlinkState, CUjitInputType, void *, size_t, const char *, unsigned int, CUjit_option *, void **)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuLinkAddData_v2));
-			cuDriverFunctionTable["cuLinkAddData"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuLinkAddData_v2);
-		}else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				it->second.funcPtr = reinterpret_cast<void*>(realcuLinkAddData_v2);
-			}
-				*pfn = reinterpret_cast<void*>(cuLinkAddData_v2);
-		}
-	}
-	else if(strcmp(symbol,"cuLinkAddFile")==0){
-		auto it =cuDriverFunctionTable.find(symbol);
-		if(it == cuDriverFunctionTable.end()){
-			realcuLinkAddFile_v2 = reinterpret_cast<CUresult(*)(CUlinkState, CUjitInputType, const char *, unsigned int, CUjit_option *, void **)>(*pfn);
-			CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(realcuLinkAddFile_v2));
-			cuDriverFunctionTable["cuLinkAddFile"] =cuDriverFunction;
-			*pfn = reinterpret_cast<void*>(cuLinkAddFile_v2);
-		}else{
-			if(it->second.cudaVersion!= cudaVersion){
-				printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);
-				it->second.cudaVersion = cudaVersion;
-				it->second.funcPtr = reinterpret_cast<void*>(realcuLinkAddFile_v2);
-			}
-			*pfn = reinterpret_cast<void*>(cuLinkAddFile_v2);
-		}
-	}
+
+
 
 	else{
 		printf("NOT FOUND %s\n",symbol);
