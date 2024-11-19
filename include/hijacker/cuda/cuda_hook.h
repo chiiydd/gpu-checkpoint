@@ -1,19 +1,18 @@
 #ifndef __CUDA_CUDA_HOOK_H__
 #define __CUDA_CUDA_HOOK_H__
+#include <string>
 #include "cuda_original.h"
 
 
 class CuDriverFunction{
     public:
+        std::string symbol;
         int cudaVersion;
         cuuint64_t flags;
         void *funcPtr;
-    CuDriverFunction() : cudaVersion(0), flags(0), funcPtr(nullptr) {} // 默认构造函数
-    CuDriverFunction(int cudaVersion, cuuint64_t flags, void *funcPtr){
-        this->cudaVersion = cudaVersion;
-        this->flags = flags;
-        this->funcPtr = funcPtr;
-    }
+    CuDriverFunction() : symbol("DEFAULT"),cudaVersion(0), flags(0), funcPtr(nullptr) {} // 默认构造函数
+    CuDriverFunction(const char * symbol,int cudaVersion, cuuint64_t flags, void *funcPtr):symbol(symbol),cudaVersion(cudaVersion),flags(flags),funcPtr(funcPtr){}
+
 };
 // Function pointer to the real cuGetProcAddress
 // #if(CUDA_VERSION < 12000)

@@ -98,62 +98,7 @@ private:
 #endif
 
 
-#define ELSE_IF_0(NAME) \
-else if (strcmp(symbol, #NAME) == 0) { \
-    auto it =cuDriverFunctionTable.find(symbol); \
-    if(it == cuDriverFunctionTable.end()){\
-        real##NAME = reinterpret_cast<CUresult(*)(void)>(*pfn);\
-        CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(real##NAME));\
-        cuDriverFunctionTable[#NAME] =cuDriverFunction;\
-    }else{ \
-        if(it->second.cudaVersion!= cudaVersion){\
-            printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);\
-            it->second.cudaVersion = cudaVersion;\
-            real##NAME = reinterpret_cast<CUresult(*)(void)>(*pfn);\
-        }\
-    }\
-    *pfn = reinterpret_cast<void*>(NAME);\
-}
-#define ELSE_IF(NAME,...) \
-else if (strcmp(symbol, #NAME) == 0) { \
-    auto it =cuDriverFunctionTable.find(symbol); \
-    if(it == cuDriverFunctionTable.end()){\
-        real##NAME = reinterpret_cast<CUresult(*)(__VA_ARGS__)>(*pfn);\
-        CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(real##NAME));\
-        cuDriverFunctionTable[#NAME] =cuDriverFunction;\
-        *pfn = reinterpret_cast<void*>(NAME);\
-    }else{ \
-        if(it->second.cudaVersion!= cudaVersion){\
-            printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);\
-            it->second.cudaVersion = cudaVersion;\
-            it->second.funcPtr = reinterpret_cast<void*>(real##NAME);\
-            real##NAME = reinterpret_cast<CUresult(*)(__VA_ARGS__)>(*pfn);\
-        }\
-            *pfn = reinterpret_cast<void*>(NAME);\
-    }\
-}
 
-#define APPEND_V2(NAME) NAME##_v2 
-#define TO_STRING(NAME) #NAME
-
-#define ELSE_IF_V2(NAME,...) \
-else if (strcmp(symbol, #NAME) == 0) { \
-    auto it =cuDriverFunctionTable.find(symbol); \
-    if(it == cuDriverFunctionTable.end()){\
-        real##NAME##_v2 = reinterpret_cast<CUresult(*)(__VA_ARGS__)>(*pfn);\
-        CuDriverFunction cuDriverFunction =CuDriverFunction(cudaVersion,flags,reinterpret_cast<void*>(real##NAME##_v2));\
-        cuDriverFunctionTable[#NAME] =cuDriverFunction;\
-        *pfn = reinterpret_cast<void*>(APPEND_V2(NAME));\
-    }else{ \
-        if(it->second.cudaVersion!= cudaVersion){\
-            printf("[%s]:convert version from %d to %d\n",symbol,it->second.cudaVersion,cudaVersion);\
-            it->second.cudaVersion = cudaVersion;\
-            it->second.funcPtr = reinterpret_cast<void*>(real##NAME##_v2);\
-            real##NAME##_v2 = reinterpret_cast<CUresult(*)(__VA_ARGS__)>(*pfn);\
-        }\
-            *pfn = reinterpret_cast<void*>(APPEND_V2(NAME));\
-    }\
-}
 
 #define DEF_FN_PTR(RET, P_TYPES...) RET (*fun)(P_TYPES)
 
