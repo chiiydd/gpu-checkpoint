@@ -87,142 +87,142 @@ typedef uint64_t cuuint64_t;
     #define __CUDA_API_PTSZ(api) api
 #endif
 
-#define cuDeviceTotalMem                    cuDeviceTotalMem_v2
-#define cuCtxCreate                         cuCtxCreate_v2
-#define cuCtxCreate_v3                      cuCtxCreate_v3
-#define cuModuleGetGlobal                   cuModuleGetGlobal_v2
-#define cuMemGetInfo                        cuMemGetInfo_v2
-#define cuMemAlloc                          cuMemAlloc_v2
-#define cuMemAllocPitch                     cuMemAllocPitch_v2
-#define cuMemFree                           cuMemFree_v2
-#define cuMemGetAddressRange                cuMemGetAddressRange_v2
-#define cuMemAllocHost                      cuMemAllocHost_v2
-#define cuMemHostGetDevicePointer           cuMemHostGetDevicePointer_v2
-#define cuMemcpyHtoD                        __CUDA_API_PTDS(cuMemcpyHtoD_v2)
-#define cuMemcpyDtoH                        __CUDA_API_PTDS(cuMemcpyDtoH_v2)
-#define cuMemcpyDtoD                        __CUDA_API_PTDS(cuMemcpyDtoD_v2)
-#define cuMemcpyDtoA                        __CUDA_API_PTDS(cuMemcpyDtoA_v2)
-#define cuMemcpyAtoD                        __CUDA_API_PTDS(cuMemcpyAtoD_v2)
-#define cuMemcpyHtoA                        __CUDA_API_PTDS(cuMemcpyHtoA_v2)
-#define cuMemcpyAtoH                        __CUDA_API_PTDS(cuMemcpyAtoH_v2)
-#define cuMemcpyAtoA                        __CUDA_API_PTDS(cuMemcpyAtoA_v2)
-#define cuMemcpyHtoAAsync                   __CUDA_API_PTSZ(cuMemcpyHtoAAsync_v2)
-#define cuMemcpyAtoHAsync                   __CUDA_API_PTSZ(cuMemcpyAtoHAsync_v2)
-#define cuMemcpy2D                          __CUDA_API_PTDS(cuMemcpy2D_v2)
-#define cuMemcpy2DUnaligned                 __CUDA_API_PTDS(cuMemcpy2DUnaligned_v2)
-#define cuMemcpy3D                          __CUDA_API_PTDS(cuMemcpy3D_v2)
-#define cuMemcpyHtoDAsync                   __CUDA_API_PTSZ(cuMemcpyHtoDAsync_v2)
-#define cuMemcpyDtoHAsync                   __CUDA_API_PTSZ(cuMemcpyDtoHAsync_v2)
-#define cuMemcpyDtoDAsync                   __CUDA_API_PTSZ(cuMemcpyDtoDAsync_v2)
-#define cuMemcpy2DAsync                     __CUDA_API_PTSZ(cuMemcpy2DAsync_v2)
-#define cuMemcpy3DAsync                     __CUDA_API_PTSZ(cuMemcpy3DAsync_v2)
-#define cuMemsetD8                          __CUDA_API_PTDS(cuMemsetD8_v2)
-#define cuMemsetD16                         __CUDA_API_PTDS(cuMemsetD16_v2)
-#define cuMemsetD32                         __CUDA_API_PTDS(cuMemsetD32_v2)
-#define cuMemsetD2D8                        __CUDA_API_PTDS(cuMemsetD2D8_v2)
-#define cuMemsetD2D16                       __CUDA_API_PTDS(cuMemsetD2D16_v2)
-#define cuMemsetD2D32                       __CUDA_API_PTDS(cuMemsetD2D32_v2)
-#define cuArrayCreate                       cuArrayCreate_v2
-#define cuArrayGetDescriptor                cuArrayGetDescriptor_v2
-#define cuArray3DCreate                     cuArray3DCreate_v2
-#define cuArray3DGetDescriptor              cuArray3DGetDescriptor_v2
-#define cuTexRefSetAddress                  cuTexRefSetAddress_v2
-#define cuTexRefGetAddress                  cuTexRefGetAddress_v2
-#define cuGraphicsResourceGetMappedPointer  cuGraphicsResourceGetMappedPointer_v2
-#define cuCtxDestroy                        cuCtxDestroy_v2
-#define cuCtxPopCurrent                     cuCtxPopCurrent_v2
-#define cuCtxPushCurrent                    cuCtxPushCurrent_v2
-#define cuStreamDestroy                     cuStreamDestroy_v2
-#define cuEventDestroy                      cuEventDestroy_v2
-#define cuTexRefSetAddress2D                cuTexRefSetAddress2D_v3
-#define cuLinkCreate                        cuLinkCreate_v2
-#define cuLinkAddData                       cuLinkAddData_v2
-#define cuLinkAddFile                       cuLinkAddFile_v2
-#define cuMemHostRegister                   cuMemHostRegister_v2
-#define cuGraphicsResourceSetMapFlags       cuGraphicsResourceSetMapFlags_v2
-#define cuStreamBeginCapture                __CUDA_API_PTSZ(cuStreamBeginCapture_v2)
-#define cuDevicePrimaryCtxRelease           cuDevicePrimaryCtxRelease_v2
-#define cuDevicePrimaryCtxReset             cuDevicePrimaryCtxReset_v2
-#define cuDevicePrimaryCtxSetFlags          cuDevicePrimaryCtxSetFlags_v2
-#define cuDeviceGetUuid_v2                  cuDeviceGetUuid_v2
-#define cuIpcOpenMemHandle                  cuIpcOpenMemHandle_v2
+// #define cuDeviceTotalMem                    cuDeviceTotalMem_v2
+// #define cuCtxCreate                         cuCtxCreate_v2
+// #define cuCtxCreate_v3                      cuCtxCreate_v3
+// #define cuModuleGetGlobal                   cuModuleGetGlobal_v2
+// #define cuMemGetInfo                        cuMemGetInfo_v2
+// #define cuMemAlloc                          cuMemAlloc_v2
+// #define cuMemAllocPitch                     cuMemAllocPitch_v2
+// #define cuMemFree                           cuMemFree_v2
+// #define cuMemGetAddressRange                cuMemGetAddressRange_v2
+// #define cuMemAllocHost                      cuMemAllocHost_v2
+// #define cuMemHostGetDevicePointer           cuMemHostGetDevicePointer_v2
+// #define cuMemcpyHtoD                        __CUDA_API_PTDS(cuMemcpyHtoD_v2)
+// #define cuMemcpyDtoH                        __CUDA_API_PTDS(cuMemcpyDtoH_v2)
+// #define cuMemcpyDtoD                        __CUDA_API_PTDS(cuMemcpyDtoD_v2)
+// #define cuMemcpyDtoA                        __CUDA_API_PTDS(cuMemcpyDtoA_v2)
+// #define cuMemcpyAtoD                        __CUDA_API_PTDS(cuMemcpyAtoD_v2)
+// #define cuMemcpyHtoA                        __CUDA_API_PTDS(cuMemcpyHtoA_v2)
+// #define cuMemcpyAtoH                        __CUDA_API_PTDS(cuMemcpyAtoH_v2)
+// #define cuMemcpyAtoA                        __CUDA_API_PTDS(cuMemcpyAtoA_v2)
+// #define cuMemcpyHtoAAsync                   __CUDA_API_PTSZ(cuMemcpyHtoAAsync_v2)
+// #define cuMemcpyAtoHAsync                   __CUDA_API_PTSZ(cuMemcpyAtoHAsync_v2)
+// #define cuMemcpy2D                          __CUDA_API_PTDS(cuMemcpy2D_v2)
+// #define cuMemcpy2DUnaligned                 __CUDA_API_PTDS(cuMemcpy2DUnaligned_v2)
+// #define cuMemcpy3D                          __CUDA_API_PTDS(cuMemcpy3D_v2)
+// #define cuMemcpyHtoDAsync                   __CUDA_API_PTSZ(cuMemcpyHtoDAsync_v2)
+// #define cuMemcpyDtoHAsync                   __CUDA_API_PTSZ(cuMemcpyDtoHAsync_v2)
+// #define cuMemcpyDtoDAsync                   __CUDA_API_PTSZ(cuMemcpyDtoDAsync_v2)
+// #define cuMemcpy2DAsync                     __CUDA_API_PTSZ(cuMemcpy2DAsync_v2)
+// #define cuMemcpy3DAsync                     __CUDA_API_PTSZ(cuMemcpy3DAsync_v2)
+// #define cuMemsetD8                          __CUDA_API_PTDS(cuMemsetD8_v2)
+// #define cuMemsetD16                         __CUDA_API_PTDS(cuMemsetD16_v2)
+// #define cuMemsetD32                         __CUDA_API_PTDS(cuMemsetD32_v2)
+// #define cuMemsetD2D8                        __CUDA_API_PTDS(cuMemsetD2D8_v2)
+// #define cuMemsetD2D16                       __CUDA_API_PTDS(cuMemsetD2D16_v2)
+// #define cuMemsetD2D32                       __CUDA_API_PTDS(cuMemsetD2D32_v2)
+// #define cuArrayCreate                       cuArrayCreate_v2
+// #define cuArrayGetDescriptor                cuArrayGetDescriptor_v2
+// #define cuArray3DCreate                     cuArray3DCreate_v2
+// #define cuArray3DGetDescriptor              cuArray3DGetDescriptor_v2
+// #define cuTexRefSetAddress                  cuTexRefSetAddress_v2
+// #define cuTexRefGetAddress                  cuTexRefGetAddress_v2
+// #define cuGraphicsResourceGetMappedPointer  cuGraphicsResourceGetMappedPointer_v2
+// #define cuCtxDestroy                        cuCtxDestroy_v2
+// #define cuCtxPopCurrent                     cuCtxPopCurrent_v2
+// #define cuCtxPushCurrent                    cuCtxPushCurrent_v2
+// #define cuStreamDestroy                     cuStreamDestroy_v2
+// #define cuEventDestroy                      cuEventDestroy_v2
+// #define cuTexRefSetAddress2D                cuTexRefSetAddress2D_v3
+// #define cuLinkCreate                        cuLinkCreate_v2
+// #define cuLinkAddData                       cuLinkAddData_v2
+// #define cuLinkAddFile                       cuLinkAddFile_v2
+// #define cuMemHostRegister                   cuMemHostRegister_v2
+// #define cuGraphicsResourceSetMapFlags       cuGraphicsResourceSetMapFlags_v2
+// #define cuStreamBeginCapture                __CUDA_API_PTSZ(cuStreamBeginCapture_v2)
+// #define cuDevicePrimaryCtxRelease           cuDevicePrimaryCtxRelease_v2
+// #define cuDevicePrimaryCtxReset             cuDevicePrimaryCtxReset_v2
+// #define cuDevicePrimaryCtxSetFlags          cuDevicePrimaryCtxSetFlags_v2
+// #define cuDeviceGetUuid_v2                  cuDeviceGetUuid_v2
+// #define cuIpcOpenMemHandle                  cuIpcOpenMemHandle_v2
 
-#define cuGraphInstantiate                  cuGraphInstantiateWithFlags
+// #define cuGraphInstantiate                  cuGraphInstantiateWithFlags
 
-#define cuGraphExecUpdate                   cuGraphExecUpdate_v2 
-#define cuGetProcAddress                    cuGetProcAddress_v2
-#define cuGraphAddKernelNode                cuGraphAddKernelNode_v2
-#define cuGraphKernelNodeGetParams          cuGraphKernelNodeGetParams_v2
-#define cuGraphKernelNodeSetParams          cuGraphKernelNodeSetParams_v2
-#define cuGraphExecKernelNodeSetParams      cuGraphExecKernelNodeSetParams_v2
+// #define cuGraphExecUpdate                   cuGraphExecUpdate_v2 
+// #define cuGetProcAddress                    cuGetProcAddress_v2
+// #define cuGraphAddKernelNode                cuGraphAddKernelNode_v2
+// #define cuGraphKernelNodeGetParams          cuGraphKernelNodeGetParams_v2
+// #define cuGraphKernelNodeSetParams          cuGraphKernelNodeSetParams_v2
+// #define cuGraphExecKernelNodeSetParams      cuGraphExecKernelNodeSetParams_v2
 
-#define cuStreamWriteValue32                __CUDA_API_PTSZ(cuStreamWriteValue32_v2)
-#define cuStreamWaitValue32                 __CUDA_API_PTSZ(cuStreamWaitValue32_v2)
-#define cuStreamWriteValue64                __CUDA_API_PTSZ(cuStreamWriteValue64_v2)
-#define cuStreamWaitValue64                 __CUDA_API_PTSZ(cuStreamWaitValue64_v2)
-#define cuStreamBatchMemOp                  __CUDA_API_PTSZ(cuStreamBatchMemOp_v2)
-#define cuStreamGetCaptureInfo              __CUDA_API_PTSZ(cuStreamGetCaptureInfo_v2)
-#define cuStreamGetCaptureInfo_v2           __CUDA_API_PTSZ(cuStreamGetCaptureInfo_v2)
+// #define cuStreamWriteValue32                __CUDA_API_PTSZ(cuStreamWriteValue32_v2)
+// #define cuStreamWaitValue32                 __CUDA_API_PTSZ(cuStreamWaitValue32_v2)
+// #define cuStreamWriteValue64                __CUDA_API_PTSZ(cuStreamWriteValue64_v2)
+// #define cuStreamWaitValue64                 __CUDA_API_PTSZ(cuStreamWaitValue64_v2)
+// #define cuStreamBatchMemOp                  __CUDA_API_PTSZ(cuStreamBatchMemOp_v2)
+// #define cuStreamGetCaptureInfo              __CUDA_API_PTSZ(cuStreamGetCaptureInfo_v2)
+// #define cuStreamGetCaptureInfo_v2           __CUDA_API_PTSZ(cuStreamGetCaptureInfo_v2)
 
-#if defined(__CUDA_API_PER_THREAD_DEFAULT_STREAM)
-    #define cuMemcpy                            __CUDA_API_PTDS(cuMemcpy)
-    #define cuMemcpyAsync                       __CUDA_API_PTSZ(cuMemcpyAsync)
-    #define cuMemcpyPeer                        __CUDA_API_PTDS(cuMemcpyPeer)
-    #define cuMemcpyPeerAsync                   __CUDA_API_PTSZ(cuMemcpyPeerAsync)
-    #define cuMemcpy3DPeer                      __CUDA_API_PTDS(cuMemcpy3DPeer)
-    #define cuMemcpy3DPeerAsync                 __CUDA_API_PTSZ(cuMemcpy3DPeerAsync)
-    #define cuMemPrefetchAsync                  __CUDA_API_PTSZ(cuMemPrefetchAsync)
-    #define cuMemPrefetchAsync_v2               __CUDA_API_PTSZ(cuMemPrefetchAsync_v2)
+// #if defined(__CUDA_API_PER_THREAD_DEFAULT_STREAM)
+//     #define cuMemcpy                            __CUDA_API_PTDS(cuMemcpy)
+//     #define cuMemcpyAsync                       __CUDA_API_PTSZ(cuMemcpyAsync)
+//     #define cuMemcpyPeer                        __CUDA_API_PTDS(cuMemcpyPeer)
+//     #define cuMemcpyPeerAsync                   __CUDA_API_PTSZ(cuMemcpyPeerAsync)
+//     #define cuMemcpy3DPeer                      __CUDA_API_PTDS(cuMemcpy3DPeer)
+//     #define cuMemcpy3DPeerAsync                 __CUDA_API_PTSZ(cuMemcpy3DPeerAsync)
+//     #define cuMemPrefetchAsync                  __CUDA_API_PTSZ(cuMemPrefetchAsync)
+//     #define cuMemPrefetchAsync_v2               __CUDA_API_PTSZ(cuMemPrefetchAsync_v2)
 
-    #define cuMemsetD8Async                     __CUDA_API_PTSZ(cuMemsetD8Async)
-    #define cuMemsetD16Async                    __CUDA_API_PTSZ(cuMemsetD16Async)
-    #define cuMemsetD32Async                    __CUDA_API_PTSZ(cuMemsetD32Async)
-    #define cuMemsetD2D8Async                   __CUDA_API_PTSZ(cuMemsetD2D8Async)
-    #define cuMemsetD2D16Async                  __CUDA_API_PTSZ(cuMemsetD2D16Async)
-    #define cuMemsetD2D32Async                  __CUDA_API_PTSZ(cuMemsetD2D32Async)
+//     #define cuMemsetD8Async                     __CUDA_API_PTSZ(cuMemsetD8Async)
+//     #define cuMemsetD16Async                    __CUDA_API_PTSZ(cuMemsetD16Async)
+//     #define cuMemsetD32Async                    __CUDA_API_PTSZ(cuMemsetD32Async)
+//     #define cuMemsetD2D8Async                   __CUDA_API_PTSZ(cuMemsetD2D8Async)
+//     #define cuMemsetD2D16Async                  __CUDA_API_PTSZ(cuMemsetD2D16Async)
+//     #define cuMemsetD2D32Async                  __CUDA_API_PTSZ(cuMemsetD2D32Async)
 
-    #define cuStreamGetPriority                 __CUDA_API_PTSZ(cuStreamGetPriority)
-    #define cuStreamGetId                       __CUDA_API_PTSZ(cuStreamGetId)
-    #define cuStreamGetFlags                    __CUDA_API_PTSZ(cuStreamGetFlags)
-    #define cuStreamGetCtx                      __CUDA_API_PTSZ(cuStreamGetCtx)
-    #define cuStreamWaitEvent                   __CUDA_API_PTSZ(cuStreamWaitEvent)
-    #define cuStreamEndCapture                  __CUDA_API_PTSZ(cuStreamEndCapture)
-    #define cuStreamIsCapturing                 __CUDA_API_PTSZ(cuStreamIsCapturing)
-    #define cuStreamGetCaptureInfo_v3           __CUDA_API_PTSZ(cuStreamGetCaptureInfo_v3)
-    #define cuStreamUpdateCaptureDependencies   __CUDA_API_PTSZ(cuStreamUpdateCaptureDependencies)
-    #define cuStreamUpdateCaptureDependencies_v2 __CUDA_API_PTSZ(cuStreamUpdateCaptureDependencies_v2)
-    #define cuStreamAddCallback                 __CUDA_API_PTSZ(cuStreamAddCallback)
-    #define cuStreamAttachMemAsync              __CUDA_API_PTSZ(cuStreamAttachMemAsync)
-    #define cuStreamQuery                       __CUDA_API_PTSZ(cuStreamQuery)
-    #define cuStreamSynchronize                 __CUDA_API_PTSZ(cuStreamSynchronize)
-    #define cuEventRecord                       __CUDA_API_PTSZ(cuEventRecord)
-    #define cuEventRecordWithFlags              __CUDA_API_PTSZ(cuEventRecordWithFlags)
-    #define cuLaunchKernel                      __CUDA_API_PTSZ(cuLaunchKernel)
-    #define cuLaunchKernelEx                    __CUDA_API_PTSZ(cuLaunchKernelEx)
-    #define cuLaunchHostFunc                    __CUDA_API_PTSZ(cuLaunchHostFunc)
-    #define cuGraphicsMapResources              __CUDA_API_PTSZ(cuGraphicsMapResources)
-    #define cuGraphicsUnmapResources            __CUDA_API_PTSZ(cuGraphicsUnmapResources)
+//     #define cuStreamGetPriority                 __CUDA_API_PTSZ(cuStreamGetPriority)
+//     #define cuStreamGetId                       __CUDA_API_PTSZ(cuStreamGetId)
+//     #define cuStreamGetFlags                    __CUDA_API_PTSZ(cuStreamGetFlags)
+//     #define cuStreamGetCtx                      __CUDA_API_PTSZ(cuStreamGetCtx)
+//     #define cuStreamWaitEvent                   __CUDA_API_PTSZ(cuStreamWaitEvent)
+//     #define cuStreamEndCapture                  __CUDA_API_PTSZ(cuStreamEndCapture)
+//     #define cuStreamIsCapturing                 __CUDA_API_PTSZ(cuStreamIsCapturing)
+//     #define cuStreamGetCaptureInfo_v3           __CUDA_API_PTSZ(cuStreamGetCaptureInfo_v3)
+//     #define cuStreamUpdateCaptureDependencies   __CUDA_API_PTSZ(cuStreamUpdateCaptureDependencies)
+//     #define cuStreamUpdateCaptureDependencies_v2 __CUDA_API_PTSZ(cuStreamUpdateCaptureDependencies_v2)
+//     #define cuStreamAddCallback                 __CUDA_API_PTSZ(cuStreamAddCallback)
+//     #define cuStreamAttachMemAsync              __CUDA_API_PTSZ(cuStreamAttachMemAsync)
+//     #define cuStreamQuery                       __CUDA_API_PTSZ(cuStreamQuery)
+//     #define cuStreamSynchronize                 __CUDA_API_PTSZ(cuStreamSynchronize)
+//     #define cuEventRecord                       __CUDA_API_PTSZ(cuEventRecord)
+//     #define cuEventRecordWithFlags              __CUDA_API_PTSZ(cuEventRecordWithFlags)
+//     #define cuLaunchKernel                      __CUDA_API_PTSZ(cuLaunchKernel)
+//     #define cuLaunchKernelEx                    __CUDA_API_PTSZ(cuLaunchKernelEx)
+//     #define cuLaunchHostFunc                    __CUDA_API_PTSZ(cuLaunchHostFunc)
+//     #define cuGraphicsMapResources              __CUDA_API_PTSZ(cuGraphicsMapResources)
+//     #define cuGraphicsUnmapResources            __CUDA_API_PTSZ(cuGraphicsUnmapResources)
 
-    #define cuLaunchCooperativeKernel           __CUDA_API_PTSZ(cuLaunchCooperativeKernel)
+//     #define cuLaunchCooperativeKernel           __CUDA_API_PTSZ(cuLaunchCooperativeKernel)
 
-    #define cuSignalExternalSemaphoresAsync     __CUDA_API_PTSZ(cuSignalExternalSemaphoresAsync)
-    #define cuWaitExternalSemaphoresAsync       __CUDA_API_PTSZ(cuWaitExternalSemaphoresAsync)
+//     #define cuSignalExternalSemaphoresAsync     __CUDA_API_PTSZ(cuSignalExternalSemaphoresAsync)
+//     #define cuWaitExternalSemaphoresAsync       __CUDA_API_PTSZ(cuWaitExternalSemaphoresAsync)
 
-    #define cuGraphInstantiateWithParams        __CUDA_API_PTSZ(cuGraphInstantiateWithParams)
-    #define cuGraphUpload                       __CUDA_API_PTSZ(cuGraphUpload)
-    #define cuGraphLaunch                       __CUDA_API_PTSZ(cuGraphLaunch)
-    #define cuStreamCopyAttributes              __CUDA_API_PTSZ(cuStreamCopyAttributes)
-    #define cuStreamGetAttribute                __CUDA_API_PTSZ(cuStreamGetAttribute)
-    #define cuStreamSetAttribute                __CUDA_API_PTSZ(cuStreamSetAttribute)
-    #define cuMemMapArrayAsync                  __CUDA_API_PTSZ(cuMemMapArrayAsync)
+//     #define cuGraphInstantiateWithParams        __CUDA_API_PTSZ(cuGraphInstantiateWithParams)
+//     #define cuGraphUpload                       __CUDA_API_PTSZ(cuGraphUpload)
+//     #define cuGraphLaunch                       __CUDA_API_PTSZ(cuGraphLaunch)
+//     #define cuStreamCopyAttributes              __CUDA_API_PTSZ(cuStreamCopyAttributes)
+//     #define cuStreamGetAttribute                __CUDA_API_PTSZ(cuStreamGetAttribute)
+//     #define cuStreamSetAttribute                __CUDA_API_PTSZ(cuStreamSetAttribute)
+//     #define cuMemMapArrayAsync                  __CUDA_API_PTSZ(cuMemMapArrayAsync)
 
-    #define cuMemFreeAsync                      __CUDA_API_PTSZ(cuMemFreeAsync)
-    #define cuMemAllocAsync                     __CUDA_API_PTSZ(cuMemAllocAsync)
-    #define cuMemAllocFromPoolAsync             __CUDA_API_PTSZ(cuMemAllocFromPoolAsync)
+//     #define cuMemFreeAsync                      __CUDA_API_PTSZ(cuMemFreeAsync)
+//     #define cuMemAllocAsync                     __CUDA_API_PTSZ(cuMemAllocAsync)
+//     #define cuMemAllocFromPoolAsync             __CUDA_API_PTSZ(cuMemAllocFromPoolAsync)
 
-    #define cuStreamBeginCaptureToGraph         __CUDA_API_PTSZ(cuStreamBeginCaptureToGraph)
+//     #define cuStreamBeginCaptureToGraph         __CUDA_API_PTSZ(cuStreamBeginCaptureToGraph)
 
-#endif
+// #endif
 
 /**
  * \file cuda.h
@@ -4629,4 +4629,81 @@ typedef enum CUfunctionLoadingState_enum {
     CU_FUNCTION_LOADING_STATE_LOADED = 1,
     CU_FUNCTION_LOADING_STATE_MAX
 } CUfunctionLoadingState;
+
+typedef unsigned int CUdeviceptr_v1;
+
+   typedef struct CUDA_MEMCPY2D_v1_st
+    {
+        unsigned int srcXInBytes;   /**< Source X in bytes */
+        unsigned int srcY;          /**< Source Y */
+        CUmemorytype srcMemoryType; /**< Source memory type (host, device, array) */
+        const void *srcHost;        /**< Source host pointer */
+        CUdeviceptr_v1 srcDevice;   /**< Source device pointer */
+        CUarray srcArray;           /**< Source array reference */
+        unsigned int srcPitch;      /**< Source pitch (ignored when src is array) */
+
+        unsigned int dstXInBytes;   /**< Destination X in bytes */
+        unsigned int dstY;          /**< Destination Y */
+        CUmemorytype dstMemoryType; /**< Destination memory type (host, device, array) */
+        void *dstHost;              /**< Destination host pointer */
+        CUdeviceptr_v1 dstDevice;   /**< Destination device pointer */
+        CUarray dstArray;           /**< Destination array reference */
+        unsigned int dstPitch;      /**< Destination pitch (ignored when dst is array) */
+
+        unsigned int WidthInBytes;  /**< Width of 2D memory copy in bytes */
+        unsigned int Height;        /**< Height of 2D memory copy */
+    } CUDA_MEMCPY2D_v1;
+
+    typedef struct CUDA_MEMCPY3D_v1_st
+    {
+        unsigned int srcXInBytes;   /**< Source X in bytes */
+        unsigned int srcY;          /**< Source Y */
+        unsigned int srcZ;          /**< Source Z */
+        unsigned int srcLOD;        /**< Source LOD */
+        CUmemorytype srcMemoryType; /**< Source memory type (host, device, array) */
+        const void *srcHost;        /**< Source host pointer */
+        CUdeviceptr_v1 srcDevice;   /**< Source device pointer */
+        CUarray srcArray;           /**< Source array reference */
+        void *reserved0;            /**< Must be NULL */
+        unsigned int srcPitch;      /**< Source pitch (ignored when src is array) */
+        unsigned int srcHeight;     /**< Source height (ignored when src is array; may be 0 if Depth==1) */
+
+        unsigned int dstXInBytes;   /**< Destination X in bytes */
+        unsigned int dstY;          /**< Destination Y */
+        unsigned int dstZ;          /**< Destination Z */
+        unsigned int dstLOD;        /**< Destination LOD */
+        CUmemorytype dstMemoryType; /**< Destination memory type (host, device, array) */
+        void *dstHost;              /**< Destination host pointer */
+        CUdeviceptr_v1 dstDevice;   /**< Destination device pointer */
+        CUarray dstArray;           /**< Destination array reference */
+        void *reserved1;            /**< Must be NULL */
+        unsigned int dstPitch;      /**< Destination pitch (ignored when dst is array) */
+        unsigned int dstHeight;     /**< Destination height (ignored when dst is array; may be 0 if Depth==1) */
+
+        unsigned int WidthInBytes;  /**< Width of 3D memory copy in bytes */
+        unsigned int Height;        /**< Height of 3D memory copy */
+        unsigned int Depth;         /**< Depth of 3D memory copy */
+    } CUDA_MEMCPY3D_v1;
+
+    typedef struct CUDA_ARRAY_DESCRIPTOR_v1_st
+    {
+        unsigned int Width;         /**< Width of array */
+        unsigned int Height;        /**< Height of array */
+
+        CUarray_format Format;      /**< Array format */
+        unsigned int NumChannels;   /**< Channels per array element */
+    } CUDA_ARRAY_DESCRIPTOR_v1;
+
+    typedef struct CUDA_ARRAY3D_DESCRIPTOR_v1_st
+    {
+        unsigned int Width;         /**< Width of 3D array */
+        unsigned int Height;        /**< Height of 3D array */
+        unsigned int Depth;         /**< Depth of 3D array */
+
+        CUarray_format Format;      /**< Array format */
+        unsigned int NumChannels;   /**< Channels per array element */
+        unsigned int Flags;         /**< Flags */
+    } CUDA_ARRAY3D_DESCRIPTOR_v1;
+
+
 #endif  // __CUDA_HOOK_CUDA_SUBSET_H__

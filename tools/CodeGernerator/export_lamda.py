@@ -15,7 +15,7 @@ before_function = ""  # 当前处理到的函数名
 file_path ="include/cudaTypedefs.h"
 output_path="cuda_hook.cpp"
 
-code_template ="""DEF_FN(CUresult,$func_full_name$,$names_types$);
+code_template ="""DEF_FN(CUresult,$func_full_name$,$func_name$,$version$,$flags$,$names_types$);
 """
 
 cuGetProcAddress_definition="""CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus) {
@@ -95,9 +95,7 @@ def parse_file_content(file_path):
                     print("NOT FOUND special_suffix:",func_name)
                 func_full_name=func_name+version_suffix+special_suffix
                 flags="0"
-                if special_suffix=="_ptds":
-                    flags="1"
-                elif special_suffix=="_ptsz":
+                if special_suffix=="_ptds" or special_suffix=="_ptsz":
                     flags="2"
                 
                 if version_suffix == "":
@@ -143,7 +141,11 @@ def generate_definitions(output_path,functions):
                 f.write("\t")
             f.write(code_template.replace("$func_full_name$", func["func_full_name"])
                        .replace("$names_types$", ", ".join(func["names_types"]))
+                       .replace("$version$", func["version"])
+                          .replace("$flags$", func["flags"])
+                          .replace("$func_name$", func["func_name"])
             )
+            
             if func["func_full_name"]==macro_definition["before_function"]:
                 f.write(macro_definition["content"]+"\n")
                 in_define=True

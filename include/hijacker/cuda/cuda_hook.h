@@ -1,7 +1,7 @@
 #ifndef __CUDA_CUDA_HOOK_H__
 #define __CUDA_CUDA_HOOK_H__
 #include <string>
-#include "cuda_original.h"
+#include "cuda_subset.h"
 
 
 class CuDriverFunction{
@@ -21,11 +21,10 @@ class CuDriverFunction{
 using cuGetProcAddress_t = CUresult (*)(const char *, void **, int, cuuint64_t, CUdriverProcAddressQueryResult *);
 // #endif
 
-CUresult cuGetProcAddress_v2(const char * symbol, void * * pfn, int cudaVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus);
+CUresult cuGetProcAddress(const char * symbol, void * * pfn, int cudaVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus);
 
 extern cuGetProcAddress_t realCuGetProcAddress;
 // cuGetProcAddress_t cuGetProcAddress;
-
 
 
 
