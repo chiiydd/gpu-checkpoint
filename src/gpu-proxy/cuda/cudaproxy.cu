@@ -31,6 +31,7 @@ std::string to_string(CuDriverCall call) {
         case CuDriverCall::CuLibraryUnload: return "CuLibraryUnload";
         case CuDriverCall::CuDevicePrimaryCtxRelease: return "CuDevicePrimaryCtxRelease";
         case CuDriverCall::CuCtxPushCurrent: return "CuCtxPushCurrent";
+        case CuDriverCall::CuCtxPopCurrent: return "CuCtxPopCurrent";
         case CuDriverCall::CuInit: return "CuInit";
         case CuDriverCall::CuCtxCreate: return "CuCtxCreate";
         case CuDriverCall::CuLibraryGetModule: return "CuLibraryGetModule";

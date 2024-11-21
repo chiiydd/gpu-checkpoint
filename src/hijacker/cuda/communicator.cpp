@@ -3,11 +3,42 @@
 #include "cuda_original.h"
 #include <stdio.h>
 #include <unistd.h>
+std::string to_string(CuDriverCall call) {
+    switch (call) {
+        case CuDriverCall::CuMemAlloc: return "CuMemAlloc";
+        case CuDriverCall::CuMemFree: return "CuMemFree";
+        case CuDriverCall::CuMemcpyHtoD: return "CuMemcpyHtoD";
+        case CuDriverCall::CuMemcpyDtoH: return "CuMemcpyDtoH";
+        case CuDriverCall::CuDriverGetVersion: return "CuDriverGetVersion";
+        case CuDriverCall::CuDeviceGet: return "CuDeviceGet";
+        case CuDriverCall::CuDeviceGetCount: return "CuDeviceGetCount";
+        case CuDriverCall::CuDeviceGetName: return "CuDeviceGetName";
+        case CuDriverCall::CuDeviceGetUuid: return "CuDeviceGetUuid";
+        case CuDriverCall::CuDeviceTotalMem: return "CuDeviceTotalMem";
+        case CuDriverCall::CuGetExportTable: return "CuGetExportTable";
+        case CuDriverCall::CuModuleGetLoadingMode: return "CuModuleGetLoadingMode";
+        case CuDriverCall::CuDeviceGetAttribute: return "CuDeviceGetAttribute";
+        case CuDriverCall::CuCtxGetCurrent: return "CuCtxGetCurrent";
+        case CuDriverCall::CuCtxSetCurrent: return "CuCtxSetCurrent";
+        case CuDriverCall::CuDevicePrimaryCtxRetain: return "CuDevicePrimaryCtxRetain";
+        case CuDriverCall::CuLibraryLoadData: return "CuLibraryLoadData";
+        case CuDriverCall::CuLibraryUnload: return "CuLibraryUnload";
+        case CuDriverCall::CuDevicePrimaryCtxRelease: return "CuDevicePrimaryCtxRelease";
+        case CuDriverCall::CuCtxPushCurrent: return "CuCtxPushCurrent";
+        case CuDriverCall::CuCtxPopCurrent: return "CuCtxPopCurrent";
+        case CuDriverCall::CuInit: return "CuInit";
+        case CuDriverCall::CuCtxCreate: return "CuCtxCreate";
+        case CuDriverCall::CuLibraryGetModule: return "CuLibraryGetModule";
+        case CuDriverCall::CuModuleGetFunction: return "CuModuleGetFunction";
+        case CuDriverCall::CuLaunchKernel: return "CuLaunchKernel";
+        default: return "Unknown";
+    }
+}
 int communicate_with_server(const char *socket_name, CuDriverCallStructure *send_structure, CuDriverCallReplyStructure *recv_structure) {
     int skt_client;
     struct sockaddr_un sa_client;
 
-    printf("[communicate_with_server] Sending OP:%d\n",send_structure->op);
+    printf("[communicate_with_server] Sending OP:%s\n",to_string(send_structure->op).c_str());
     // 如果没有指定socket_name，使用默认值
     if (!socket_name) {
         socket_name = "CUDA_PROXY_SOCKET";
