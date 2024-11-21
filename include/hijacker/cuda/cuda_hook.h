@@ -1,11 +1,7 @@
 #ifndef __CUDA_CUDA_HOOK_H__
 #define __CUDA_CUDA_HOOK_H__
-<<<<<<< HEAD
-#include "cuda.h"
-=======
 #include <string>
 #include "cuda_subset.h"
->>>>>>> hook_without_proxy
 
 
 class CuDriverFunction{
