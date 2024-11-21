@@ -1192,7 +1192,7 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 
 CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus) {
     printf("Intercepted cuGetProcAddress: Requesting symbol %s (flags=%lu, version=%d): %p\n", symbol, flags, cudaVersion, *pfn);
-	CUresult res = realCuGetProcAddress(symbol, pfn, cudaVersion, flags, symbolStatus);
+	// CUresult res = realCuGetProcAddress(symbol, pfn, cudaVersion, flags, symbolStatus);
     if (strcmp(symbol, "cuGetProcAddress") == 0) {
         *pfn = (void*)&cuGetProcAddress;  // 拦截自身
 		return CUDA_SUCCESS;
@@ -1235,6 +1235,6 @@ CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuui
 
 	}
 
-	return res;
+	return CUDA_ERROR_NOT_SUPPORTED;
 ;
 }
