@@ -204,7 +204,9 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
         case CuDriverCall::CuCtxCreate:
             reply->result=cuCtxCreate(&reply->returnParams.ctx,request->params.cuCtxCreate.flags,request->params.cuCtxCreate.dev);
         case CuDriverCall::CuCtxGetCurrent:
+        
             reply->result=cuCtxGetCurrent(&reply->returnParams.ctx);
+            break;
         case CuDriverCall::CuCtxSetCurrent:
             reply->result=cuCtxSetCurrent(request->params.cuCtxSetCurrent.ctx);
             break;
