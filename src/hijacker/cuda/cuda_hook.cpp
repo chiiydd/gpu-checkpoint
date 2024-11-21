@@ -102,7 +102,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetName_v2000(char * name, int len
 	printf("[cuDeviceGetName] get name:%s\n",name);
     return reply.result;
 }
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetUuid__v11040 (CUuuid * uuid,CUdevice dev){
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetUuid_v11040 (CUuuid * uuid,CUdevice dev){
 	HOOK_TRACE_PROFILE("cuDeviceGetUuid");
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuDeviceGetUuid,
@@ -451,7 +451,7 @@ DEF_FN(CUresult,cuDeviceGetUuid_v9020,cuDeviceGetUuid,9020,0,CUuuid*,uuid, CUdev
 DEF_FN(CUresult,cuDeviceGetLuid_v10000,cuDeviceGetLuid,10000,0,char*,luid, unsigned int*,deviceNodeMask, CUdevice_v1,dev);
 // DEF_FN(CUresult,cuDeviceTotalMem_v3020,cuDeviceTotalMem,3020,0,size_t*,bytes, CUdevice_v1,dev);
 DEF_FN(CUresult,cuDeviceGetTexture1DLinearMaxWidth_v11010,cuDeviceGetTexture1DLinearMaxWidth,11010,0,size_t*,maxWidthInElements, CUarray_format,format, unsigned,numChannels, CUdevice_v1,dev);
-DEF_FN(CUresult,cuDeviceGetAttribute_v2000,cuDeviceGetAttribute,2000,0,int*,pi, CUdevice_attribute,attrib, CUdevice_v1,dev);
+// DEF_FN(CUresult,cuDeviceGetAttribute_v2000,cuDeviceGetAttribute,2000,0,int*,pi, CUdevice_attribute,attrib, CUdevice_v1,dev);
 DEF_FN(CUresult,cuDeviceGetNvSciSyncAttributes_v10020,cuDeviceGetNvSciSyncAttributes,10020,0,void*,nvSciSyncAttrList, CUdevice_v1,dev, int,flags);
 DEF_FN(CUresult,cuDeviceSetMemPool_v11020,cuDeviceSetMemPool,11020,0,CUdevice_v1,dev, CUmemoryPool,pool);
 DEF_FN(CUresult,cuDeviceGetMemPool_v11020,cuDeviceGetMemPool,11020,0,CUmemoryPool*,pool, CUdevice_v1,dev);

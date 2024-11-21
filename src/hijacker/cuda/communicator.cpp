@@ -3,6 +3,7 @@
 #include "cuda_original.h"
 #include <stdio.h>
 #include <unistd.h>
+#include <string>
 std::string to_string(CuDriverCall call) {
     switch (call) {
         case CuDriverCall::CuMemAlloc: return "CuMemAlloc";
