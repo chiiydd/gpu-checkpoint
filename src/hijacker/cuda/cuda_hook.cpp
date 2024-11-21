@@ -1,22 +1,452 @@
+#include <cstddef>
 #include <cstring>
-#include <cuda_original.h>
+#include <cuda_subset.h>
 #include <cstdio>
 #include "cuda_hook.h"
 #include <string>
 #include <unordered_map>
+#include <elf.h>
+#include <iostream>
 #include "macro_common.h"
+
+list kernel_infos;
+std::string getCUjitOptionName(CUjit_option option) {
+    switch (option) {
+        case CU_JIT_MAX_REGISTERS: return "CU_JIT_MAX_REGISTERS";
+        case CU_JIT_THREADS_PER_BLOCK: return "CU_JIT_THREADS_PER_BLOCK";
+        case CU_JIT_WALL_TIME: return "CU_JIT_WALL_TIME";
+        case CU_JIT_INFO_LOG_BUFFER: return "CU_JIT_INFO_LOG_BUFFER";
+        case CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES: return "CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES";
+        case CU_JIT_ERROR_LOG_BUFFER: return "CU_JIT_ERROR_LOG_BUFFER";
+        case CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES: return "CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES";
+        case CU_JIT_OPTIMIZATION_LEVEL: return "CU_JIT_OPTIMIZATION_LEVEL";
+        case CU_JIT_TARGET_FROM_CUCONTEXT: return "CU_JIT_TARGET_FROM_CUCONTEXT";
+        case CU_JIT_TARGET: return "CU_JIT_TARGET";
+        case CU_JIT_FALLBACK_STRATEGY: return "CU_JIT_FALLBACK_STRATEGY";
+        case CU_JIT_GENERATE_DEBUG_INFO: return "CU_JIT_GENERATE_DEBUG_INFO";
+        case CU_JIT_LOG_VERBOSE: return "CU_JIT_LOG_VERBOSE";
+        case CU_JIT_GENERATE_LINE_INFO: return "CU_JIT_GENERATE_LINE_INFO";
+        case CU_JIT_CACHE_MODE: return "CU_JIT_CACHE_MODE";
+        case CU_JIT_NEW_SM3X_OPT: return "CU_JIT_NEW_SM3X_OPT";
+        case CU_JIT_FAST_COMPILE: return "CU_JIT_FAST_COMPILE";
+        case CU_JIT_GLOBAL_SYMBOL_NAMES: return "CU_JIT_GLOBAL_SYMBOL_NAMES";
+        case CU_JIT_GLOBAL_SYMBOL_ADDRESSES: return "CU_JIT_GLOBAL_SYMBOL_ADDRESSES";
+        case CU_JIT_GLOBAL_SYMBOL_COUNT: return "CU_JIT_GLOBAL_SYMBOL_COUNT";
+        case CU_JIT_LTO: return "CU_JIT_LTO";
+        case CU_JIT_FTZ: return "CU_JIT_FTZ";
+        case CU_JIT_PREC_DIV: return "CU_JIT_PREC_DIV";
+        case CU_JIT_PREC_SQRT: return "CU_JIT_PREC_SQRT";
+        case CU_JIT_FMA: return "CU_JIT_FMA";
+        case CU_JIT_REFERENCED_KERNEL_NAMES: return "CU_JIT_REFERENCED_KERNEL_NAMES";
+        case CU_JIT_REFERENCED_KERNEL_COUNT: return "CU_JIT_REFERENCED_KERNEL_COUNT";
+        case CU_JIT_REFERENCED_VARIABLE_NAMES: return "CU_JIT_REFERENCED_VARIABLE_NAMES";
+        case CU_JIT_REFERENCED_VARIABLE_COUNT: return "CU_JIT_REFERENCED_VARIABLE_COUNT";
+        case CU_JIT_OPTIMIZE_UNUSED_DEVICE_VARIABLES: return "CU_JIT_OPTIMIZE_UNUSED_DEVICE_VARIABLES";
+        case CU_JIT_POSITION_INDEPENDENT_CODE: return "CU_JIT_POSITION_INDEPENDENT_CODE";
+        case CU_JIT_MIN_CTA_PER_SM: return "CU_JIT_MIN_CTA_PER_SM";
+        case CU_JIT_MAX_THREADS_PER_BLOCK: return "CU_JIT_MAX_THREADS_PER_BLOCK";
+        case CU_JIT_OVERRIDE_DIRECTIVE_VALUES: return "CU_JIT_OVERRIDE_DIRECTIVE_VALUES";
+        case CU_JIT_NUM_OPTIONS: return "CU_JIT_NUM_OPTIONS";
+        default: return "Unknown Option";
+    }
+}
+
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuInit_v2000(unsigned int Flags) {
+    
+    HOOK_TRACE_PROFILE("cuInit");
+
+    CuDriverCallStructure request={
+        .op= CuDriverCall::CuInit,
+        .params={.cuInit{.flags=Flags}},
+    };
+    CuDriverCallReplyStructure reply;
+    printf("[cuInit] flags:%u\n",Flags);
+    communicate_with_server(NULL, &request, &reply);
+    return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetLoadingMode_v11070(CUmoduleLoadingMode * mode) {
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuModuleGetLoadingMode,
+    };
+    CuDriverCallReplyStructure reply;
+    
+    communicate_with_server(NULL, &request, &reply);
+    *mode=reply.returnParams.mode;
+    return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetCount_v2000(int * count) {
+    HOOK_TRACE_PROFILE("cuDeviceGetCount");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDeviceGetCount,
+        .params={.empty{}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *count=reply.returnParams.count;
+
+    return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetName_v2000(char * name, int len, CUdevice dev) {
+    HOOK_TRACE_PROFILE("cuDeviceGetName");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDeviceGetName,
+        .params={.cuDeviceGetName={.name=name,.len=len,.device=dev}}
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+	printf("[cuDeviceGetName] get name:%s\n",name);
+    return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetUuid__v11040 (CUuuid * uuid,CUdevice dev){
+	HOOK_TRACE_PROFILE("cuDeviceGetUuid");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuDeviceGetUuid,
+		.params={.cuDeviceGetUuid={.dev=dev}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	memcpy(uuid->bytes,reply.returnParams.uuid,16);
+	printf("[cuDeviceGetUuid] get uuid:%s\n",uuid->bytes);
+	return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDriverGetVersion_v2020(int * driverVersion) {
+    HOOK_TRACE_PROFILE("cuDriverGetVersion");
+    CuDriverCallStructure request={
+        .op=CuDriverCall::CuDriverGetVersion,
+        .params={.empty{}},
+    };
+    CuDriverCallReplyStructure reply;
+
+    communicate_with_server(NULL, &request,&reply);
+    
+    *driverVersion=reply.returnParams.driverVersion;
+    printf("[cuDriverGetVersion] get driverVersion: %d\n", *driverVersion);
+    return reply.result;
+
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemAlloc_v3020(CUdeviceptr * dptr, size_t bytesize) {
+	HOOK_TRACE_PROFILE("cuMemAlloc");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuMemAlloc,
+		.params={.cuMemAlloc={.bytesize=bytesize}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	*dptr=reply.returnParams.dptr;
+	printf("[cuMemAlloc] allocate %ld bytes memory at %p\n",bytesize,*dptr);
+	return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemFree_v3020(CUdeviceptr dptr) {
+	HOOK_TRACE_PROFILE("cuMemFree");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuMemFree,
+		.params={.cuMemFree={.dptr=dptr}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	printf("[cuMemFree] free memory at %p\n",dptr);
+	return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGet_v2000(CUdevice * device, int ordinal) {
+    HOOK_TRACE_PROFILE("cuDeviceGet");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDeviceGet,
+        .params={.cuDeviceGet={.ordinal=ordinal}},
+    };
+    CuDriverCallReplyStructure reply;
+    request.op=CuDriverCall::CuDeviceGet;
+    communicate_with_server(nullptr, &request, &reply);
+
+    *device=reply.returnParams.device;
+	printf("[cuDeviceGet] get device:%d\n",*device);
+    return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceTotalMem_v3020(size_t * bytes,CUdevice dev){
+	HOOK_TRACE_PROFILE("cuDeviceTotalMem");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuDeviceTotalMem,
+		.params={.cuDeviceTotalMem={.dev=dev}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	*bytes=reply.returnParams.bytes;
+	printf("[cuDeviceTotalMem] dev[%d] total memory:%ld\n",dev,*bytes);
+}
+
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetAttribute_v2000(int * pi, CUdevice_attribute attrib, CUdevice dev) {
+    HOOK_TRACE_PROFILE("cuDeviceGetAttribute");
+    CuDriverCallStructure request={
+        .op=CuDriverCall::CuDeviceGetAttribute,
+        .params={.cuDeviceGetAttribute={.attrib=attrib,.dev=dev}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *pi=reply.returnParams.pi;
+	printf("[cuDeviceGetAttribute] get attribute:%d\n",*pi);
+    return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxSetCurrent_v4000(CUcontext ctx) {
+    HOOK_TRACE_PROFILE("cuCtxSetCurrent");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuCtxSetCurrent,
+        .params={.cuCtxSetCurrent={.ctx=ctx}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+	printf("[cuCtxSetCurrent] try to set current context:%p\n",ctx);
+    return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetCurrent_v4000(CUcontext * pctx) {
+    HOOK_TRACE_PROFILE("cuCtxGetCurrent");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuCtxGetCurrent,
+        .params={.empty{}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *pctx=reply.returnParams.ctx;
+	printf("[cuCtxGetCurrent] get current context:%p\n",*pctx);
+    return reply.result;
+}
+CUresult cuCtxPushCurrent_v4000 (CUcontext,ctx){
+	HOOK_TRACE_PROFILE("cuCtxPushCurrent");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuCtxPushCurrent,
+		.params={.cuCtxPushCurrent={.ctx=ctx}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	printf("[cuCtxPushCurrent] push current context:%p\n",ctx);
+	return reply.result;
+}
+CUresult cuCtxPopCurrent_v4000 (CUcontext * pctx){
+	HOOK_TRACE_PROFILE("cuCtxPopCurrent");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuCtxPopCurrent,
+		.params={.empty{}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	*pctx=reply.returnParams.ctx;
+	printf("[cuCtxPopCurrent] pop current context:%p\n",*pctx);
+	return reply.result;
+}
+
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRetain_v7000(CUcontext * pctx, CUdevice dev) {
+    HOOK_TRACE_PROFILE("cuDevicePrimaryCtxRetain");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDevicePrimaryCtxRetain,
+        .params={.cuDevicePrimaryCtxRetain={.dev=dev}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+    *pctx=reply.returnParams.ctx;
+	printf("[cuDevicePrimaryCtxRetain] retain device[%d] primary context:%p\n",dev,*pctx);
+    return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRelease_v11000(CUdevice dev) {
+    HOOK_TRACE_PROFILE("cuDevicePrimaryCtxRelease");
+    CuDriverCallStructure request{
+        .op=CuDriverCall::CuDevicePrimaryCtxRelease,
+        .params={.cuDevicePrimaryCtxRelease={.dev=dev}},
+    };
+    CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+	printf("[cuDevicePrimaryCtxRelease] release device[%d] primary context\n",dev);
+    return reply.result;
+}
+
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemcpyHtoD_v3020( CUdeviceptr dstDevice,const void * srcHost,size_t ByteCount){
+	HOOK_TRACE_PROFILE("cuMemcpyHtoD");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuMemcpyHtoD,
+		.params={.cuMemcpyHtoD={.dstDevice=dstDevice,.srcHost=srcHost,.ByteCount=ByteCount}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	printf("[cuMemcpyHtoD] copy %ld bytes from %p to %p\n",ByteCount,srcHost,dstDevice);
+	return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetModule_v12000(CUmodule * pMod, CUlibrary library) {
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuLibraryGetModule,
+		.params={.cuLibraryGetModule={
+			.library=library,
+		}}
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	*pMod=reply.returnParams.mod;
+	printf("[cuLibraryGetModule] get module from library[%p]:%p\n",library,*pMod);
+	return reply.result;
+
+}
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetFunction_v2000(CUfunction * hfunc, CUmodule hmod, const char * name) {
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuModuleGetFunction,
+		.params={.cuModuleGetFunction{
+			.mod=hmod,
+			.name=name,
+			.nameLength=strlen(name)+1
+		}}
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	*hfunc=reply.returnParams.hfunc;
+	printf("[cuModuleGetFunction] get function %s from module[%p]:%p\n",name,hmod,*hfunc);
+	return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunchKernel_v4000(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void * * kernelParams, void * * extra) {
+
+    size_t i;
+    char *buf;
+    int found_kernel = 0;
+    kernel_info_t *info;
+
+    for (i=0; i < kernel_infos.length; ++i) {
+        if (list_at(&kernel_infos, i, (void**)&info) != 0) {
+            HLOG("error getting element at %d", i);
+            return CUDA_ERROR_INVALID_DEVICE;
+        }
+        if (f != NULL && info != NULL && info->host_fun == f) {
+            HLOG("calling kernel \"%s\" (param_size: %zd, param_num: %zd)", info->name, info->param_size, info->param_num);
+            found_kernel = 1;
+            break;
+        }
+    }
+
+    if (!found_kernel) {
+        HLOG("request to call unknown kernel.");
+        return CUDA_ERROR_INVALID_VALUE;
+    }
+
+
+	
+    size_t parameters_metadata_len = sizeof(size_t)+info->param_num*sizeof(uint16_t)+info->param_size;
+    void * parameters_metadata = malloc(parameters_metadata_len);
+    memcpy(parameters_metadata, &info->param_num, sizeof(size_t));
+    memcpy(parameters_metadata + sizeof(size_t), info->param_offsets, info->param_num*sizeof(uint16_t));
+    for (size_t j=0, size=0; j < info->param_num; ++j) {
+        size = info->param_sizes[j];
+        //printf("p%d - size: %d, offset: %d\n", j, size, infos[i].param_offsets[j]);
+        memcpy(parameters_metadata + sizeof(size_t) + info->param_num*sizeof(uint16_t) +
+               info->param_offsets[j],
+        		kernelParams[j],
+               size);
+    }
+
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuLaunchKernel,
+		.params={.cuLaunchKernel={
+			.f=f,
+			.gridDimX=gridDimX,
+			.gridDimY=gridDimY,
+			.gridDimZ=gridDimZ,
+			.blockDimX=blockDimX,
+			.blockDimY=blockDimY,
+			.blockDimZ=blockDimZ,
+			.sharedMemBytes=sharedMemBytes,
+			.hStream=hStream,
+			.parametersMetadataLen=parameters_metadata_len,
+		}}
+	};
+	CuDriverCallReplyStructure reply;
+	
+	communicate_with_server_launchkernel(nullptr, &request, &reply , parameters_metadata);
+    free(parameters_metadata);
+    return reply.result;
+}
+
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryLoadData_v12000(CUlibrary * library, const void * code, CUjit_option * jitOptions, void * * jitOptionsValues, unsigned int numJitOptions, CUlibraryOption * libraryOptions, void * * libraryOptionValues, unsigned int numLibraryOptions) {
+	// FatBinaryWrapper *wrapper = (FatBinaryWrapper *)code;
+	
+	// printf("----------------------------------------------\n");
+	// printf("code address = %p\n", code);
+	// printf("fat binary wrapper's magic = %x\n", wrapper->magic);
+	// printf("fat binary wrapper's version = %d\n", wrapper->version);
+	// printf("fat binary wrapper's data = %p\n", wrapper->data);
+	// printf("fat binary wrapper's filename_or_fatbins = %p\n", wrapper->filename_or_fatbins);
+	// if (wrapper->version==2){
+	// 	printf("fat binary wrapper's filename_or_fatbins = %s\n", wrapper->filename_or_fatbins);
+	// }
+	// printf("----------------------------------------------\n");
+	// FatBinaryHeader *header = (FatBinaryHeader *)wrapper->data;
+	// printf("fat binary's magic = %x\n", header->magic);
+	// printf("fat binary's version: %d\n", header->version);
+	// printf("fat binary's header size: %d\n", header->headerSize);
+	// printf("fat binary's size: %ld\n", header->fatSize);
+	// printf("----------------------------------------------\n");
+	
+	// unsigned long long codeAddress=	(unsigned long long)code;
+	// unsigned long long fatbinAddress=	(unsigned long long)wrapper->data;
+
+
+	// // printf("number of jit options: %d\n", numJitOptions);
+	// // printf("number of jit option loading: %d\n", numLibraryOptions);
+	// // printf(" LibraryOption:%d\n",libraryOptions[0]);
+	// // printf(" LibraryOptionValues:%p\n",libraryOptionValues[0]);
+
+	// printf("fatbin address = %p\n", wrapper->data);
+	// printf("header size=%d\n",header->headerSize);
+	// FatEntryHeader * fatbinEntry=(FatEntryHeader *) ((char *)wrapper->data+header->headerSize);
+	// printf("fabin entry address:%p\n",fatbinEntry);
+	// Elf64_Ehdr *ehdr = (Elf64_Ehdr*)((char *)fatbinEntry+fatbinEntry->headerSize);
+	// printf("entry headersize:%d\n",fatbinEntry->headerSize);
+	// printf("ehdr address:%p\n",ehdr);
+	// printf("ehdr->e_ident:%s\n",ehdr->e_ident);
+
+	// readFatbinaryEntryHeader((void *)wrapper->data);
+	// printHex((void *)wrapper->data, 2000);
+	
+	uint8_t *code_data = new uint8_t;
+	unsigned long  fatbin_size;
+    if (elf2_get_fatbin_info((struct fat_header *)code,
+                                &kernel_infos,
+                                (uint8_t **)&code_data,
+                                &fatbin_size) != 0) {
+
+		printf("eeorrr\n");
+    }
+	free(code_data);
+	FatBinaryWrapper *wrapper = (FatBinaryWrapper *)code;
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuLibraryLoadData,
+		.params={
+			.cuLibraryLoadData={
+				.wrapper=*wrapper,
+				.fatbinSize=fatbin_size,
+				.numJitOptions=numJitOptions,
+				.numLibraryOptions=numLibraryOptions,
+			}	
+		}
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server_extra(nullptr, &request, &reply,jitOptions,jitOptionsValues,libraryOptions,libraryOptionValues);
+	return reply.result;
+}
 
 DEF_FN(CUresult,cuGetErrorString_v6000,cuGetErrorString,6000,0,CUresult,error, const char**,pStr);
 DEF_FN(CUresult,cuGetErrorName_v6000,cuGetErrorName,6000,0,CUresult,error, const char**,pStr);
-DEF_FN(CUresult,cuInit_v2000,cuInit,2000,0,unsigned int,Flags);
-DEF_FN(CUresult,cuDriverGetVersion_v2020,cuDriverGetVersion,2020,0,int*,driverVersion);
-DEF_FN(CUresult,cuDeviceGet_v2000,cuDeviceGet,2000,0,CUdevice_v1*,device, int,ordinal);
-DEF_FN(CUresult,cuDeviceGetCount_v2000,cuDeviceGetCount,2000,0,int*,count);
-DEF_FN(CUresult,cuDeviceGetName_v2000,cuDeviceGetName,2000,0,char*,name, int,len, CUdevice_v1,dev);
-DEF_FN(CUresult,cuDeviceGetUuid_v9020,cuDeviceGetUuid,9020,0,CUuuid*,uuid, CUdevice_v1,dev);
-DEF_FN(CUresult,cuDeviceGetUuid_v11040,cuDeviceGetUuid,11040,0,CUuuid*,uuid, CUdevice_v1,dev);
+// DEF_FN(CUresult,cuInit_v2000,cuInit,2000,0,unsigned int,Flags);
+// DEF_FN(CUresult,cuDriverGetVersion_v2020,cuDriverGetVersion,2020,0,int*,driverVersion);
+// DEF_FN(CUresult,cuDeviceGet_v2000,cuDeviceGet,2000,0,CUdevice_v1*,device, int,ordinal);
+// DEF_FN(CUresult,cuDeviceGetCount_v2000,cuDeviceGetCount,2000,0,int*,count);
+// DEF_FN(CUresult,cuDeviceGetName_v2000,cuDeviceGetName,2000,0,char*,name, int,len, CUdevice_v1,dev);
+// DEF_FN(CUresult,cuDeviceGetUuid_v9020,cuDeviceGetUuid,9020,0,CUuuid*,uuid, CUdevice_v1,dev);
+// DEF_FN(CUresult,cuDeviceGetUuid_v11040,cuDeviceGetUuid,11040,0,CUuuid*,uuid, CUdevice_v1,dev);
 DEF_FN(CUresult,cuDeviceGetLuid_v10000,cuDeviceGetLuid,10000,0,char*,luid, unsigned int*,deviceNodeMask, CUdevice_v1,dev);
-DEF_FN(CUresult,cuDeviceTotalMem_v3020,cuDeviceTotalMem,3020,0,size_t*,bytes, CUdevice_v1,dev);
+// DEF_FN(CUresult,cuDeviceTotalMem_v3020,cuDeviceTotalMem,3020,0,size_t*,bytes, CUdevice_v1,dev);
 DEF_FN(CUresult,cuDeviceGetTexture1DLinearMaxWidth_v11010,cuDeviceGetTexture1DLinearMaxWidth,11010,0,size_t*,maxWidthInElements, CUarray_format,format, unsigned,numChannels, CUdevice_v1,dev);
 DEF_FN(CUresult,cuDeviceGetAttribute_v2000,cuDeviceGetAttribute,2000,0,int*,pi, CUdevice_attribute,attrib, CUdevice_v1,dev);
 DEF_FN(CUresult,cuDeviceGetNvSciSyncAttributes_v10020,cuDeviceGetNvSciSyncAttributes,10020,0,void*,nvSciSyncAttrList, CUdevice_v1,dev, int,flags);
@@ -25,8 +455,8 @@ DEF_FN(CUresult,cuDeviceGetMemPool_v11020,cuDeviceGetMemPool,11020,0,CUmemoryPoo
 DEF_FN(CUresult,cuDeviceGetDefaultMemPool_v11020,cuDeviceGetDefaultMemPool,11020,0,CUmemoryPool*,pool_out, CUdevice_v1,dev);
 DEF_FN(CUresult,cuDeviceGetProperties_v2000,cuDeviceGetProperties,2000,0,CUdevprop_v1*,prop, CUdevice_v1,dev);
 DEF_FN(CUresult,cuDeviceComputeCapability_v2000,cuDeviceComputeCapability,2000,0,int*,major, int*,minor, CUdevice_v1,dev);
-DEF_FN(CUresult,cuDevicePrimaryCtxRetain_v7000,cuDevicePrimaryCtxRetain,7000,0,CUcontext*,pctx, CUdevice_v1,dev);
-DEF_FN(CUresult,cuDevicePrimaryCtxRelease_v11000,cuDevicePrimaryCtxRelease,11000,0,CUdevice_v1,dev);
+// DEF_FN(CUresult,cuDevicePrimaryCtxRetain_v7000,cuDevicePrimaryCtxRetain,7000,0,CUcontext*,pctx, CUdevice_v1,dev);
+// DEF_FN(CUresult,cuDevicePrimaryCtxRelease_v11000,cuDevicePrimaryCtxRelease,11000,0,CUdevice_v1,dev);
 DEF_FN(CUresult,cuDevicePrimaryCtxSetFlags_v11000,cuDevicePrimaryCtxSetFlags,11000,0,CUdevice_v1,dev, unsigned int,flags);
 DEF_FN(CUresult,cuDevicePrimaryCtxGetState_v7000,cuDevicePrimaryCtxGetState,7000,0,CUdevice_v1,dev, unsigned int*,flags, int*,active);
 DEF_FN(CUresult,cuDevicePrimaryCtxReset_v11000,cuDevicePrimaryCtxReset,11000,0,CUdevice_v1,dev);
@@ -35,10 +465,10 @@ DEF_FN(CUresult,cuCtxCreate_v3020,cuCtxCreate,3020,0,CUcontext*,pctx, unsigned i
 DEF_FN(CUresult,cuCtxCreate_v11040,cuCtxCreate,11040,0,CUcontext*,pctx, CUexecAffinityParam*,paramsArray, int,numParams, unsigned int,flags, CUdevice_v1,dev);
 DEF_FN(CUresult,cuCtxGetId_v12000,cuCtxGetId,12000,0,CUcontext,ctx, unsigned long long*,ctxId);
 DEF_FN(CUresult,cuCtxDestroy_v4000,cuCtxDestroy,4000,0,CUcontext,ctx);
-DEF_FN(CUresult,cuCtxPushCurrent_v4000,cuCtxPushCurrent,4000,0,CUcontext,ctx);
-DEF_FN(CUresult,cuCtxPopCurrent_v4000,cuCtxPopCurrent,4000,0,CUcontext*,pctx);
-DEF_FN(CUresult,cuCtxSetCurrent_v4000,cuCtxSetCurrent,4000,0,CUcontext,ctx);
-DEF_FN(CUresult,cuCtxGetCurrent_v4000,cuCtxGetCurrent,4000,0,CUcontext*,pctx);
+// DEF_FN(CUresult,cuCtxPushCurrent_v4000,cuCtxPushCurrent,4000,0,CUcontext,ctx);
+// DEF_FN(CUresult,cuCtxPopCurrent_v4000,cuCtxPopCurrent,4000,0,CUcontext*,pctx);
+// DEF_FN(CUresult,cuCtxSetCurrent_v4000,cuCtxSetCurrent,4000,0,CUcontext,ctx);
+// DEF_FN(CUresult,cuCtxGetCurrent_v4000,cuCtxGetCurrent,4000,0,CUcontext*,pctx);
 DEF_FN(CUresult,cuCtxGetDevice_v2000,cuCtxGetDevice,2000,0,CUdevice_v1*,device);
 DEF_FN(CUresult,cuCtxGetFlags_v7000,cuCtxGetFlags,7000,0,unsigned int*,flags);
 DEF_FN(CUresult,cuCtxSetFlags_v12010,cuCtxSetFlags,12010,0,unsigned int,flags);
@@ -60,7 +490,7 @@ DEF_FN(CUresult,cuModuleLoadData_v2000,cuModuleLoadData,2000,0,CUmodule*,module,
 DEF_FN(CUresult,cuModuleLoadDataEx_v2010,cuModuleLoadDataEx,2010,0,CUmodule*,module, const void*,image, unsigned int,numOptions, CUjit_option*,options, void**,optionValues);
 DEF_FN(CUresult,cuModuleLoadFatBinary_v2000,cuModuleLoadFatBinary,2000,0,CUmodule*,module, const void*,fatCubin);
 DEF_FN(CUresult,cuModuleUnload_v2000,cuModuleUnload,2000,0,CUmodule,hmod);
-DEF_FN(CUresult,cuModuleGetFunction_v2000,cuModuleGetFunction,2000,0,CUfunction*,hfunc, CUmodule,hmod, const char*,name);
+// DEF_FN(CUresult,cuModuleGetFunction_v2000,cuModuleGetFunction,2000,0,CUfunction*,hfunc, CUmodule,hmod, const char*,name);
 DEF_FN(CUresult,cuModuleGetGlobal_v3020,cuModuleGetGlobal,3020,0,CUdeviceptr_v2*,dptr, size_t*,bytes, CUmodule,hmod, const char*,name);
 DEF_FN(CUresult,cuModuleGetTexRef_v2000,cuModuleGetTexRef,2000,0,CUtexref*,pTexRef, CUmodule,hmod, const char*,name);
 DEF_FN(CUresult,cuModuleGetSurfRef_v3000,cuModuleGetSurfRef,3000,0,CUsurfref*,pSurfRef, CUmodule,hmod, const char*,name);
@@ -91,20 +521,20 @@ DEF_FN(CUresult,cuIpcOpenMemHandle_v11000,cuIpcOpenMemHandle,11000,0,CUdeviceptr
 DEF_FN(CUresult,cuIpcCloseMemHandle_v4010,cuIpcCloseMemHandle,4010,0,CUdeviceptr_v2,dptr);
 DEF_FN(CUresult,cuMemHostRegister_v6050,cuMemHostRegister,6050,0,void*,p, size_t,bytesize, unsigned int,Flags);
 DEF_FN(CUresult,cuMemHostUnregister_v4000,cuMemHostUnregister,4000,0,void*,p);
-DEF_FN(CUresult,cuMemcpy_v7000_ptds,cuMemcpy,7000,2,CUdeviceptr_v2,dst, CUdeviceptr_v2,src, size_t,ByteCount);
-DEF_FN(CUresult,cuMemcpyPeer_v7000_ptds,cuMemcpyPeer,7000,2,CUdeviceptr_v2,dstDevice, CUcontext,dstContext, CUdeviceptr_v2,srcDevice, CUcontext,srcContext, size_t,ByteCount);
-DEF_FN(CUresult,cuMemcpyHtoD_v7000_ptds,cuMemcpyHtoD,7000,2,CUdeviceptr_v2,dstDevice, const void*,srcHost, size_t,ByteCount);
-DEF_FN(CUresult,cuMemcpyDtoH_v7000_ptds,cuMemcpyDtoH,7000,2,void*,dstHost, CUdeviceptr_v2,srcDevice, size_t,ByteCount);
-DEF_FN(CUresult,cuMemcpyDtoD_v7000_ptds,cuMemcpyDtoD,7000,2,CUdeviceptr_v2,dstDevice, CUdeviceptr_v2,srcDevice, size_t,ByteCount);
-DEF_FN(CUresult,cuMemcpyDtoA_v7000_ptds,cuMemcpyDtoA,7000,2,CUarray,dstArray, size_t,dstOffset, CUdeviceptr_v2,srcDevice, size_t,ByteCount);
-DEF_FN(CUresult,cuMemcpyAtoD_v7000_ptds,cuMemcpyAtoD,7000,2,CUdeviceptr_v2,dstDevice, CUarray,srcArray, size_t,srcOffset, size_t,ByteCount);
-DEF_FN(CUresult,cuMemcpyHtoA_v7000_ptds,cuMemcpyHtoA,7000,2,CUarray,dstArray, size_t,dstOffset, const void*,srcHost, size_t,ByteCount);
-DEF_FN(CUresult,cuMemcpyAtoH_v7000_ptds,cuMemcpyAtoH,7000,2,void*,dstHost, CUarray,srcArray, size_t,srcOffset, size_t,ByteCount);
-DEF_FN(CUresult,cuMemcpyAtoA_v7000_ptds,cuMemcpyAtoA,7000,2,CUarray,dstArray, size_t,dstOffset, CUarray,srcArray, size_t,srcOffset, size_t,ByteCount);
-DEF_FN(CUresult,cuMemcpy2D_v7000_ptds,cuMemcpy2D,7000,2,const CUDA_MEMCPY2D_v2*,pCopy);
-DEF_FN(CUresult,cuMemcpy2DUnaligned_v7000_ptds,cuMemcpy2DUnaligned,7000,2,const CUDA_MEMCPY2D_v2*,pCopy);
-DEF_FN(CUresult,cuMemcpy3D_v7000_ptds,cuMemcpy3D,7000,2,const CUDA_MEMCPY3D_v2*,pCopy);
-DEF_FN(CUresult,cuMemcpy3DPeer_v7000_ptds,cuMemcpy3DPeer,7000,2,const CUDA_MEMCPY3D_PEER_v1*,pCopy);
+DEF_FN(CUresult,cuMemcpy_v7000_ptds,cuMemcpy,7000,1,CUdeviceptr_v2,dst, CUdeviceptr_v2,src, size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyPeer_v7000_ptds,cuMemcpyPeer,7000,1,CUdeviceptr_v2,dstDevice, CUcontext,dstContext, CUdeviceptr_v2,srcDevice, CUcontext,srcContext, size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyHtoD_v7000_ptds,cuMemcpyHtoD,7000,1,CUdeviceptr_v2,dstDevice, const void*,srcHost, size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyDtoH_v7000_ptds,cuMemcpyDtoH,7000,1,void*,dstHost, CUdeviceptr_v2,srcDevice, size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyDtoD_v7000_ptds,cuMemcpyDtoD,7000,1,CUdeviceptr_v2,dstDevice, CUdeviceptr_v2,srcDevice, size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyDtoA_v7000_ptds,cuMemcpyDtoA,7000,1,CUarray,dstArray, size_t,dstOffset, CUdeviceptr_v2,srcDevice, size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyAtoD_v7000_ptds,cuMemcpyAtoD,7000,1,CUdeviceptr_v2,dstDevice, CUarray,srcArray, size_t,srcOffset, size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyHtoA_v7000_ptds,cuMemcpyHtoA,7000,1,CUarray,dstArray, size_t,dstOffset, const void*,srcHost, size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyAtoH_v7000_ptds,cuMemcpyAtoH,7000,1,void*,dstHost, CUarray,srcArray, size_t,srcOffset, size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpyAtoA_v7000_ptds,cuMemcpyAtoA,7000,1,CUarray,dstArray, size_t,dstOffset, CUarray,srcArray, size_t,srcOffset, size_t,ByteCount);
+DEF_FN(CUresult,cuMemcpy2D_v7000_ptds,cuMemcpy2D,7000,1,const CUDA_MEMCPY2D_v2*,pCopy);
+DEF_FN(CUresult,cuMemcpy2DUnaligned_v7000_ptds,cuMemcpy2DUnaligned,7000,1,const CUDA_MEMCPY2D_v2*,pCopy);
+DEF_FN(CUresult,cuMemcpy3D_v7000_ptds,cuMemcpy3D,7000,1,const CUDA_MEMCPY3D_v2*,pCopy);
+DEF_FN(CUresult,cuMemcpy3DPeer_v7000_ptds,cuMemcpy3DPeer,7000,1,const CUDA_MEMCPY3D_PEER_v1*,pCopy);
 DEF_FN(CUresult,cuMemcpyAsync_v7000_ptsz,cuMemcpyAsync,7000,2,CUdeviceptr_v2,dst, CUdeviceptr_v2,src, size_t,ByteCount, CUstream,hStream);
 DEF_FN(CUresult,cuMemcpyPeerAsync_v7000_ptsz,cuMemcpyPeerAsync,7000,2,CUdeviceptr_v2,dstDevice, CUcontext,dstContext, CUdeviceptr_v2,srcDevice, CUcontext,srcContext, size_t,ByteCount, CUstream,hStream);
 DEF_FN(CUresult,cuMemcpyHtoDAsync_v7000_ptsz,cuMemcpyHtoDAsync,7000,2,CUdeviceptr_v2,dstDevice, const void*,srcHost, size_t,ByteCount, CUstream,hStream);
@@ -115,12 +545,12 @@ DEF_FN(CUresult,cuMemcpyAtoHAsync_v7000_ptsz,cuMemcpyAtoHAsync,7000,2,void*,dstH
 DEF_FN(CUresult,cuMemcpy2DAsync_v7000_ptsz,cuMemcpy2DAsync,7000,2,const CUDA_MEMCPY2D_v2*,pCopy, CUstream,hStream);
 DEF_FN(CUresult,cuMemcpy3DAsync_v7000_ptsz,cuMemcpy3DAsync,7000,2,const CUDA_MEMCPY3D_v2*,pCopy, CUstream,hStream);
 DEF_FN(CUresult,cuMemcpy3DPeerAsync_v7000_ptsz,cuMemcpy3DPeerAsync,7000,2,const CUDA_MEMCPY3D_PEER_v1*,pCopy, CUstream,hStream);
-DEF_FN(CUresult,cuMemsetD8_v7000_ptds,cuMemsetD8,7000,2,CUdeviceptr_v2,dstDevice, unsigned char,uc, size_t,N);
-DEF_FN(CUresult,cuMemsetD16_v7000_ptds,cuMemsetD16,7000,2,CUdeviceptr_v2,dstDevice, unsigned short,us, size_t,N);
-DEF_FN(CUresult,cuMemsetD32_v7000_ptds,cuMemsetD32,7000,2,CUdeviceptr_v2,dstDevice, unsigned int,ui, size_t,N);
-DEF_FN(CUresult,cuMemsetD2D8_v7000_ptds,cuMemsetD2D8,7000,2,CUdeviceptr_v2,dstDevice, size_t,dstPitch, unsigned char,uc, size_t,Width, size_t,Height);
-DEF_FN(CUresult,cuMemsetD2D16_v7000_ptds,cuMemsetD2D16,7000,2,CUdeviceptr_v2,dstDevice, size_t,dstPitch, unsigned short,us, size_t,Width, size_t,Height);
-DEF_FN(CUresult,cuMemsetD2D32_v7000_ptds,cuMemsetD2D32,7000,2,CUdeviceptr_v2,dstDevice, size_t,dstPitch, unsigned int,ui, size_t,Width, size_t,Height);
+DEF_FN(CUresult,cuMemsetD8_v7000_ptds,cuMemsetD8,7000,1,CUdeviceptr_v2,dstDevice, unsigned char,uc, size_t,N);
+DEF_FN(CUresult,cuMemsetD16_v7000_ptds,cuMemsetD16,7000,1,CUdeviceptr_v2,dstDevice, unsigned short,us, size_t,N);
+DEF_FN(CUresult,cuMemsetD32_v7000_ptds,cuMemsetD32,7000,1,CUdeviceptr_v2,dstDevice, unsigned int,ui, size_t,N);
+DEF_FN(CUresult,cuMemsetD2D8_v7000_ptds,cuMemsetD2D8,7000,1,CUdeviceptr_v2,dstDevice, size_t,dstPitch, unsigned char,uc, size_t,Width, size_t,Height);
+DEF_FN(CUresult,cuMemsetD2D16_v7000_ptds,cuMemsetD2D16,7000,1,CUdeviceptr_v2,dstDevice, size_t,dstPitch, unsigned short,us, size_t,Width, size_t,Height);
+DEF_FN(CUresult,cuMemsetD2D32_v7000_ptds,cuMemsetD2D32,7000,1,CUdeviceptr_v2,dstDevice, size_t,dstPitch, unsigned int,ui, size_t,Width, size_t,Height);
 DEF_FN(CUresult,cuMemsetD8Async_v7000_ptsz,cuMemsetD8Async,7000,2,CUdeviceptr_v2,dstDevice, unsigned char,uc, size_t,N, CUstream,hStream);
 DEF_FN(CUresult,cuMemsetD16Async_v7000_ptsz,cuMemsetD16Async,7000,2,CUdeviceptr_v2,dstDevice, unsigned short,us, size_t,N, CUstream,hStream);
 DEF_FN(CUresult,cuMemsetD32Async_v7000_ptsz,cuMemsetD32Async,7000,2,CUdeviceptr_v2,dstDevice, unsigned int,ui, size_t,N, CUstream,hStream);
@@ -407,7 +837,7 @@ DEF_FN(CUresult,cuGetExportTable_v3000,cuGetExportTable,3000,0,const void**,ppEx
 DEF_FN(CUresult,cuFuncGetModule_v11000,cuFuncGetModule,11000,0,CUmodule*,hmod, CUfunction,hfunc);
 DEF_FN(CUresult,cuGetProcAddress_v11030,cuGetProcAddress,11030,0,const char*,symbol, void**,pfn, int,driverVersion, cuuint64_t,flags);
 DEF_FN(CUresult,cuGetProcAddress_v12000,cuGetProcAddress,12000,0,const char*,symbol, void**,pfn, int,driverVersion, cuuint64_t,flags, CUdriverProcAddressQueryResult*,symbolFound);
-DEF_FN(CUresult,cuMemcpyHtoD_v3020,cuMemcpyHtoD,3020,0,CUdeviceptr_v2,dstDevice, const void*,srcHost, size_t,ByteCount);
+// DEF_FN(CUresult,cuMemcpyHtoD_v3020,cuMemcpyHtoD,3020,0,CUdeviceptr_v2,dstDevice, const void*,srcHost, size_t,ByteCount);
 DEF_FN(CUresult,cuMemcpyDtoH_v3020,cuMemcpyDtoH,3020,0,void*,dstHost, CUdeviceptr_v2,srcDevice, size_t,ByteCount);
 DEF_FN(CUresult,cuMemcpyDtoD_v3020,cuMemcpyDtoD,3020,0,CUdeviceptr_v2,dstDevice, CUdeviceptr_v2,srcDevice, size_t,ByteCount);
 DEF_FN(CUresult,cuMemcpyDtoA_v3020,cuMemcpyDtoA,3020,0,CUarray,dstArray, size_t,dstOffset, CUdeviceptr_v2,srcDevice, size_t,ByteCount);
@@ -453,7 +883,7 @@ DEF_FN(CUresult,cuStreamQuery_v2000,cuStreamQuery,2000,0,CUstream,hStream);
 DEF_FN(CUresult,cuStreamSynchronize_v2000,cuStreamSynchronize,2000,0,CUstream,hStream);
 DEF_FN(CUresult,cuEventRecord_v2000,cuEventRecord,2000,0,CUevent,hEvent, CUstream,hStream);
 DEF_FN(CUresult,cuEventRecordWithFlags_v11010,cuEventRecordWithFlags,11010,0,CUevent,hEvent, CUstream,hStream, unsigned int,flags);
-DEF_FN(CUresult,cuLaunchKernel_v4000,cuLaunchKernel,4000,0,CUfunction,f, unsigned int,gridDimX, unsigned int,gridDimY, unsigned int,gridDimZ, unsigned int,blockDimX, unsigned int,blockDimY, unsigned int,blockDimZ, unsigned int,sharedMemBytes, CUstream,hStream, void**,kernelParams, void**,extra);
+// DEF_FN(CUresult,cuLaunchKernel_v4000,cuLaunchKernel,4000,0,CUfunction,f, unsigned int,gridDimX, unsigned int,gridDimY, unsigned int,gridDimZ, unsigned int,blockDimX, unsigned int,blockDimY, unsigned int,blockDimZ, unsigned int,sharedMemBytes, CUstream,hStream, void**,kernelParams, void**,extra);
 DEF_FN(CUresult,cuLaunchKernelEx_v11060,cuLaunchKernelEx,11060,0,const CUlaunchConfig*,config, CUfunction,f, void**,kernelParams, void**,extra);
 DEF_FN(CUresult,cuLaunchHostFunc_v10000,cuLaunchHostFunc,10000,0,CUstream,hStream, CUhostFn,fn, void*,userData);
 DEF_FN(CUresult,cuGraphicsMapResources_v3000,cuGraphicsMapResources,3000,0,unsigned int,count, CUgraphicsResource*,resources, CUstream,hStream);
@@ -498,13 +928,13 @@ DEF_FN(CUresult,cuUserObjectRetain_v11030,cuUserObjectRetain,11030,0,CUuserObjec
 DEF_FN(CUresult,cuUserObjectRelease_v11030,cuUserObjectRelease,11030,0,CUuserObject,object, unsigned int,count);
 DEF_FN(CUresult,cuGraphRetainUserObject_v11030,cuGraphRetainUserObject,11030,0,CUgraph,graph, CUuserObject,object, unsigned int,count, unsigned int,flags);
 DEF_FN(CUresult,cuGraphReleaseUserObject_v11030,cuGraphReleaseUserObject,11030,0,CUgraph,graph, CUuserObject,object, unsigned int,count);
-DEF_FN(CUresult,cuModuleGetLoadingMode_v11070,cuModuleGetLoadingMode,11070,0,CUmoduleLoadingMode*,mode);
+// DEF_FN(CUresult,cuModuleGetLoadingMode_v11070,cuModuleGetLoadingMode,11070,0,CUmoduleLoadingMode*,mode);
 DEF_FN(CUresult,cuMemGetHandleForAddressRange_v11070,cuMemGetHandleForAddressRange,11070,0,void*,handle, CUdeviceptr,dptr, size_t,size, CUmemRangeHandleType,handleType, unsigned long long,flags);
-DEF_FN(CUresult,cuLibraryLoadData_v12000,cuLibraryLoadData,12000,0,CUlibrary*,library, const void*,code, CUjit_option*,jitOptions, void**,jitOptionsValues, unsigned int,numJitOptions, CUlibraryOption*,libraryOptions, void**,libraryOptionValues, unsigned int,numLibraryOptions);
+// DEF_FN(CUresult,cuLibraryLoadData_v12000,cuLibraryLoadData,12000,0,CUlibrary*,library, const void*,code, CUjit_option*,jitOptions, void**,jitOptionsValues, unsigned int,numJitOptions, CUlibraryOption*,libraryOptions, void**,libraryOptionValues, unsigned int,numLibraryOptions);
 DEF_FN(CUresult,cuLibraryLoadFromFile_v12000,cuLibraryLoadFromFile,12000,0,CUlibrary*,library, const char*,fileName, CUjit_option*,jitOptions, void**,jitOptionsValues, unsigned int,numJitOptions, CUlibraryOption*,libraryOptions, void**,libraryOptionValues, unsigned int,numLibraryOptions);
 DEF_FN(CUresult,cuLibraryUnload_v12000,cuLibraryUnload,12000,0,CUlibrary,library);
 DEF_FN(CUresult,cuLibraryGetKernel_v12000,cuLibraryGetKernel,12000,0,CUkernel*,pKernel, CUlibrary,library, const char*,name);
-DEF_FN(CUresult,cuLibraryGetModule_v12000,cuLibraryGetModule,12000,0,CUmodule*,pMod, CUlibrary,library);
+// DEF_FN(CUresult,cuLibraryGetModule_v12000,cuLibraryGetModule,12000,0,CUmodule*,pMod, CUlibrary,library);
 DEF_FN(CUresult,cuLibraryGetKernelCount,cuLibraryGetKernelCount,0,0,unsigned int*,count, CUlibrary,lib);
 DEF_FN(CUresult,cuLibraryEnumerateKernels,cuLibraryEnumerateKernels,0,0,CUkernel*,kernels, unsigned int,numKernels, CUlibrary,lib);
 DEF_FN(CUresult,cuKernelGetFunction_v12000,cuKernelGetFunction,12000,0,CUfunction*,pFunc, CUkernel,kernel);
@@ -533,7 +963,7 @@ DEF_FN(CUresult,cuDevResourceGenerateDesc_v12040,cuDevResourceGenerateDesc,12040
 DEF_FN(CUresult,cuDevSmResourceSplitByCount_v12040,cuDevSmResourceSplitByCount,12040,0,CUdevResource*,result, unsigned int*,nbGroups, const CUdevResource*,input, CUdevResource*,remaining, unsigned int,useFlags, unsigned int,minCount);
 DEF_FN(CUresult,cuStreamGetGreenCtx_v12040,cuStreamGetGreenCtx,12040,0,CUstream,hStream, CUgreenCtx*,phCtx);
 DEF_FN(CUresult,cuCtxFromGreenCtx_v12040,cuCtxFromGreenCtx,12040,0,CUcontext*,pContext, CUgreenCtx,hCtx);
-#if defined(__CUDA_API_VERSION_INTERNAL)
+// #if defined(__CUDA_API_VERSION_INTERNAL)
 	DEF_FN(CUresult,cuMemHostRegister_v4000,cuMemHostRegister,4000,0,void*,p, size_t,bytesize, unsigned int,Flags);
 	DEF_FN(CUresult,cuGraphicsResourceSetMapFlags_v3000,cuGraphicsResourceSetMapFlags,3000,0,CUgraphicsResource,resource, unsigned int,flags);
 	DEF_FN(CUresult,cuLinkCreate_v5050,cuLinkCreate,5050,0,unsigned int,numOptions, CUjit_option*,options, void**,optionValues, CUlinkState*,stateOut);
@@ -595,7 +1025,7 @@ DEF_FN(CUresult,cuCtxFromGreenCtx_v12040,cuCtxFromGreenCtx,12040,0,CUcontext*,pC
 	DEF_FN(CUresult,cuIpcOpenMemHandle_v4010,cuIpcOpenMemHandle,4010,0,CUdeviceptr_v2*,pdptr, CUipcMemHandle_v1,handle, unsigned int,Flags);
 	DEF_FN(CUresult,cuGraphInstantiate_v10000,cuGraphInstantiate,10000,0,CUgraphExec*,phGraphExec, CUgraph,hGraph, CUgraphNode*,phErrorNode, char*,logBuffer, size_t,bufferSize);
 	DEF_FN(CUresult,cuGraphInstantiate_v11000,cuGraphInstantiate,11000,0,CUgraphExec*,phGraphExec, CUgraph,hGraph, CUgraphNode*,phErrorNode, char*,logBuffer, size_t,bufferSize);
-#endif
+// #endif
 std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuGetErrorString_v6000",CuDriverFunction("cuGetErrorString",6000,0,reinterpret_cast<void*>(&cuGetErrorString_v6000)) },
 	{"cuGetErrorName_v6000",CuDriverFunction("cuGetErrorName",6000,0,reinterpret_cast<void*>(&cuGetErrorName_v6000)) },
@@ -682,20 +1112,20 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuIpcCloseMemHandle_v4010",CuDriverFunction("cuIpcCloseMemHandle",4010,0,reinterpret_cast<void*>(&cuIpcCloseMemHandle_v4010)) },
 	{"cuMemHostRegister_v6050",CuDriverFunction("cuMemHostRegister",6050,0,reinterpret_cast<void*>(&cuMemHostRegister_v6050)) },
 	{"cuMemHostUnregister_v4000",CuDriverFunction("cuMemHostUnregister",4000,0,reinterpret_cast<void*>(&cuMemHostUnregister_v4000)) },
-	{"cuMemcpy_v7000_ptds",CuDriverFunction("cuMemcpy",7000,2,reinterpret_cast<void*>(&cuMemcpy_v7000_ptds)) },
-	{"cuMemcpyPeer_v7000_ptds",CuDriverFunction("cuMemcpyPeer",7000,2,reinterpret_cast<void*>(&cuMemcpyPeer_v7000_ptds)) },
-	{"cuMemcpyHtoD_v7000_ptds",CuDriverFunction("cuMemcpyHtoD",7000,2,reinterpret_cast<void*>(&cuMemcpyHtoD_v7000_ptds)) },
-	{"cuMemcpyDtoH_v7000_ptds",CuDriverFunction("cuMemcpyDtoH",7000,2,reinterpret_cast<void*>(&cuMemcpyDtoH_v7000_ptds)) },
-	{"cuMemcpyDtoD_v7000_ptds",CuDriverFunction("cuMemcpyDtoD",7000,2,reinterpret_cast<void*>(&cuMemcpyDtoD_v7000_ptds)) },
-	{"cuMemcpyDtoA_v7000_ptds",CuDriverFunction("cuMemcpyDtoA",7000,2,reinterpret_cast<void*>(&cuMemcpyDtoA_v7000_ptds)) },
-	{"cuMemcpyAtoD_v7000_ptds",CuDriverFunction("cuMemcpyAtoD",7000,2,reinterpret_cast<void*>(&cuMemcpyAtoD_v7000_ptds)) },
-	{"cuMemcpyHtoA_v7000_ptds",CuDriverFunction("cuMemcpyHtoA",7000,2,reinterpret_cast<void*>(&cuMemcpyHtoA_v7000_ptds)) },
-	{"cuMemcpyAtoH_v7000_ptds",CuDriverFunction("cuMemcpyAtoH",7000,2,reinterpret_cast<void*>(&cuMemcpyAtoH_v7000_ptds)) },
-	{"cuMemcpyAtoA_v7000_ptds",CuDriverFunction("cuMemcpyAtoA",7000,2,reinterpret_cast<void*>(&cuMemcpyAtoA_v7000_ptds)) },
-	{"cuMemcpy2D_v7000_ptds",CuDriverFunction("cuMemcpy2D",7000,2,reinterpret_cast<void*>(&cuMemcpy2D_v7000_ptds)) },
-	{"cuMemcpy2DUnaligned_v7000_ptds",CuDriverFunction("cuMemcpy2DUnaligned",7000,2,reinterpret_cast<void*>(&cuMemcpy2DUnaligned_v7000_ptds)) },
-	{"cuMemcpy3D_v7000_ptds",CuDriverFunction("cuMemcpy3D",7000,2,reinterpret_cast<void*>(&cuMemcpy3D_v7000_ptds)) },
-	{"cuMemcpy3DPeer_v7000_ptds",CuDriverFunction("cuMemcpy3DPeer",7000,2,reinterpret_cast<void*>(&cuMemcpy3DPeer_v7000_ptds)) },
+	{"cuMemcpy_v7000_ptds",CuDriverFunction("cuMemcpy",7000,1,reinterpret_cast<void*>(&cuMemcpy_v7000_ptds)) },
+	{"cuMemcpyPeer_v7000_ptds",CuDriverFunction("cuMemcpyPeer",7000,1,reinterpret_cast<void*>(&cuMemcpyPeer_v7000_ptds)) },
+	{"cuMemcpyHtoD_v7000_ptds",CuDriverFunction("cuMemcpyHtoD",7000,1,reinterpret_cast<void*>(&cuMemcpyHtoD_v7000_ptds)) },
+	{"cuMemcpyDtoH_v7000_ptds",CuDriverFunction("cuMemcpyDtoH",7000,1,reinterpret_cast<void*>(&cuMemcpyDtoH_v7000_ptds)) },
+	{"cuMemcpyDtoD_v7000_ptds",CuDriverFunction("cuMemcpyDtoD",7000,1,reinterpret_cast<void*>(&cuMemcpyDtoD_v7000_ptds)) },
+	{"cuMemcpyDtoA_v7000_ptds",CuDriverFunction("cuMemcpyDtoA",7000,1,reinterpret_cast<void*>(&cuMemcpyDtoA_v7000_ptds)) },
+	{"cuMemcpyAtoD_v7000_ptds",CuDriverFunction("cuMemcpyAtoD",7000,1,reinterpret_cast<void*>(&cuMemcpyAtoD_v7000_ptds)) },
+	{"cuMemcpyHtoA_v7000_ptds",CuDriverFunction("cuMemcpyHtoA",7000,1,reinterpret_cast<void*>(&cuMemcpyHtoA_v7000_ptds)) },
+	{"cuMemcpyAtoH_v7000_ptds",CuDriverFunction("cuMemcpyAtoH",7000,1,reinterpret_cast<void*>(&cuMemcpyAtoH_v7000_ptds)) },
+	{"cuMemcpyAtoA_v7000_ptds",CuDriverFunction("cuMemcpyAtoA",7000,1,reinterpret_cast<void*>(&cuMemcpyAtoA_v7000_ptds)) },
+	{"cuMemcpy2D_v7000_ptds",CuDriverFunction("cuMemcpy2D",7000,1,reinterpret_cast<void*>(&cuMemcpy2D_v7000_ptds)) },
+	{"cuMemcpy2DUnaligned_v7000_ptds",CuDriverFunction("cuMemcpy2DUnaligned",7000,1,reinterpret_cast<void*>(&cuMemcpy2DUnaligned_v7000_ptds)) },
+	{"cuMemcpy3D_v7000_ptds",CuDriverFunction("cuMemcpy3D",7000,1,reinterpret_cast<void*>(&cuMemcpy3D_v7000_ptds)) },
+	{"cuMemcpy3DPeer_v7000_ptds",CuDriverFunction("cuMemcpy3DPeer",7000,1,reinterpret_cast<void*>(&cuMemcpy3DPeer_v7000_ptds)) },
 	{"cuMemcpyAsync_v7000_ptsz",CuDriverFunction("cuMemcpyAsync",7000,2,reinterpret_cast<void*>(&cuMemcpyAsync_v7000_ptsz)) },
 	{"cuMemcpyPeerAsync_v7000_ptsz",CuDriverFunction("cuMemcpyPeerAsync",7000,2,reinterpret_cast<void*>(&cuMemcpyPeerAsync_v7000_ptsz)) },
 	{"cuMemcpyHtoDAsync_v7000_ptsz",CuDriverFunction("cuMemcpyHtoDAsync",7000,2,reinterpret_cast<void*>(&cuMemcpyHtoDAsync_v7000_ptsz)) },
@@ -706,12 +1136,12 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuMemcpy2DAsync_v7000_ptsz",CuDriverFunction("cuMemcpy2DAsync",7000,2,reinterpret_cast<void*>(&cuMemcpy2DAsync_v7000_ptsz)) },
 	{"cuMemcpy3DAsync_v7000_ptsz",CuDriverFunction("cuMemcpy3DAsync",7000,2,reinterpret_cast<void*>(&cuMemcpy3DAsync_v7000_ptsz)) },
 	{"cuMemcpy3DPeerAsync_v7000_ptsz",CuDriverFunction("cuMemcpy3DPeerAsync",7000,2,reinterpret_cast<void*>(&cuMemcpy3DPeerAsync_v7000_ptsz)) },
-	{"cuMemsetD8_v7000_ptds",CuDriverFunction("cuMemsetD8",7000,2,reinterpret_cast<void*>(&cuMemsetD8_v7000_ptds)) },
-	{"cuMemsetD16_v7000_ptds",CuDriverFunction("cuMemsetD16",7000,2,reinterpret_cast<void*>(&cuMemsetD16_v7000_ptds)) },
-	{"cuMemsetD32_v7000_ptds",CuDriverFunction("cuMemsetD32",7000,2,reinterpret_cast<void*>(&cuMemsetD32_v7000_ptds)) },
-	{"cuMemsetD2D8_v7000_ptds",CuDriverFunction("cuMemsetD2D8",7000,2,reinterpret_cast<void*>(&cuMemsetD2D8_v7000_ptds)) },
-	{"cuMemsetD2D16_v7000_ptds",CuDriverFunction("cuMemsetD2D16",7000,2,reinterpret_cast<void*>(&cuMemsetD2D16_v7000_ptds)) },
-	{"cuMemsetD2D32_v7000_ptds",CuDriverFunction("cuMemsetD2D32",7000,2,reinterpret_cast<void*>(&cuMemsetD2D32_v7000_ptds)) },
+	{"cuMemsetD8_v7000_ptds",CuDriverFunction("cuMemsetD8",7000,1,reinterpret_cast<void*>(&cuMemsetD8_v7000_ptds)) },
+	{"cuMemsetD16_v7000_ptds",CuDriverFunction("cuMemsetD16",7000,1,reinterpret_cast<void*>(&cuMemsetD16_v7000_ptds)) },
+	{"cuMemsetD32_v7000_ptds",CuDriverFunction("cuMemsetD32",7000,1,reinterpret_cast<void*>(&cuMemsetD32_v7000_ptds)) },
+	{"cuMemsetD2D8_v7000_ptds",CuDriverFunction("cuMemsetD2D8",7000,1,reinterpret_cast<void*>(&cuMemsetD2D8_v7000_ptds)) },
+	{"cuMemsetD2D16_v7000_ptds",CuDriverFunction("cuMemsetD2D16",7000,1,reinterpret_cast<void*>(&cuMemsetD2D16_v7000_ptds)) },
+	{"cuMemsetD2D32_v7000_ptds",CuDriverFunction("cuMemsetD2D32",7000,1,reinterpret_cast<void*>(&cuMemsetD2D32_v7000_ptds)) },
 	{"cuMemsetD8Async_v7000_ptsz",CuDriverFunction("cuMemsetD8Async",7000,2,reinterpret_cast<void*>(&cuMemsetD8Async_v7000_ptsz)) },
 	{"cuMemsetD16Async_v7000_ptsz",CuDriverFunction("cuMemsetD16Async",7000,2,reinterpret_cast<void*>(&cuMemsetD16Async_v7000_ptsz)) },
 	{"cuMemsetD32Async_v7000_ptsz",CuDriverFunction("cuMemsetD32Async",7000,2,reinterpret_cast<void*>(&cuMemsetD32Async_v7000_ptsz)) },
@@ -1124,7 +1554,6 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuDevSmResourceSplitByCount_v12040",CuDriverFunction("cuDevSmResourceSplitByCount",12040,0,reinterpret_cast<void*>(&cuDevSmResourceSplitByCount_v12040)) },
 	{"cuStreamGetGreenCtx_v12040",CuDriverFunction("cuStreamGetGreenCtx",12040,0,reinterpret_cast<void*>(&cuStreamGetGreenCtx_v12040)) },
 	{"cuCtxFromGreenCtx_v12040",CuDriverFunction("cuCtxFromGreenCtx",12040,0,reinterpret_cast<void*>(&cuCtxFromGreenCtx_v12040)) },
-#if defined(__CUDA_API_VERSION_INTERNAL)
 	{"cuMemHostRegister_v4000",CuDriverFunction("cuMemHostRegister",4000,0,reinterpret_cast<void*>(&cuMemHostRegister_v4000)) },
 	{"cuGraphicsResourceSetMapFlags_v3000",CuDriverFunction("cuGraphicsResourceSetMapFlags",3000,0,reinterpret_cast<void*>(&cuGraphicsResourceSetMapFlags_v3000)) },
 	{"cuLinkCreate_v5050",CuDriverFunction("cuLinkCreate",5050,0,reinterpret_cast<void*>(&cuLinkCreate_v5050)) },
@@ -1186,33 +1615,57 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuIpcOpenMemHandle_v4010",CuDriverFunction("cuIpcOpenMemHandle",4010,0,reinterpret_cast<void*>(&cuIpcOpenMemHandle_v4010)) },
 	{"cuGraphInstantiate_v10000",CuDriverFunction("cuGraphInstantiate",10000,0,reinterpret_cast<void*>(&cuGraphInstantiate_v10000)) },
 	{"cuGraphInstantiate_v11000",CuDriverFunction("cuGraphInstantiate",11000,0,reinterpret_cast<void*>(&cuGraphInstantiate_v11000)) },
-#endif
 
 };
 
 
-CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus) {
-    CUresult result = realCuGetProcAddress(symbol, pfn, cudaVersion, flags, symbolStatus);
-    printf("Intercepted cuGetProcAddress: Requesting symbol %s (flags=%lu, version=%d): %p\n", symbol, flags, cudaVersion, *pfn);
 
+
+CUresult cuGetProcAddress(const char * symbol, void **pfn, int cudaVersion, cuuint64_t flags, CUdriverProcAddressQueryResult * symbolStatus) {
+    printf("Intercepted cuGetProcAddress: Requesting symbol %s (flags=%lu, version=%d): %p\n", symbol, flags, cudaVersion, *pfn);
+	CUresult res = realCuGetProcAddress(symbol, pfn, cudaVersion, flags, symbolStatus);
     if (strcmp(symbol, "cuGetProcAddress") == 0) {
         *pfn = (void*)&cuGetProcAddress;  // 拦截自身
 		return CUDA_SUCCESS;
     } 
 
-	std::string funcName=std::string(symbol)+"_"+std::to_string(cudaVersion);
-	if (flags==1){
-		funcName+="_ptds";
-	}else if (flags==2){
-		funcName+="_ptzs";
-	}
+	std::string funcName=std::string(symbol)+"_v"+std::to_string(cudaVersion);
 
-	if (cuDriverFunctionTable.find(funcName)!=cuDriverFunctionTable.end()){
-		*pfn=cuDriverFunctionTable[funcName].funcPtr;
+
+	if (flags==2){
+		auto it = cuDriverFunctionTable.find(funcName+"_ptsz");
+		if (it==cuDriverFunctionTable.end()){
+			it=cuDriverFunctionTable.find(funcName+"_ptds");
+		}
+		if (it!=cuDriverFunctionTable.end()){
+			*pfn=it->second.funcPtr;
+			return CUDA_SUCCESS;
+		}
+		else{
+			printf("CUDA Driver API NOT HOOK: %s\n",funcName.c_str());
+		}
 	}
 	else{
-		printf("CUDA Driver API NOT HOOK:%s\n",symbol);
+
+		auto it = cuDriverFunctionTable.find(funcName);
+		
+		if (it==cuDriverFunctionTable.end()){
+			it=cuDriverFunctionTable.find(funcName+"_ptds");
+		}
+		if (it==cuDriverFunctionTable.end()){
+			it=cuDriverFunctionTable.find(funcName+"_ptsz");
+		}
+		if (it!=cuDriverFunctionTable.end()){
+			*pfn=it->second.funcPtr;
+			return CUDA_SUCCESS;
+		}
+		else{
+
+			printf("CUDA Driver API NOT HOOK: %s\n",funcName.c_str());
+		}
+
 	}
 
-    return result;
+	return res;
+;
 }
