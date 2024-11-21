@@ -218,7 +218,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetCurrent_v4000(CUcontext * pctx) {
 	printf("[cuCtxGetCurrent] get current context:%p\n",*pctx);
     return reply.result;
 }
-CUresult cuCtxPushCurrent_v4000 (CUcontext,ctx){
+CUresult cuCtxPushCurrent_v4000 (CUcontext ctx){
 	HOOK_TRACE_PROFILE("cuCtxPushCurrent");
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuCtxPushCurrent,
