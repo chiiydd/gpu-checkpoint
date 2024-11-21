@@ -24,6 +24,7 @@ enum class CuDriverCall{
     CuLibraryUnload,
     CuDevicePrimaryCtxRelease,
     CuCtxPushCurrent,
+    CuCtxPopCurrent,
     CuInit,
     CuCtxCreate,
     CuLibraryGetModule,
@@ -108,6 +109,9 @@ struct CuDriverCallStructure {
         struct{
             CUcontext ctx;
         }cuCtxPushCurrent;
+        struct{
+
+        }cuCtxPopCurrent;
         struct{
             CUlibrary library;
         }cuLibraryUnload;

@@ -211,7 +211,9 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
             reply->result=cuCtxPushCurrent_v2(request->params.cuCtxPushCurrent.ctx);
 
             break;
-
+        case CUDriverCall::CuCtxPopCurrent:
+            reply->result=cuCtxPopCurrent_v2(&reply->returnParams.ctx);
+            break;
         case CuDriverCall::CuDeviceGet:
             reply->result=cuDeviceGet(&reply->returnParams.device, request->params.cuDeviceGet.ordinal);
             break;

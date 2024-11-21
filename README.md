@@ -62,3 +62,16 @@ make proxy-test
 ```
 
 
+
+测试
+
+```bash
+#在build目录下
+make hook-test
+```
+
+或者在运行程序时设置`LD_PRELOAD`环境变量，例如
+
+```bash
+LD_PRELOAD=/workspace/gpu-checkpoint/build/libhijacker.so  ./cuda-app
+```
