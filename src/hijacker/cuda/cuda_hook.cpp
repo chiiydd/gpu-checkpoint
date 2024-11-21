@@ -9,7 +9,7 @@
 #include "cuda_subset.h"
 #include "macro_common.h"
 #include "communication.h"
-#include "commnicator.h"
+#include "communicator.h"
 #include "cpu-elf2.h"
 
 list kernel_infos;
