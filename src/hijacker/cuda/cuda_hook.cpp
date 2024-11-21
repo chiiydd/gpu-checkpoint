@@ -1,13 +1,16 @@
 #include <cstddef>
 #include <cstring>
-#include <cuda_subset.h>
 #include <cstdio>
-#include "cuda_hook.h"
 #include <string>
 #include <unordered_map>
 #include <elf.h>
 #include <iostream>
+#include "cuda_hook.h"
+#include "cuda_subset.h"
 #include "macro_common.h"
+#include "communication.h"
+#include "commnicator.h"
+#include "cpu-elf2.h"
 
 list kernel_infos;
 std::string getCUjitOptionName(CUjit_option option) {
@@ -443,7 +446,7 @@ DEF_FN(CUresult,cuGetErrorName_v6000,cuGetErrorName,6000,0,CUresult,error, const
 // DEF_FN(CUresult,cuDeviceGet_v2000,cuDeviceGet,2000,0,CUdevice_v1*,device, int,ordinal);
 // DEF_FN(CUresult,cuDeviceGetCount_v2000,cuDeviceGetCount,2000,0,int*,count);
 // DEF_FN(CUresult,cuDeviceGetName_v2000,cuDeviceGetName,2000,0,char*,name, int,len, CUdevice_v1,dev);
-// DEF_FN(CUresult,cuDeviceGetUuid_v9020,cuDeviceGetUuid,9020,0,CUuuid*,uuid, CUdevice_v1,dev);
+DEF_FN(CUresult,cuDeviceGetUuid_v9020,cuDeviceGetUuid,9020,0,CUuuid*,uuid, CUdevice_v1,dev);
 // DEF_FN(CUresult,cuDeviceGetUuid_v11040,cuDeviceGetUuid,11040,0,CUuuid*,uuid, CUdevice_v1,dev);
 DEF_FN(CUresult,cuDeviceGetLuid_v10000,cuDeviceGetLuid,10000,0,char*,luid, unsigned int*,deviceNodeMask, CUdevice_v1,dev);
 // DEF_FN(CUresult,cuDeviceTotalMem_v3020,cuDeviceTotalMem,3020,0,size_t*,bytes, CUdevice_v1,dev);
@@ -502,9 +505,9 @@ DEF_FN(CUresult,cuLinkAddFile_v6050,cuLinkAddFile,6050,0,CUlinkState,state, CUji
 DEF_FN(CUresult,cuLinkComplete_v5050,cuLinkComplete,5050,0,CUlinkState,state, void**,cubinOut, size_t*,sizeOut);
 DEF_FN(CUresult,cuLinkDestroy_v5050,cuLinkDestroy,5050,0,CUlinkState,state);
 DEF_FN(CUresult,cuMemGetInfo_v3020,cuMemGetInfo,3020,0,size_t*,free, size_t*,total);
-DEF_FN(CUresult,cuMemAlloc_v3020,cuMemAlloc,3020,0,CUdeviceptr_v2*,dptr, size_t,bytesize);
+// DEF_FN(CUresult,cuMemAlloc_v3020,cuMemAlloc,3020,0,CUdeviceptr_v2*,dptr, size_t,bytesize);
 DEF_FN(CUresult,cuMemAllocPitch_v3020,cuMemAllocPitch,3020,0,CUdeviceptr_v2*,dptr, size_t*,pPitch, size_t,WidthInBytes, size_t,Height, unsigned int,ElementSizeBytes);
-DEF_FN(CUresult,cuMemFree_v3020,cuMemFree,3020,0,CUdeviceptr_v2,dptr);
+// DEF_FN(CUresult,cuMemFree_v3020,cuMemFree,3020,0,CUdeviceptr_v2,dptr);
 DEF_FN(CUresult,cuMemGetAddressRange_v3020,cuMemGetAddressRange,3020,0,CUdeviceptr_v2*,pbase, size_t*,psize, CUdeviceptr_v2,dptr);
 DEF_FN(CUresult,cuMemAllocHost_v3020,cuMemAllocHost,3020,0,void**,pp, size_t,bytesize);
 DEF_FN(CUresult,cuMemFreeHost_v2000,cuMemFreeHost,2000,0,void*,p);
