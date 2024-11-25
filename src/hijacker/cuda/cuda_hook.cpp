@@ -55,7 +55,7 @@ std::string getCUjitOptionName(CUjit_option option) {
 }
 
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuInit_v2000(unsigned int Flags) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuInit(unsigned int Flags) {
     
     HOOK_TRACE_PROFILE("cuInit");
 
@@ -68,7 +68,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuInit_v2000(unsigned int Flags) {
     communicate_with_server(NULL, &request, &reply);
     return reply.result;
 }
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetLoadingMode_v11070(CUmoduleLoadingMode * mode) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetLoadingMode(CUmoduleLoadingMode * mode) {
     CuDriverCallStructure request{
         .op=CuDriverCall::CuModuleGetLoadingMode,
     };
@@ -79,7 +79,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetLoadingMode_v11070(CUmoduleLoad
     return reply.result;
 }
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetCount_v2000(int * count) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetCount(int * count) {
     HOOK_TRACE_PROFILE("cuDeviceGetCount");
     CuDriverCallStructure request{
         .op=CuDriverCall::CuDeviceGetCount,
@@ -91,7 +91,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetCount_v2000(int * count) {
 
     return reply.result;
 }
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetName_v2000(char * name, int len, CUdevice dev) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetName(char * name, int len, CUdevice dev) {
     HOOK_TRACE_PROFILE("cuDeviceGetName");
     CuDriverCallStructure request{
         .op=CuDriverCall::CuDeviceGetName,
@@ -102,7 +102,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetName_v2000(char * name, int len
 	printf("[cuDeviceGetName] get name:%s\n",name);
     return reply.result;
 }
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetUuid_v11040 (CUuuid * uuid,CUdevice dev){
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetUuid(CUuuid * uuid,CUdevice dev){
 	HOOK_TRACE_PROFILE("cuDeviceGetUuid");
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuDeviceGetUuid,
@@ -115,7 +115,7 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceGetUuid_v11040 (CUuuid * uuid,CUdev
 	return reply.result;
 }
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDriverGetVersion_v2020(int * driverVersion) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDriverGetVersion(int * driverVersion) {
     HOOK_TRACE_PROFILE("cuDriverGetVersion");
     CuDriverCallStructure request={
         .op=CuDriverCall::CuDriverGetVersion,
@@ -131,7 +131,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDriverGetVersion_v2020(int * driverVersi
 
 }
 
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemAlloc_v3020(CUdeviceptr * dptr, size_t bytesize) {
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemAlloc(CUdeviceptr * dptr, size_t bytesize) {
 	HOOK_TRACE_PROFILE("cuMemAlloc");
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuMemAlloc,
@@ -143,7 +143,7 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemAlloc_v3020(CUdeviceptr * dptr, size_t
 	printf("[cuMemAlloc] allocate %ld bytes memory at %p\n",bytesize,*dptr);
 	return reply.result;
 }
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemFree_v3020(CUdeviceptr dptr) {
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemFree(CUdeviceptr dptr) {
 	HOOK_TRACE_PROFILE("cuMemFree");
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuMemFree,
@@ -155,7 +155,7 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemFree_v3020(CUdeviceptr dptr) {
 	return reply.result;
 }
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGet_v2000(CUdevice * device, int ordinal) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGet(CUdevice * device, int ordinal) {
     HOOK_TRACE_PROFILE("cuDeviceGet");
     CuDriverCallStructure request{
         .op=CuDriverCall::CuDeviceGet,
@@ -169,7 +169,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGet_v2000(CUdevice * device, int o
 	printf("[cuDeviceGet] get device:%d\n",*device);
     return reply.result;
 }
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceTotalMem_v3020(size_t * bytes,CUdevice dev){
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceTotalMem(size_t * bytes,CUdevice dev){
 	HOOK_TRACE_PROFILE("cuDeviceTotalMem");
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuDeviceTotalMem,
@@ -182,7 +182,7 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuDeviceTotalMem_v3020(size_t * bytes,CUdev
 }
 
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetAttribute_v2000(int * pi, CUdevice_attribute attrib, CUdevice dev) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetAttribute(int * pi, CUdevice_attribute attrib, CUdevice dev) {
     HOOK_TRACE_PROFILE("cuDeviceGetAttribute");
     CuDriverCallStructure request={
         .op=CuDriverCall::CuDeviceGetAttribute,
@@ -194,7 +194,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDeviceGetAttribute_v2000(int * pi, CUdev
 	printf("[cuDeviceGetAttribute] get attribute:%d\n",*pi);
     return reply.result;
 }
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxSetCurrent_v4000(CUcontext ctx) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxSetCurrent(CUcontext ctx) {
     HOOK_TRACE_PROFILE("cuCtxSetCurrent");
     CuDriverCallStructure request{
         .op=CuDriverCall::CuCtxSetCurrent,
@@ -206,7 +206,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxSetCurrent_v4000(CUcontext ctx) {
     return reply.result;
 }
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetCurrent_v4000(CUcontext * pctx) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetCurrent(CUcontext * pctx) {
     HOOK_TRACE_PROFILE("cuCtxGetCurrent");
     CuDriverCallStructure request{
         .op=CuDriverCall::CuCtxGetCurrent,
@@ -218,7 +218,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetCurrent_v4000(CUcontext * pctx) {
 	printf("[cuCtxGetCurrent] get current context:%p\n",*pctx);
     return reply.result;
 }
-CUresult cuCtxPushCurrent_v4000 (CUcontext ctx){
+CUresult cuCtxPushCurrent (CUcontext ctx){
 	HOOK_TRACE_PROFILE("cuCtxPushCurrent");
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuCtxPushCurrent,
@@ -229,7 +229,7 @@ CUresult cuCtxPushCurrent_v4000 (CUcontext ctx){
 	printf("[cuCtxPushCurrent] push current context:%p\n",ctx);
 	return reply.result;
 }
-CUresult cuCtxPopCurrent_v4000 (CUcontext * pctx){
+CUresult cuCtxPopCurrent(CUcontext * pctx){
 	HOOK_TRACE_PROFILE("cuCtxPopCurrent");
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuCtxPopCurrent,
@@ -243,7 +243,7 @@ CUresult cuCtxPopCurrent_v4000 (CUcontext * pctx){
 }
 
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRetain_v7000(CUcontext * pctx, CUdevice dev) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRetain(CUcontext * pctx, CUdevice dev) {
     HOOK_TRACE_PROFILE("cuDevicePrimaryCtxRetain");
     CuDriverCallStructure request{
         .op=CuDriverCall::CuDevicePrimaryCtxRetain,
@@ -255,7 +255,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRetain_v7000(CUcontext *
 	printf("[cuDevicePrimaryCtxRetain] retain device[%d] primary context:%p\n",dev,*pctx);
     return reply.result;
 }
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRelease_v11000(CUdevice dev) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
     HOOK_TRACE_PROFILE("cuDevicePrimaryCtxRelease");
     CuDriverCallStructure request{
         .op=CuDriverCall::CuDevicePrimaryCtxRelease,
@@ -268,7 +268,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRelease_v11000(CUdevice 
 }
 
 
-HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemcpyHtoD_v3020( CUdeviceptr dstDevice,const void * srcHost,size_t ByteCount){
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemcpyHtoD( CUdeviceptr dstDevice,const void * srcHost,size_t ByteCount){
 	HOOK_TRACE_PROFILE("cuMemcpyHtoD");
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuMemcpyHtoD,
@@ -280,7 +280,7 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemcpyHtoD_v3020( CUdeviceptr dstDevice,c
 	return reply.result;
 }
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetModule_v12000(CUmodule * pMod, CUlibrary library) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetModule(CUmodule * pMod, CUlibrary library) {
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuLibraryGetModule,
 		.params={.cuLibraryGetModule={
@@ -294,7 +294,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetModule_v12000(CUmodule * pMod,
 	return reply.result;
 
 }
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetFunction_v2000(CUfunction * hfunc, CUmodule hmod, const char * name) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetFunction(CUfunction * hfunc, CUmodule hmod, const char * name) {
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuModuleGetFunction,
 		.params={.cuModuleGetFunction{
@@ -310,7 +310,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetFunction_v2000(CUfunction * hfu
 	return reply.result;
 }
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunchKernel_v4000(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void * * kernelParams, void * * extra) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunchKernel(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void * * kernelParams, void * * extra) {
 
     size_t i;
     char *buf;
@@ -371,7 +371,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunchKernel_v4000(CUfunction f, unsigne
     return reply.result;
 }
 
-HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryLoadData_v12000(CUlibrary * library, const void * code, CUjit_option * jitOptions, void * * jitOptionsValues, unsigned int numJitOptions, CUlibraryOption * libraryOptions, void * * libraryOptionValues, unsigned int numLibraryOptions) {
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryLoadData(CUlibrary * library, const void * code, CUjit_option * jitOptions, void * * jitOptionsValues, unsigned int numJitOptions, CUlibraryOption * libraryOptions, void * * libraryOptionValues, unsigned int numLibraryOptions) {
 	// FatBinaryWrapper *wrapper = (FatBinaryWrapper *)code;
 	
 	// printf("----------------------------------------------\n");
@@ -1032,25 +1032,25 @@ DEF_FN(CUresult,cuCtxFromGreenCtx_v12040,cuCtxFromGreenCtx,12040,0,CUcontext*,pC
 std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuGetErrorString_v6000",CuDriverFunction("cuGetErrorString",6000,0,reinterpret_cast<void*>(&cuGetErrorString_v6000)) },
 	{"cuGetErrorName_v6000",CuDriverFunction("cuGetErrorName",6000,0,reinterpret_cast<void*>(&cuGetErrorName_v6000)) },
-	{"cuInit_v2000",CuDriverFunction("cuInit",2000,0,reinterpret_cast<void*>(&cuInit_v2000)) },
-	{"cuDriverGetVersion_v2020",CuDriverFunction("cuDriverGetVersion",2020,0,reinterpret_cast<void*>(&cuDriverGetVersion_v2020)) },
-	{"cuDeviceGet_v2000",CuDriverFunction("cuDeviceGet",2000,0,reinterpret_cast<void*>(&cuDeviceGet_v2000)) },
-	{"cuDeviceGetCount_v2000",CuDriverFunction("cuDeviceGetCount",2000,0,reinterpret_cast<void*>(&cuDeviceGetCount_v2000)) },
-	{"cuDeviceGetName_v2000",CuDriverFunction("cuDeviceGetName",2000,0,reinterpret_cast<void*>(&cuDeviceGetName_v2000)) },
-	{"cuDeviceGetUuid_v9020",CuDriverFunction("cuDeviceGetUuid",9020,0,reinterpret_cast<void*>(&cuDeviceGetUuid_v9020)) },
-	{"cuDeviceGetUuid_v11040",CuDriverFunction("cuDeviceGetUuid",11040,0,reinterpret_cast<void*>(&cuDeviceGetUuid_v11040)) },
+	{"cuInit_v2000",CuDriverFunction("cuInit",2000,0,reinterpret_cast<void*>(&cuInit)) },
+	{"cuDriverGetVersion_v2020",CuDriverFunction("cuDriverGetVersion",2020,0,reinterpret_cast<void*>(&cuDriverGetVersion)) },
+	{"cuDeviceGet_v2000",CuDriverFunction("cuDeviceGet",2000,0,reinterpret_cast<void*>(&cuDeviceGet)) },
+	{"cuDeviceGetCount_v2000",CuDriverFunction("cuDeviceGetCount",2000,0,reinterpret_cast<void*>(&cuDeviceGetCount)) },
+	{"cuDeviceGetName_v2000",CuDriverFunction("cuDeviceGetName",2000,0,reinterpret_cast<void*>(&cuDeviceGetName)) },
+	{"cuDeviceGetUuid_v9020",CuDriverFunction("cuDeviceGetUuid",9020,0,reinterpret_cast<void*>(&cuDeviceGetUuid)) },
+	{"cuDeviceGetUuid_v11040",CuDriverFunction("cuDeviceGetUuid",11040,0,reinterpret_cast<void*>(&cuDeviceGetUuid)) },
 	{"cuDeviceGetLuid_v10000",CuDriverFunction("cuDeviceGetLuid",10000,0,reinterpret_cast<void*>(&cuDeviceGetLuid_v10000)) },
-	{"cuDeviceTotalMem_v3020",CuDriverFunction("cuDeviceTotalMem",3020,0,reinterpret_cast<void*>(&cuDeviceTotalMem_v3020)) },
+	{"cuDeviceTotalMem_v3020",CuDriverFunction("cuDeviceTotalMem",3020,0,reinterpret_cast<void*>(&cuDeviceTotalMem)) },
 	{"cuDeviceGetTexture1DLinearMaxWidth_v11010",CuDriverFunction("cuDeviceGetTexture1DLinearMaxWidth",11010,0,reinterpret_cast<void*>(&cuDeviceGetTexture1DLinearMaxWidth_v11010)) },
-	{"cuDeviceGetAttribute_v2000",CuDriverFunction("cuDeviceGetAttribute",2000,0,reinterpret_cast<void*>(&cuDeviceGetAttribute_v2000)) },
+	{"cuDeviceGetAttribute_v2000",CuDriverFunction("cuDeviceGetAttribute",2000,0,reinterpret_cast<void*>(&cuDeviceGetAttribute)) },
 	{"cuDeviceGetNvSciSyncAttributes_v10020",CuDriverFunction("cuDeviceGetNvSciSyncAttributes",10020,0,reinterpret_cast<void*>(&cuDeviceGetNvSciSyncAttributes_v10020)) },
 	{"cuDeviceSetMemPool_v11020",CuDriverFunction("cuDeviceSetMemPool",11020,0,reinterpret_cast<void*>(&cuDeviceSetMemPool_v11020)) },
 	{"cuDeviceGetMemPool_v11020",CuDriverFunction("cuDeviceGetMemPool",11020,0,reinterpret_cast<void*>(&cuDeviceGetMemPool_v11020)) },
 	{"cuDeviceGetDefaultMemPool_v11020",CuDriverFunction("cuDeviceGetDefaultMemPool",11020,0,reinterpret_cast<void*>(&cuDeviceGetDefaultMemPool_v11020)) },
 	{"cuDeviceGetProperties_v2000",CuDriverFunction("cuDeviceGetProperties",2000,0,reinterpret_cast<void*>(&cuDeviceGetProperties_v2000)) },
 	{"cuDeviceComputeCapability_v2000",CuDriverFunction("cuDeviceComputeCapability",2000,0,reinterpret_cast<void*>(&cuDeviceComputeCapability_v2000)) },
-	{"cuDevicePrimaryCtxRetain_v7000",CuDriverFunction("cuDevicePrimaryCtxRetain",7000,0,reinterpret_cast<void*>(&cuDevicePrimaryCtxRetain_v7000)) },
-	{"cuDevicePrimaryCtxRelease_v11000",CuDriverFunction("cuDevicePrimaryCtxRelease",11000,0,reinterpret_cast<void*>(&cuDevicePrimaryCtxRelease_v11000)) },
+	{"cuDevicePrimaryCtxRetain_v7000",CuDriverFunction("cuDevicePrimaryCtxRetain",7000,0,reinterpret_cast<void*>(&cuDevicePrimaryCtxRetain)) },
+	{"cuDevicePrimaryCtxRelease_v11000",CuDriverFunction("cuDevicePrimaryCtxRelease",11000,0,reinterpret_cast<void*>(&cuDevicePrimaryCtxRelease)) },
 	{"cuDevicePrimaryCtxSetFlags_v11000",CuDriverFunction("cuDevicePrimaryCtxSetFlags",11000,0,reinterpret_cast<void*>(&cuDevicePrimaryCtxSetFlags_v11000)) },
 	{"cuDevicePrimaryCtxGetState_v7000",CuDriverFunction("cuDevicePrimaryCtxGetState",7000,0,reinterpret_cast<void*>(&cuDevicePrimaryCtxGetState_v7000)) },
 	{"cuDevicePrimaryCtxReset_v11000",CuDriverFunction("cuDevicePrimaryCtxReset",11000,0,reinterpret_cast<void*>(&cuDevicePrimaryCtxReset_v11000)) },
@@ -1059,10 +1059,10 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuCtxCreate_v11040",CuDriverFunction("cuCtxCreate",11040,0,reinterpret_cast<void*>(&cuCtxCreate_v11040)) },
 	{"cuCtxGetId_v12000",CuDriverFunction("cuCtxGetId",12000,0,reinterpret_cast<void*>(&cuCtxGetId_v12000)) },
 	{"cuCtxDestroy_v4000",CuDriverFunction("cuCtxDestroy",4000,0,reinterpret_cast<void*>(&cuCtxDestroy_v4000)) },
-	{"cuCtxPushCurrent_v4000",CuDriverFunction("cuCtxPushCurrent",4000,0,reinterpret_cast<void*>(&cuCtxPushCurrent_v4000)) },
-	{"cuCtxPopCurrent_v4000",CuDriverFunction("cuCtxPopCurrent",4000,0,reinterpret_cast<void*>(&cuCtxPopCurrent_v4000)) },
-	{"cuCtxSetCurrent_v4000",CuDriverFunction("cuCtxSetCurrent",4000,0,reinterpret_cast<void*>(&cuCtxSetCurrent_v4000)) },
-	{"cuCtxGetCurrent_v4000",CuDriverFunction("cuCtxGetCurrent",4000,0,reinterpret_cast<void*>(&cuCtxGetCurrent_v4000)) },
+	{"cuCtxPushCurrent_v4000",CuDriverFunction("cuCtxPushCurrent",4000,0,reinterpret_cast<void*>(&cuCtxPushCurrent)) },
+	{"cuCtxPopCurrent_v4000",CuDriverFunction("cuCtxPopCurrent",4000,0,reinterpret_cast<void*>(&cuCtxPopCurrent)) },
+	{"cuCtxSetCurrent_v4000",CuDriverFunction("cuCtxSetCurrent",4000,0,reinterpret_cast<void*>(&cuCtxSetCurrent)) },
+	{"cuCtxGetCurrent_v4000",CuDriverFunction("cuCtxGetCurrent",4000,0,reinterpret_cast<void*>(&cuCtxGetCurrent)) },
 	{"cuCtxGetDevice_v2000",CuDriverFunction("cuCtxGetDevice",2000,0,reinterpret_cast<void*>(&cuCtxGetDevice_v2000)) },
 	{"cuCtxGetFlags_v7000",CuDriverFunction("cuCtxGetFlags",7000,0,reinterpret_cast<void*>(&cuCtxGetFlags_v7000)) },
 	{"cuCtxSetFlags_v12010",CuDriverFunction("cuCtxSetFlags",12010,0,reinterpret_cast<void*>(&cuCtxSetFlags_v12010)) },
@@ -1084,7 +1084,7 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuModuleLoadDataEx_v2010",CuDriverFunction("cuModuleLoadDataEx",2010,0,reinterpret_cast<void*>(&cuModuleLoadDataEx_v2010)) },
 	{"cuModuleLoadFatBinary_v2000",CuDriverFunction("cuModuleLoadFatBinary",2000,0,reinterpret_cast<void*>(&cuModuleLoadFatBinary_v2000)) },
 	{"cuModuleUnload_v2000",CuDriverFunction("cuModuleUnload",2000,0,reinterpret_cast<void*>(&cuModuleUnload_v2000)) },
-	{"cuModuleGetFunction_v2000",CuDriverFunction("cuModuleGetFunction",2000,0,reinterpret_cast<void*>(&cuModuleGetFunction_v2000)) },
+	{"cuModuleGetFunction_v2000",CuDriverFunction("cuModuleGetFunction",2000,0,reinterpret_cast<void*>(&cuModuleGetFunction)) },
 	{"cuModuleGetGlobal_v3020",CuDriverFunction("cuModuleGetGlobal",3020,0,reinterpret_cast<void*>(&cuModuleGetGlobal_v3020)) },
 	{"cuModuleGetTexRef_v2000",CuDriverFunction("cuModuleGetTexRef",2000,0,reinterpret_cast<void*>(&cuModuleGetTexRef_v2000)) },
 	{"cuModuleGetSurfRef_v3000",CuDriverFunction("cuModuleGetSurfRef",3000,0,reinterpret_cast<void*>(&cuModuleGetSurfRef_v3000)) },
@@ -1096,9 +1096,9 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuLinkComplete_v5050",CuDriverFunction("cuLinkComplete",5050,0,reinterpret_cast<void*>(&cuLinkComplete_v5050)) },
 	{"cuLinkDestroy_v5050",CuDriverFunction("cuLinkDestroy",5050,0,reinterpret_cast<void*>(&cuLinkDestroy_v5050)) },
 	{"cuMemGetInfo_v3020",CuDriverFunction("cuMemGetInfo",3020,0,reinterpret_cast<void*>(&cuMemGetInfo_v3020)) },
-	{"cuMemAlloc_v3020",CuDriverFunction("cuMemAlloc",3020,0,reinterpret_cast<void*>(&cuMemAlloc_v3020)) },
+	{"cuMemAlloc_v3020",CuDriverFunction("cuMemAlloc",3020,0,reinterpret_cast<void*>(&cuMemAlloc)) },
 	{"cuMemAllocPitch_v3020",CuDriverFunction("cuMemAllocPitch",3020,0,reinterpret_cast<void*>(&cuMemAllocPitch_v3020)) },
-	{"cuMemFree_v3020",CuDriverFunction("cuMemFree",3020,0,reinterpret_cast<void*>(&cuMemFree_v3020)) },
+	{"cuMemFree_v3020",CuDriverFunction("cuMemFree",3020,0,reinterpret_cast<void*>(&cuMemFree)) },
 	{"cuMemGetAddressRange_v3020",CuDriverFunction("cuMemGetAddressRange",3020,0,reinterpret_cast<void*>(&cuMemGetAddressRange_v3020)) },
 	{"cuMemAllocHost_v3020",CuDriverFunction("cuMemAllocHost",3020,0,reinterpret_cast<void*>(&cuMemAllocHost_v3020)) },
 	{"cuMemFreeHost_v2000",CuDriverFunction("cuMemFreeHost",2000,0,reinterpret_cast<void*>(&cuMemFreeHost_v2000)) },
@@ -1431,7 +1431,7 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuFuncGetModule_v11000",CuDriverFunction("cuFuncGetModule",11000,0,reinterpret_cast<void*>(&cuFuncGetModule_v11000)) },
 	{"cuGetProcAddress_v11030",CuDriverFunction("cuGetProcAddress",11030,0,reinterpret_cast<void*>(&cuGetProcAddress_v11030)) },
 	{"cuGetProcAddress_v12000",CuDriverFunction("cuGetProcAddress",12000,0,reinterpret_cast<void*>(&cuGetProcAddress_v12000)) },
-	{"cuMemcpyHtoD_v3020",CuDriverFunction("cuMemcpyHtoD",3020,0,reinterpret_cast<void*>(&cuMemcpyHtoD_v3020)) },
+	{"cuMemcpyHtoD_v3020",CuDriverFunction("cuMemcpyHtoD",3020,0,reinterpret_cast<void*>(&cuMemcpyHtoD)) },
 	{"cuMemcpyDtoH_v3020",CuDriverFunction("cuMemcpyDtoH",3020,0,reinterpret_cast<void*>(&cuMemcpyDtoH_v3020)) },
 	{"cuMemcpyDtoD_v3020",CuDriverFunction("cuMemcpyDtoD",3020,0,reinterpret_cast<void*>(&cuMemcpyDtoD_v3020)) },
 	{"cuMemcpyDtoA_v3020",CuDriverFunction("cuMemcpyDtoA",3020,0,reinterpret_cast<void*>(&cuMemcpyDtoA_v3020)) },
@@ -1477,7 +1477,7 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuStreamSynchronize_v2000",CuDriverFunction("cuStreamSynchronize",2000,0,reinterpret_cast<void*>(&cuStreamSynchronize_v2000)) },
 	{"cuEventRecord_v2000",CuDriverFunction("cuEventRecord",2000,0,reinterpret_cast<void*>(&cuEventRecord_v2000)) },
 	{"cuEventRecordWithFlags_v11010",CuDriverFunction("cuEventRecordWithFlags",11010,0,reinterpret_cast<void*>(&cuEventRecordWithFlags_v11010)) },
-	{"cuLaunchKernel_v4000",CuDriverFunction("cuLaunchKernel",4000,0,reinterpret_cast<void*>(&cuLaunchKernel_v4000)) },
+	{"cuLaunchKernel_v4000",CuDriverFunction("cuLaunchKernel",4000,0,reinterpret_cast<void*>(&cuLaunchKernel)) },
 	{"cuLaunchKernelEx_v11060",CuDriverFunction("cuLaunchKernelEx",11060,0,reinterpret_cast<void*>(&cuLaunchKernelEx_v11060)) },
 	{"cuLaunchHostFunc_v10000",CuDriverFunction("cuLaunchHostFunc",10000,0,reinterpret_cast<void*>(&cuLaunchHostFunc_v10000)) },
 	{"cuGraphicsMapResources_v3000",CuDriverFunction("cuGraphicsMapResources",3000,0,reinterpret_cast<void*>(&cuGraphicsMapResources_v3000)) },
@@ -1522,13 +1522,13 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuUserObjectRelease_v11030",CuDriverFunction("cuUserObjectRelease",11030,0,reinterpret_cast<void*>(&cuUserObjectRelease_v11030)) },
 	{"cuGraphRetainUserObject_v11030",CuDriverFunction("cuGraphRetainUserObject",11030,0,reinterpret_cast<void*>(&cuGraphRetainUserObject_v11030)) },
 	{"cuGraphReleaseUserObject_v11030",CuDriverFunction("cuGraphReleaseUserObject",11030,0,reinterpret_cast<void*>(&cuGraphReleaseUserObject_v11030)) },
-	{"cuModuleGetLoadingMode_v11070",CuDriverFunction("cuModuleGetLoadingMode",11070,0,reinterpret_cast<void*>(&cuModuleGetLoadingMode_v11070)) },
+	{"cuModuleGetLoadingMode_v11070",CuDriverFunction("cuModuleGetLoadingMode",11070,0,reinterpret_cast<void*>(&cuModuleGetLoadingMode)) },
 	{"cuMemGetHandleForAddressRange_v11070",CuDriverFunction("cuMemGetHandleForAddressRange",11070,0,reinterpret_cast<void*>(&cuMemGetHandleForAddressRange_v11070)) },
-	{"cuLibraryLoadData_v12000",CuDriverFunction("cuLibraryLoadData",12000,0,reinterpret_cast<void*>(&cuLibraryLoadData_v12000)) },
+	{"cuLibraryLoadData_v12000",CuDriverFunction("cuLibraryLoadData",12000,0,reinterpret_cast<void*>(&cuLibraryLoadData)) },
 	{"cuLibraryLoadFromFile_v12000",CuDriverFunction("cuLibraryLoadFromFile",12000,0,reinterpret_cast<void*>(&cuLibraryLoadFromFile_v12000)) },
 	{"cuLibraryUnload_v12000",CuDriverFunction("cuLibraryUnload",12000,0,reinterpret_cast<void*>(&cuLibraryUnload_v12000)) },
 	{"cuLibraryGetKernel_v12000",CuDriverFunction("cuLibraryGetKernel",12000,0,reinterpret_cast<void*>(&cuLibraryGetKernel_v12000)) },
-	{"cuLibraryGetModule_v12000",CuDriverFunction("cuLibraryGetModule",12000,0,reinterpret_cast<void*>(&cuLibraryGetModule_v12000)) },
+	{"cuLibraryGetModule_v12000",CuDriverFunction("cuLibraryGetModule",12000,0,reinterpret_cast<void*>(&cuLibraryGetModule)) },
 	{"cuLibraryGetKernelCount",CuDriverFunction("cuLibraryGetKernelCount",0,0,reinterpret_cast<void*>(&cuLibraryGetKernelCount)) },
 	{"cuLibraryEnumerateKernels",CuDriverFunction("cuLibraryEnumerateKernels",0,0,reinterpret_cast<void*>(&cuLibraryEnumerateKernels)) },
 	{"cuKernelGetFunction_v12000",CuDriverFunction("cuKernelGetFunction",12000,0,reinterpret_cast<void*>(&cuKernelGetFunction_v12000)) },
