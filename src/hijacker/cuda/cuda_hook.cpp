@@ -156,6 +156,17 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemAlloc_v2(CUdeviceptr * dptr, size_t by
 	return reply.result;
 }
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemFree_v2(CUdeviceptr dptr) {
+	HOOK_TRACE_PROFILE("cuMemFree_v2");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuMemFree,
+		.params={.cuMemFree={.dptr=dptr}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	printf("[cuMemFree] free memory at %p\n",dptr);
+	return reply.result;
+}
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemFree(CUdeviceptr dptr) {
 	HOOK_TRACE_PROFILE("cuMemFree");
 	CuDriverCallStructure request{
@@ -272,6 +283,18 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxPushCurrent (CUcontext ctx){
 	return reply.result;
 }
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxPopCurrent(CUcontext * pctx){
+	HOOK_TRACE_PROFILE("cuCtxPopCurrent");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuCtxPopCurrent,
+		.params={.empty{}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	*pctx=reply.returnParams.ctx;
+	printf("[cuCtxPopCurrent] pop current context:%p\n",*pctx);
+	return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxPopCurrent_v2(CUcontext * pctx){
 	HOOK_TRACE_PROFILE("cuCtxPopCurrent");
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuCtxPopCurrent,
@@ -1105,7 +1128,7 @@ DEF_FN(CUresult,cuCtxFromGreenCtx_v12040,cuCtxFromGreenCtx,12040,0,CUcontext*,pC
 	DEF_FN(CUresult,cuTexRefGetAddress_v2000,cuTexRefGetAddress,2000,0,CUdeviceptr_v1*,pdptr, CUtexref,hTexRef);
 	DEF_FN(CUresult,cuGraphicsResourceGetMappedPointer_v3000,cuGraphicsResourceGetMappedPointer,3000,0,CUdeviceptr_v1*,pDevPtr, unsigned int*,pSize, CUgraphicsResource,resource);
 	DEF_FN(CUresult,cuCtxDestroy_v2000,cuCtxDestroy,2000,0,CUcontext,ctx);
-	DEF_FN(CUresult,cuCtxPopCurrent_v2000,cuCtxPopCurrent,2000,0,CUcontext*,pctx);
+	// DEF_FN(CUresult,cuCtxPopCurrent_v2000,cuCtxPopCurrent,2000,0,CUcontext*,pctx);
 	DEF_FN(CUresult,cuCtxPushCurrent_v2000,cuCtxPushCurrent,2000,0,CUcontext,ctx);
 	DEF_FN(CUresult,cuStreamDestroy_v2000,cuStreamDestroy,2000,0,CUstream,hStream);
 	DEF_FN(CUresult,cuEventDestroy_v2000,cuEventDestroy,2000,0,CUevent,hEvent);
@@ -1695,7 +1718,7 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuTexRefGetAddress_v2000",CuDriverFunction("cuTexRefGetAddress",2000,0,reinterpret_cast<void*>(&cuTexRefGetAddress_v2000)) },
 	{"cuGraphicsResourceGetMappedPointer_v3000",CuDriverFunction("cuGraphicsResourceGetMappedPointer",3000,0,reinterpret_cast<void*>(&cuGraphicsResourceGetMappedPointer_v3000)) },
 	{"cuCtxDestroy_v2000",CuDriverFunction("cuCtxDestroy",2000,0,reinterpret_cast<void*>(&cuCtxDestroy_v2000)) },
-	{"cuCtxPopCurrent_v2000",CuDriverFunction("cuCtxPopCurrent",2000,0,reinterpret_cast<void*>(&cuCtxPopCurrent_v2000)) },
+	{"cuCtxPopCurrent_v2000",CuDriverFunction("cuCtxPopCurrent",2000,0,reinterpret_cast<void*>(&cuCtxPopCurrent)) },
 	{"cuCtxPushCurrent_v2000",CuDriverFunction("cuCtxPushCurrent",2000,0,reinterpret_cast<void*>(&cuCtxPushCurrent_v2000)) },
 	{"cuStreamDestroy_v2000",CuDriverFunction("cuStreamDestroy",2000,0,reinterpret_cast<void*>(&cuStreamDestroy_v2000)) },
 	{"cuEventDestroy_v2000",CuDriverFunction("cuEventDestroy",2000,0,reinterpret_cast<void*>(&cuEventDestroy_v2000)) },

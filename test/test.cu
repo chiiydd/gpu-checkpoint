@@ -281,7 +281,13 @@ void cuda_call(){
         return;
     }
     
-    cuCtxGetCurrent(&ctx);
+    result=cuCtxGetCurrent(&ctx);
+    
+    if(result != CUDA_SUCCESS){
+        std::cout<<"Error in cuCtxGetCurrent"<<std::endl;
+        print_cuda_error(result);
+        return;
+    }
     std::cout<<"[cuCtxPushCurrent] Current Context: "<<ctx<<std::endl;
 
 
@@ -295,6 +301,11 @@ void cuda_call(){
     }
 
     result =cuCtxPopCurrent_v2(&ctx);
+    if (result != CUDA_SUCCESS){
+        std::cout<<"Error in cuCtxPopCurrent_v2"<<std::endl;
+        print_cuda_error(result);
+        return;
+    }
     result = cuModuleGetFunction(&func, mod, "_Z3addPiS_S_");
     if(result != CUDA_SUCCESS){
         std::cout<<"Error in cuModuleGetFunction"<<std::endl;
@@ -310,14 +321,35 @@ void cuda_call(){
         return;
     }
     
-    cuMemcpyDtoH_v2(c, (CUdeviceptr)dev_c, 5 * sizeof(int));
-
-    for(int i = 0; i < 5; i++){
-        std::cout << c[i] << std::endl;
+    result=cuMemcpyDtoH_v2(c, (CUdeviceptr)dev_c, 5 * sizeof(int));
+    if(result != CUDA_SUCCESS){
+        std::cout<<"Error in cuMemcpyDtoH_v2"<<std::endl;
+        return;
     }
-    cuMemFree_v2((CUdeviceptr)dev_a);
-    cuMemFree_v2((CUdeviceptr)dev_b);
-    cuMemFree_v2((CUdeviceptr)dev_c);
+
+    std::cout<<"----------------------RUNNING SUCCESS-----------------"<<std::endl;
+    std::cout<<"Add Result: ";
+    for(int i = 0; i < 5; i++){
+        std::cout << c[i] <<"\t";
+    }
+    std::cout<<std::endl;
+    std::cout<<"----------------------RUNNING SUCCESS-----------------"<<std::endl;
+
+    result=cuMemFree_v2((CUdeviceptr)dev_a);
+    if(result != CUDA_SUCCESS){
+        std::cout<<"Error in cuMemFree_v2"<<std::endl;
+        return;
+    }
+    result=cuMemFree_v2((CUdeviceptr)dev_b);
+    if(result != CUDA_SUCCESS){
+        std::cout<<"Error in cuMemFree_v2"<<std::endl;
+        return;
+    }
+    result=cuMemFree_v2((CUdeviceptr)dev_c);
+    if(result != CUDA_SUCCESS){
+        std::cout<<"Error in cuMemFree_v2"<<std::endl;
+        return;
+    }
 }
 int main(){
     // int device_count;
