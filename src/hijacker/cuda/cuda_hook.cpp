@@ -143,6 +143,19 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemAlloc(CUdeviceptr * dptr, size_t bytes
 	printf("[cuMemAlloc] allocate %ld bytes memory at %p\n",bytesize,*dptr);
 	return reply.result;
 }
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemAlloc_v2(CUdeviceptr * dptr, size_t bytesize) {
+	HOOK_TRACE_PROFILE("cuMemAlloc_v2");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuMemAlloc,
+		.params={.cuMemAlloc={.bytesize=bytesize}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	*dptr=reply.returnParams.dptr;
+	printf("[cuMemAlloc] allocate %ld bytes memory at %p\n",bytesize,*dptr);
+	return reply.result;
+}
+
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemFree(CUdeviceptr dptr) {
 	HOOK_TRACE_PROFILE("cuMemFree");
 	CuDriverCallStructure request{
@@ -297,6 +310,17 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
 }
 
 
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemcpyHtoD_v2( CUdeviceptr dstDevice,const void * srcHost,size_t ByteCount){
+	HOOK_TRACE_PROFILE("cuMemcpyHtoD_v2");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuMemcpyHtoD,
+		.params={.cuMemcpyHtoD={.dstDevice=dstDevice,.srcHost=srcHost,.ByteCount=ByteCount}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	printf("[cuMemcpyHtoD] copy %ld bytes from %p to %p\n",ByteCount,srcHost,dstDevice);
+	return reply.result;
+}
 HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemcpyHtoD( CUdeviceptr dstDevice,const void * srcHost,size_t ByteCount){
 	HOOK_TRACE_PROFILE("cuMemcpyHtoD");
 	CuDriverCallStructure request{

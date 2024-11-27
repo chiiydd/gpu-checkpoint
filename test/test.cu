@@ -84,33 +84,32 @@ __global__ void add(int *dev_a, int *dev_b, int *dev_c) {
     dev_c[threadIdx.x] = dev_a[threadIdx.x] + dev_b[threadIdx.x];
 }
 
-// int main(){
-//     int a[5] = {1, 2, 3, 4, 5};
-//     int b[5] = {10, 20, 30, 40, 50};
-//     int c[5] = {0, 0, 0, 0, 0};
+void cudart_call(){
+    int a[5] = {1, 2, 3, 4, 5};
+    int b[5] = {10, 20, 30, 40, 50};
+    int c[5] = {0, 0, 0, 0, 0};
 
-//     int *dev_a, *dev_b, *dev_c;
-//     cudaMalloc((void**)&dev_a, 5 * sizeof(int));
-//     cudaMalloc((void**)&dev_b, 5 * sizeof(int));
-//     cudaMalloc((void**)&dev_c, 5 * sizeof(int));
+    int *dev_a, *dev_b, *dev_c;
+    cudaMalloc((void**)&dev_a, 5 * sizeof(int));
+    cudaMalloc((void**)&dev_b, 5 * sizeof(int));
+    cudaMalloc((void**)&dev_c, 5 * sizeof(int));
 
-//     cudaMemcpy(dev_a, a, 5 * sizeof(int), cudaMemcpyHostToDevice);
-//     cudaMemcpy(dev_b, b, 5 * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(dev_a, a, 5 * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(dev_b, b, 5 * sizeof(int), cudaMemcpyHostToDevice);
 
-//     add<<<1, 5>>>(dev_a, dev_b, dev_c);
+    add<<<1, 5>>>(dev_a, dev_b, dev_c);
 
-//     cudaMemcpy(c, dev_c, 5 * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(c, dev_c, 5 * sizeof(int), cudaMemcpyDeviceToHost);
 
-//     for(int i = 0; i < 5; i++){
-//         std::cout << c[i] << std::endl;
-//     }
+    for(int i = 0; i < 5; i++){
+        std::cout << c[i] << std::endl;
+    }
 
-//     cudaFree(dev_a);
-//     cudaFree(dev_b);
-//     cudaFree(dev_c);
+    cudaFree(dev_a);
+    cudaFree(dev_b);
+    cudaFree(dev_c);
 
-//     return 0;
-// }
+}
 
 void print_cuda_error(CUresult result){
     const char * error_string;
@@ -165,6 +164,11 @@ void cuda_call(){
     CUdevice cuDevice;
     CUcontext cuContext;
     CUmoduleLoadingMode mode;
+    CUresult result;
+    CUlibrary library;
+    CUmodule mod;
+    CUfunction func;
+
     cuInit(0);
     cuDeviceGet(&cuDevice, 0);
     std::cout<<"Device: "<<cuDevice<<std::endl;
@@ -172,6 +176,16 @@ void cuda_call(){
     char * gpu_name = new char[100];
     cuDeviceGetName(gpu_name, 100, cuDevice);
     std::cout<<"GPU Name: "<<gpu_name<<std::endl;
+
+
+    result=cuModuleGetLoadingMode(&mode);
+    if (result!=CUDA_SUCCESS){
+        std::cout<<"[cuModuleGetLoadingMode] fails\n";
+        print_cuda_error(result);
+        return;
+    }
+
+    std::cout<<"[cuModuleGetLoadingMode] get mod:"<<mode<<std::endl;
     cuCtxCreate(&cuContext, 0, cuDevice);
     std::cout<<"[cuCtxCreate] Context Create: "<<cuContext<<std::endl;
 
@@ -197,10 +211,6 @@ void cuda_call(){
     cuMemcpyHtoD_v2((CUdeviceptr)dev_b, b, 5 * sizeof(int));
 
 
-    CUresult result;
-    CUlibrary library;
-    CUmodule mod;
-    CUfunction func;
 
     void * fatbin;
     size_t size;
@@ -253,18 +263,18 @@ void cuda_call(){
         print_cuda_error(result);
         return;
     }
-    cuCtxGetCurrent(&ctx);
-    std::cout<<"[cuCtxPushCurrent] Current Context: "<<ctx<<std::endl;
+    // cuCtxGetCurrent(&ctx);
+    // std::cout<<"[cuCtxPushCurrent] Current Context: "<<ctx<<std::endl;
 
-    result=cuCtxPushCurrent(ctx);
+    // result=cuCtxPushCurrent(ctx);
 
 
-    if(result != CUDA_SUCCESS){
+    // if(result != CUDA_SUCCESS){
 
-        std::cout<<"Error in cuCtxPushCurrent"<<std::endl;
-        print_cuda_error(result);
-        return;
-    }
+    //     std::cout<<"Error in cuCtxPushCurrent"<<std::endl;
+    //     print_cuda_error(result);
+    //     return;
+    // }
     
     cuCtxGetCurrent(&ctx);
     std::cout<<"[cuCtxPushCurrent] Current Context: "<<ctx<<std::endl;
@@ -279,7 +289,7 @@ void cuda_call(){
         return;
     }
 
-    result =cuCtxPopCurrent_v2(&ctx);
+    // result =cuCtxPopCurrent_v2(&ctx);
     result = cuModuleGetFunction(&func, mod, "_Z3addPiS_S_");
     if(result != CUDA_SUCCESS){
         std::cout<<"Error in cuModuleGetFunction"<<std::endl;
@@ -315,5 +325,7 @@ int main(){
     //     printf("  Compute Capability: %d.%d\n", prop.major, prop.minor);
     // }
     cuda_call();
+
+    // cudart_call();
     return 0;
 }
