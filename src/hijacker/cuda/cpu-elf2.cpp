@@ -661,6 +661,7 @@ int elf2_get_fatbin_info(const struct fat_header *fatbin, list *kernel_infos, ui
 
     if (get_elf_header((uint8_t*)fatbin->text, sizeof(struct fat_elf_header), &eh) != 0) {
         HLOG("Something went wrong while checking the header.");
+        hexdump((uint8_t*)fatbin->text, 100);
         goto error;
     }
     // HLOG( "elf header: magic: %#x, version: %#x, header_size: %#x, size: %#zx",

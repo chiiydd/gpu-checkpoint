@@ -218,7 +218,36 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuCtxGetCurrent(CUcontext * pctx) {
 	printf("[cuCtxGetCurrent] get current context:%p\n",*pctx);
     return reply.result;
 }
-CUresult cuCtxPushCurrent (CUcontext ctx){
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxCreate_v2(CUcontext* pctx, unsigned int flags, CUdevice dev){
+
+	HOOK_TRACE_PROFILE("cuCtxCreate");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuCtxCreate,
+		.params={.cuCtxCreate{
+			.flags=flags,
+			.dev=dev,}
+		}
+	};
+	CuDriverCallReplyStructure reply;
+    communicate_with_server(nullptr, &request, &reply);
+
+	*pctx=reply.returnParams.ctx;
+	return reply.result;
+
+}
+
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxPushCurrent_v2 (CUcontext ctx){
+	HOOK_TRACE_PROFILE("cuCtxPushCurrent_v2");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuCtxPushCurrent,
+		.params={.cuCtxPushCurrent={.ctx=ctx}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	printf("[cuCtxPushCurrent] push current context:%p\n",ctx);
+	return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxPushCurrent (CUcontext ctx){
 	HOOK_TRACE_PROFILE("cuCtxPushCurrent");
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuCtxPushCurrent,
@@ -229,7 +258,7 @@ CUresult cuCtxPushCurrent (CUcontext ctx){
 	printf("[cuCtxPushCurrent] push current context:%p\n",ctx);
 	return reply.result;
 }
-CUresult cuCtxPopCurrent(CUcontext * pctx){
+HOOK_C_API HOOK_DECL_EXPORT CUresult cuCtxPopCurrent(CUcontext * pctx){
 	HOOK_TRACE_PROFILE("cuCtxPopCurrent");
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuCtxPopCurrent,
@@ -281,6 +310,7 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemcpyHtoD( CUdeviceptr dstDevice,const v
 }
 
 HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetModule(CUmodule * pMod, CUlibrary library) {
+	HOOK_TRACE_PROFILE("cuLibraryGetModule");
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuLibraryGetModule,
 		.params={.cuLibraryGetModule={
@@ -414,7 +444,11 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryLoadData(CUlibrary * library, con
 	
 	uint8_t *code_data = new uint8_t;
 	unsigned long  fatbin_size;
-    if (elf2_get_fatbin_info((struct fat_header *)code,
+	FatBinaryWrapper *wrapper = (FatBinaryWrapper *)code;
+
+	printf("[]Fatbin address: %p\n", wrapper->data);
+	struct fat_header * fat_header = (struct fat_header *)code;
+    if (elf2_get_fatbin_info(fat_header,
                                 &kernel_infos,
                                 (uint8_t **)&code_data,
                                 &fatbin_size) != 0) {
@@ -422,7 +456,6 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryLoadData(CUlibrary * library, con
 		printf("eeorrr\n");
     }
 	free(code_data);
-	FatBinaryWrapper *wrapper = (FatBinaryWrapper *)code;
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuLibraryLoadData,
 		.params={
@@ -436,6 +469,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryLoadData(CUlibrary * library, con
 	};
 	CuDriverCallReplyStructure reply;
 	communicate_with_server_extra(nullptr, &request, &reply,jitOptions,jitOptionsValues,libraryOptions,libraryOptionValues);
+	*library=reply.returnParams.lib;
 	return reply.result;
 }
 
@@ -464,7 +498,7 @@ DEF_FN(CUresult,cuDevicePrimaryCtxSetFlags_v11000,cuDevicePrimaryCtxSetFlags,110
 DEF_FN(CUresult,cuDevicePrimaryCtxGetState_v7000,cuDevicePrimaryCtxGetState,7000,0,CUdevice_v1,dev, unsigned int*,flags, int*,active);
 DEF_FN(CUresult,cuDevicePrimaryCtxReset_v11000,cuDevicePrimaryCtxReset,11000,0,CUdevice_v1,dev);
 DEF_FN(CUresult,cuDeviceGetExecAffinitySupport_v11040,cuDeviceGetExecAffinitySupport,11040,0,int*,pi, CUexecAffinityType,type, CUdevice,dev);
-DEF_FN(CUresult,cuCtxCreate_v3020,cuCtxCreate,3020,0,CUcontext*,pctx, unsigned int,flags, CUdevice_v1,dev);
+// DEF_FN(CUresult,cuCtxCreate_v3020,cuCtxCreate,3020,0,CUcontext*,pctx, unsigned int,flags, CUdevice_v1,dev);
 DEF_FN(CUresult,cuCtxCreate_v11040,cuCtxCreate,11040,0,CUcontext*,pctx, CUexecAffinityParam*,paramsArray, int,numParams, unsigned int,flags, CUdevice_v1,dev);
 DEF_FN(CUresult,cuCtxGetId_v12000,cuCtxGetId,12000,0,CUcontext,ctx, unsigned long long*,ctxId);
 DEF_FN(CUresult,cuCtxDestroy_v4000,cuCtxDestroy,4000,0,CUcontext,ctx);
@@ -1055,7 +1089,7 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuDevicePrimaryCtxGetState_v7000",CuDriverFunction("cuDevicePrimaryCtxGetState",7000,0,reinterpret_cast<void*>(&cuDevicePrimaryCtxGetState_v7000)) },
 	{"cuDevicePrimaryCtxReset_v11000",CuDriverFunction("cuDevicePrimaryCtxReset",11000,0,reinterpret_cast<void*>(&cuDevicePrimaryCtxReset_v11000)) },
 	{"cuDeviceGetExecAffinitySupport_v11040",CuDriverFunction("cuDeviceGetExecAffinitySupport",11040,0,reinterpret_cast<void*>(&cuDeviceGetExecAffinitySupport_v11040)) },
-	{"cuCtxCreate_v3020",CuDriverFunction("cuCtxCreate",3020,0,reinterpret_cast<void*>(&cuCtxCreate_v3020)) },
+	{"cuCtxCreate_v3020",CuDriverFunction("cuCtxCreate",3020,0,reinterpret_cast<void*>(&cuCtxCreate_v2)) },
 	{"cuCtxCreate_v11040",CuDriverFunction("cuCtxCreate",11040,0,reinterpret_cast<void*>(&cuCtxCreate_v11040)) },
 	{"cuCtxGetId_v12000",CuDriverFunction("cuCtxGetId",12000,0,reinterpret_cast<void*>(&cuCtxGetId_v12000)) },
 	{"cuCtxDestroy_v4000",CuDriverFunction("cuCtxDestroy",4000,0,reinterpret_cast<void*>(&cuCtxDestroy_v4000)) },

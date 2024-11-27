@@ -159,23 +159,19 @@ int communicate_with_server_extra(const char *socket_name, CuDriverCallStructure
                 perror("sending jitOptions fails");
                 return -1;
             }
-            for(int i=0;i<numJitOptions;i++){
-                if(write(skt_client, jitOptionsValues[i], sizeof(int))<0){
+                if(write(skt_client, jitOptionsValues, sizeof(void *)*numJitOptions)<0){
                     perror("sending jitOptionsValues fails");
                     return -1;
                 }
-            }
         }
         if (numLibraryOptions!=0){
             if(write(skt_client, libraryOptions, sizeof(CUlibraryOption)*numLibraryOptions)<0){
                 perror("sending libraryOptions fails");
                 return -1;
             }
-            for(int i=0;i<numLibraryOptions;i++){
-                if(write(skt_client, libraryOptionValues[i], sizeof(int))<0){
-                    perror("sending libraryOptionValues fails");
-                    return -1;
-                }
+            if(write(skt_client, libraryOptionValues, sizeof(void *)*numLibraryOptions)<0){
+                perror("sending libraryOptionValues fails");
+                return -1;
             }
         }
         if (write(skt_client, send_structure->params.cuLibraryLoadData.wrapper.data, send_structure->params.cuLibraryLoadData.fatbinSize)<0){

@@ -129,10 +129,11 @@ void proxy_start(){
             perror("read");
             exit(EXIT_FAILURE);
         }
-        printf("op:%s\n",to_string(request.op).c_str());
+        printf("recv op:%s\n",to_string(request.op).c_str());
 
         proxy_call(skt_accept,&request,&reply);
 
+        // printf("send result:%d\n",reply.result);
         write(skt_accept, &reply, sizeof(CuDriverCallReplyStructure));
         close(skt_accept);
         
@@ -203,6 +204,7 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
 
         case CuDriverCall::CuCtxCreate:
             reply->result=cuCtxCreate(&reply->returnParams.ctx,request->params.cuCtxCreate.flags,request->params.cuCtxCreate.dev);
+            printf("[cuCtxCreate] ctx: %p\n",reply->returnParams.ctx);
         case CuDriverCall::CuCtxGetCurrent:
         
             reply->result=cuCtxGetCurrent(&reply->returnParams.ctx);
@@ -250,13 +252,10 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
                     exit(EXIT_FAILURE);
                 }
                 jitOptionValues=(void **)malloc(sizeof(void *)*request->params.cuLibraryLoadData.numJitOptions);
-                for(int i=0;i<request->params.cuLibraryLoadData.numJitOptions;i++){
-                    jitOptionValues[i]=malloc(sizeof(int));
-                    if(read(socket_handle,jitOptionValues[i],sizeof(int))<0){
+                    if(read(socket_handle,jitOptionValues,sizeof(void *)*request->params.cuLibraryLoadData.numJitOptions)<0){
                         perror("CuLibraryLoadData:reading from cilent fails.\n");
                         exit(EXIT_FAILURE);
                     }
-                }
             }
             if(request->params.cuLibraryLoadData.numLibraryOptions!=0){
                 libraryOptions=(CUlibraryOption *)malloc(sizeof(CUlibraryOption)*request->params.cuLibraryLoadData.numLibraryOptions);
@@ -265,12 +264,9 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
                     exit(EXIT_FAILURE);
                 }
                 libraryOptionValues=(void **)malloc(sizeof(void *)*request->params.cuLibraryLoadData.numLibraryOptions);
-                for(int i=0;i<request->params.cuLibraryLoadData.numLibraryOptions;i++){
-                    libraryOptionValues[i]=malloc(sizeof(int));
-                    if(read(socket_handle,libraryOptionValues[i],sizeof(int))<0){
+                    if(read(socket_handle,libraryOptionValues,sizeof(void *)*request->params.cuLibraryLoadData.numLibraryOptions)<0){
                         perror("CuLibraryLoadData:reading from cilent fails.\n");
                         exit(EXIT_FAILURE);
-                    }
                 }
             }
             buffer=malloc(request->params.cuLibraryLoadData.fatbinSize);
@@ -290,6 +286,7 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
             break;
         case CuDriverCall::CuLibraryGetModule:
             reply->result= cuLibraryGetModule(&reply->returnParams.mod,request->params.cuLibraryGetModule.library);
+
             break;
         case CuDriverCall::CuModuleGetFunction:
             name=(char *)malloc(request->params.cuModuleGetFunction.nameLength);

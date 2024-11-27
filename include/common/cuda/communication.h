@@ -31,7 +31,6 @@ enum class CuDriverCall{
     CuModuleGetFunction,
     CuLaunchKernel,
     
-    
 };
 
 
@@ -96,6 +95,7 @@ struct CuDriverCallStructure {
         struct{
             CUcontext ctx;
         }cuCtxSetCurrent;
+
         struct{
             unsigned int flags;
             CUdevice dev;
