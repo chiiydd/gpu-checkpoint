@@ -214,7 +214,9 @@ void cuda_call(){
 
     void * fatbin;
     size_t size;
-    fatbin=read_file("/workspace/test.fatbin", &size);
+    const char * fatbin_path ="../test/binary/test.fatbin"
+    // 假设 执行目录在项目build 目录下，打开 test目录下的test.fatbin文件
+    fatbin=read_file(fatbin_path, &size);
     if(fatbin == NULL){
         std::cout<<"Error in read  fatbinary file"<<std::endl;
         return;
