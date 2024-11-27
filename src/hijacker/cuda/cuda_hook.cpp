@@ -332,6 +332,29 @@ HOOK_C_API HOOK_DECL_EXPORT CUresult cuMemcpyHtoD( CUdeviceptr dstDevice,const v
 	printf("[cuMemcpyHtoD] copy %ld bytes from %p to %p\n",ByteCount,srcHost,dstDevice);
 	return reply.result;
 }
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyDtoH_v2(void* dstHost, CUdeviceptr srcDevice, size_t ByteCount){
+	HOOK_TRACE_PROFILE("cuMemcpyDtoH_v2");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuMemcpyDtoH,
+		.params={.cuMemcpyDtoH={.dstHost=dstHost,.srcDevice=srcDevice,.ByteCount=ByteCount}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	printf("[cuMemcpyDtoH] copy %ld bytes from %p to %p\n",ByteCount,srcDevice,dstHost);
+	return reply.result;
+}
+HOOK_C_API HOOK_DECL_EXPORT  CUresult cuMemcpyDtoH(void* dstHost, CUdeviceptr srcDevice, size_t ByteCount){
+	HOOK_TRACE_PROFILE("cuMemcpyDtoH");
+	CuDriverCallStructure request{
+		.op=CuDriverCall::CuMemcpyDtoH,
+		.params={.cuMemcpyDtoH={.dstHost=dstHost,.srcDevice=srcDevice,.ByteCount=ByteCount}},
+	};
+	CuDriverCallReplyStructure reply;
+	communicate_with_server(nullptr, &request, &reply);
+	printf("[cuMemcpyDtoH] copy %ld bytes from %p to %p\n",ByteCount,srcDevice,dstHost);
+	return reply.result;
+}
+
 
 HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryGetModule(CUmodule * pMod, CUlibrary library) {
 	HOOK_TRACE_PROFILE("cuLibraryGetModule");
@@ -358,19 +381,28 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuModuleGetFunction(CUfunction * hfunc, CU
 		}}
 	};
 	CuDriverCallReplyStructure reply;
+    kernel_info_t *info;
+
+	if ((info = utils_search_info(&kernel_infos, (char*)name)) == NULL) {
+        HLOG("cannot find kernel %s kernel_info_t", name);
+        return CUDA_ERROR_UNKNOWN;
+    }
 	communicate_with_server(nullptr, &request, &reply);
 	*hfunc=reply.returnParams.hfunc;
+    info->host_fun = reply.returnParams.hfunc;
 	printf("[cuModuleGetFunction] get function %s from module[%p]:%p\n",name,hmod,*hfunc);
 	return reply.result;
 }
 
 HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLaunchKernel(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void * * kernelParams, void * * extra) {
 
+	HOOK_TRACE_PROFILE("cuLaunchKernel");
     size_t i;
     char *buf;
     int found_kernel = 0;
     kernel_info_t *info;
 
+	printf("[cuLauchKernel] try to launch:%p\n",f);
     for (i=0; i < kernel_infos.length; ++i) {
         if (list_at(&kernel_infos, i, (void**)&info) != 0) {
             HLOG("error getting element at %d", i);
@@ -466,7 +498,7 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryLoadData(CUlibrary * library, con
 	// readFatbinaryEntryHeader((void *)wrapper->data);
 	// printHex((void *)wrapper->data, 2000);
 	
-	uint8_t *code_data = new uint8_t;
+	uint8_t *code_data;
 	unsigned long  fatbin_size;
 	FatBinaryWrapper *wrapper = (FatBinaryWrapper *)code;
 
@@ -479,7 +511,6 @@ HOOK_C_API HOOK_DECL_EXPORT  CUresult cuLibraryLoadData(CUlibrary * library, con
 
 		printf("eeorrr\n");
     }
-	free(code_data);
 	CuDriverCallStructure request{
 		.op=CuDriverCall::CuLibraryLoadData,
 		.params={
@@ -899,7 +930,7 @@ DEF_FN(CUresult,cuFuncGetModule_v11000,cuFuncGetModule,11000,0,CUmodule*,hmod, C
 DEF_FN(CUresult,cuGetProcAddress_v11030,cuGetProcAddress,11030,0,const char*,symbol, void**,pfn, int,driverVersion, cuuint64_t,flags);
 DEF_FN(CUresult,cuGetProcAddress_v12000,cuGetProcAddress,12000,0,const char*,symbol, void**,pfn, int,driverVersion, cuuint64_t,flags, CUdriverProcAddressQueryResult*,symbolFound);
 // DEF_FN(CUresult,cuMemcpyHtoD_v3020,cuMemcpyHtoD,3020,0,CUdeviceptr_v2,dstDevice, const void*,srcHost, size_t,ByteCount);
-DEF_FN(CUresult,cuMemcpyDtoH_v3020,cuMemcpyDtoH,3020,0,void*,dstHost, CUdeviceptr_v2,srcDevice, size_t,ByteCount);
+// DEF_FN(CUresult,cuMemcpyDtoH_v3020,cuMemcpyDtoH,3020,0,void*,dstHost, CUdeviceptr_v2,srcDevice, size_t,ByteCount);
 DEF_FN(CUresult,cuMemcpyDtoD_v3020,cuMemcpyDtoD,3020,0,CUdeviceptr_v2,dstDevice, CUdeviceptr_v2,srcDevice, size_t,ByteCount);
 DEF_FN(CUresult,cuMemcpyDtoA_v3020,cuMemcpyDtoA,3020,0,CUarray,dstArray, size_t,dstOffset, CUdeviceptr_v2,srcDevice, size_t,ByteCount);
 DEF_FN(CUresult,cuMemcpyAtoD_v3020,cuMemcpyAtoD,3020,0,CUdeviceptr_v2,dstDevice, CUarray,srcArray, size_t,srcOffset, size_t,ByteCount);
@@ -1490,7 +1521,7 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuGetProcAddress_v11030",CuDriverFunction("cuGetProcAddress",11030,0,reinterpret_cast<void*>(&cuGetProcAddress_v11030)) },
 	{"cuGetProcAddress_v12000",CuDriverFunction("cuGetProcAddress",12000,0,reinterpret_cast<void*>(&cuGetProcAddress_v12000)) },
 	{"cuMemcpyHtoD_v3020",CuDriverFunction("cuMemcpyHtoD",3020,0,reinterpret_cast<void*>(&cuMemcpyHtoD)) },
-	{"cuMemcpyDtoH_v3020",CuDriverFunction("cuMemcpyDtoH",3020,0,reinterpret_cast<void*>(&cuMemcpyDtoH_v3020)) },
+	{"cuMemcpyDtoH_v3020",CuDriverFunction("cuMemcpyDtoH",3020,0,reinterpret_cast<void*>(&cuMemcpyDtoH)) },
 	{"cuMemcpyDtoD_v3020",CuDriverFunction("cuMemcpyDtoD",3020,0,reinterpret_cast<void*>(&cuMemcpyDtoD_v3020)) },
 	{"cuMemcpyDtoA_v3020",CuDriverFunction("cuMemcpyDtoA",3020,0,reinterpret_cast<void*>(&cuMemcpyDtoA_v3020)) },
 	{"cuMemcpyAtoD_v3020",CuDriverFunction("cuMemcpyAtoD",3020,0,reinterpret_cast<void*>(&cuMemcpyAtoD_v3020)) },

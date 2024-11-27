@@ -6,9 +6,41 @@
 #include<sys/socket.h>
 #include<sys/un.h>
 #include <unistd.h>
+#include "fatbinary.h"
 
 #include <string>
 
+void hexdump(const uint8_t* data, size_t size)
+{
+    size_t pos = 0;
+    while (pos < size) {
+        printf("%#05zx: ", pos);
+        for (int i = 0; i < 16; i++) {
+            if (pos + i < size) {
+                printf("%02x", data[pos + i]);
+            } else {
+                printf("  ");
+            }
+            if (i % 4 == 3) {
+                printf(" ");
+            }
+        }
+        printf(" | ");
+        for (int i = 0; i < 16; i++) {
+            if (pos + i < size) {
+                if (data[pos + i] >= 0x20 && data[pos + i] <= 0x7e) {
+                    printf("%c", data[pos + i]);
+                } else {
+                    printf(".");
+                }
+            } else {
+                printf(" ");
+            }
+        }
+        printf("\n");
+        pos += 16;
+    }
+}
 std::string to_string(CuDriverCall call) {
     switch (call) {
         case CuDriverCall::CuMemAlloc: return "CuMemAlloc";
@@ -149,6 +181,7 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
     void ** jitOptionValues;
     CUlibraryOption * libraryOptions;
     void ** libraryOptionValues;
+    FatBinaryWrapper wrapper;
     switch (request->op) {
     
         case CuDriverCall::CuDriverGetVersion:
@@ -274,19 +307,27 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
                 perror("CuLibraryLoadData:reading fat binary from cilent fails.\n");
                 exit(EXIT_FAILURE);
             }
-            reply->result=cuLibraryLoadData(&reply->returnParams.lib,buffer,jitOptions,jitOptionValues,request->params.cuLibraryLoadData.numJitOptions,libraryOptions,libraryOptionValues,request->params.cuLibraryLoadData.numLibraryOptions);
+            wrapper=request->params.cuLibraryLoadData.wrapper;
+            wrapper.data=reinterpret_cast<const unsigned long long *>(buffer);
+            hexdump((uint8_t *)buffer,1000);
+            reply->result=cuLibraryLoadData(&reply->returnParams.lib,reinterpret_cast<void *>(&wrapper),
+            jitOptions,jitOptionValues,request->params.cuLibraryLoadData.numJitOptions,libraryOptions,libraryOptionValues,request->params.cuLibraryLoadData.numLibraryOptions);
             free(buffer);
+            // hexdump((uint8_t * )reply->returnParams.lib ,1000);
             break;
         case CuDriverCall::CuLaunchKernel:
+            buffer= malloc(request->params.cuLaunchKernel.parametersMetadataLen);
             if(read(socket_handle,buffer,request->params.cuLaunchKernel.parametersMetadataLen)<0){
                 perror("CuLaunchKernel:reading parametersMetadata from cilent fails.\n");
                 exit(EXIT_FAILURE);
             }
             launch_kernel_proxy(request, reply, buffer);
+            free(buffer);
             break;
         case CuDriverCall::CuLibraryGetModule:
             reply->result= cuLibraryGetModule(&reply->returnParams.mod,request->params.cuLibraryGetModule.library);
-
+            printf("[cuLibraryGetModule] from (%p) get:%p\n",request->params.cuLibraryGetModule.library,reply->returnParams.mod);
+            // hexdump((uint8_t *)request->params.cuLibraryGetModule.library,1000);
             break;
         case CuDriverCall::CuModuleGetFunction:
             name=(char *)malloc(request->params.cuModuleGetFunction.nameLength);
@@ -294,7 +335,8 @@ CUresult proxy_call(int socket_handle,CuDriverCallStructure *request,CuDriverCal
                 perror("CuModuleGetFunction:reading from cilent fails.\n");
                 exit(EXIT_FAILURE);
             }
-            reply->result=cuModuleGetFunction(&reply->returnParams.hfunc,request->params.cuModuleGetFunction.mod,request->params.cuModuleGetFunction.name);
+            reply->result=cuModuleGetFunction(&reply->returnParams.hfunc,request->params.cuModuleGetFunction.mod,name);
+            printf("[cuModuleGetFunction] try to get func[%s]:%p\n",name,reply->returnParams.hfunc);
             free(name);
             break;
         default:

@@ -258,6 +258,7 @@ void cuda_call(){
     int values []={1};
     result= cuLibraryLoadData(&library, &wrapper, nullptr , nullptr, 0, option,(void **)&values ,1);
 
+    // hexdump((uint8_t *)library,1000);
     std::cout<<"[cuLibraryLoadData] get lib:"<<library<<std::endl;
     if(result != CUDA_SUCCESS){
 
@@ -265,6 +266,8 @@ void cuda_call(){
         print_cuda_error(result);
         return;
     }
+    hexdump((uint8_t *)fatbin, size);
+
     cuCtxGetCurrent(&ctx);
     std::cout<<"[cuCtxPushCurrent] Current Context: "<<ctx<<std::endl;
 
