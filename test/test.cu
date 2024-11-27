@@ -263,18 +263,18 @@ void cuda_call(){
         print_cuda_error(result);
         return;
     }
-    // cuCtxGetCurrent(&ctx);
-    // std::cout<<"[cuCtxPushCurrent] Current Context: "<<ctx<<std::endl;
+    cuCtxGetCurrent(&ctx);
+    std::cout<<"[cuCtxPushCurrent] Current Context: "<<ctx<<std::endl;
 
-    // result=cuCtxPushCurrent(ctx);
+    result=cuCtxPushCurrent(ctx);
 
 
-    // if(result != CUDA_SUCCESS){
+    if(result != CUDA_SUCCESS){
 
-    //     std::cout<<"Error in cuCtxPushCurrent"<<std::endl;
-    //     print_cuda_error(result);
-    //     return;
-    // }
+        std::cout<<"Error in cuCtxPushCurrent"<<std::endl;
+        print_cuda_error(result);
+        return;
+    }
     
     cuCtxGetCurrent(&ctx);
     std::cout<<"[cuCtxPushCurrent] Current Context: "<<ctx<<std::endl;
@@ -289,7 +289,7 @@ void cuda_call(){
         return;
     }
 
-    // result =cuCtxPopCurrent_v2(&ctx);
+    result =cuCtxPopCurrent_v2(&ctx);
     result = cuModuleGetFunction(&func, mod, "_Z3addPiS_S_");
     if(result != CUDA_SUCCESS){
         std::cout<<"Error in cuModuleGetFunction"<<std::endl;
