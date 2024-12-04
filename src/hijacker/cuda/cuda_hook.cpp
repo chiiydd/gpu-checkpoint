@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <cstring>
 #include <cuda_subset.h>
 #include <cstdio>
@@ -6,6 +7,64 @@
 #include <unordered_map>
 #include "macro_common.h"
 
+#include "cuda_hidden.h"
+
+static int call_cnt = 0;
+CUresult (*realCuGetExportTable)(const void** ppExportTable, const CUuuid* pExportTableId);
+CUresult cuGetExportTable(const void** ppExportTable, const CUuuid* pExportTableId){
+
+
+	printf("[cuGetExportTable] %dth called with uuid:",call_cnt);
+	for(int i=0;i<16;++i){
+		printf("%02x",pExportTableId->bytes[i]&0xff);
+		if(i==3||i==5||i==7||i==9){
+			printf("-");
+		}
+	}
+	printf("\n");
+	if(realCuGetExportTable==nullptr){
+        CUdriverProcAddressQueryResult symbolStatus;
+		CUresult result= realCuGetProcAddress("cuGetExportTable",reinterpret_cast<void**>(&realCuGetExportTable),3000,0,&symbolStatus);
+		if(result!=0 || realCuGetExportTable==nullptr){
+			printf("\tfailed to get cuGetExportTable\n");
+			return CUDA_ERROR_NOT_FOUND;
+		}
+	}	
+	void *exportTable;
+	size_t tablesize;
+	CUresult result;
+	result=realCuGetExportTable(ppExportTable,pExportTableId);
+	result=realCuGetExportTable(const_cast<const void **>(&exportTable),pExportTableId);
+	if(result!=0){
+		printf("\tfailed to get export table\n");
+		return result;
+	}
+
+
+	for(int i=0;i<16;++i){
+		if(((void**)exportTable)[i]==nullptr){
+			tablesize=i;
+			printf("\ttablesize = %lu\n", tablesize);
+			break;
+		}else{
+			printf("\t %dth exportTable[%d]=%p\n",call_cnt,i,((void**)exportTable)[i]);
+		}
+	}
+
+
+	
+    if (!(uint64_t)hidden_add_table(exportTable, tablesize,call_cnt)) {
+        fprintf(stderr, "\tfailed to add table!\n");
+        return CUDA_ERROR_UNKNOWN;
+    }
+
+	*ppExportTable=hooked_hidden_table+hidden_offset[call_cnt];
+	call_cnt++;
+
+	return CUDA_SUCCESS;
+
+
+}
 
 DEF_FN(CUresult,cuGetErrorString_v6000,cuGetErrorString,6000,0,CUresult,error, const char**,pStr);
 DEF_FN(CUresult,cuGetErrorName_v6000,cuGetErrorName,6000,0,CUresult,error, const char**,pStr);
@@ -404,7 +463,7 @@ DEF_FN(CUresult,cuGraphicsResourceGetMappedPointer_v3020,cuGraphicsResourceGetMa
 DEF_FN(CUresult,cuGraphicsResourceSetMapFlags_v6050,cuGraphicsResourceSetMapFlags,6050,0,CUgraphicsResource,resource, unsigned int,flags);
 DEF_FN(CUresult,cuGraphicsMapResources_v7000_ptsz,cuGraphicsMapResources,7000,2,unsigned int,count, CUgraphicsResource*,resources, CUstream,hStream);
 DEF_FN(CUresult,cuGraphicsUnmapResources_v7000_ptsz,cuGraphicsUnmapResources,7000,2,unsigned int,count, CUgraphicsResource*,resources, CUstream,hStream);
-DEF_FN(CUresult,cuGetExportTable_v3000,cuGetExportTable,3000,0,const void**,ppExportTable, const CUuuid*,pExportTableId);
+// DEF_FN(CUresult,cuGetExportTable_v3000,cuGetExportTable,3000,0,const void**,ppExportTable, const CUuuid*,pExportTableId);
 DEF_FN(CUresult,cuFuncGetModule_v11000,cuFuncGetModule,11000,0,CUmodule*,hmod, CUfunction,hfunc);
 DEF_FN(CUresult,cuGetProcAddress_v11030,cuGetProcAddress,11030,0,const char*,symbol, void**,pfn, int,driverVersion, cuuint64_t,flags);
 DEF_FN(CUresult,cuGetProcAddress_v12000,cuGetProcAddress,12000,0,const char*,symbol, void**,pfn, int,driverVersion, cuuint64_t,flags, CUdriverProcAddressQueryResult*,symbolFound);
@@ -995,7 +1054,7 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuGraphicsResourceSetMapFlags_v6050",CuDriverFunction("cuGraphicsResourceSetMapFlags",6050,0,reinterpret_cast<void*>(&cuGraphicsResourceSetMapFlags_v6050)) },
 	{"cuGraphicsMapResources_v7000_ptsz",CuDriverFunction("cuGraphicsMapResources",7000,2,reinterpret_cast<void*>(&cuGraphicsMapResources_v7000_ptsz)) },
 	{"cuGraphicsUnmapResources_v7000_ptsz",CuDriverFunction("cuGraphicsUnmapResources",7000,2,reinterpret_cast<void*>(&cuGraphicsUnmapResources_v7000_ptsz)) },
-	{"cuGetExportTable_v3000",CuDriverFunction("cuGetExportTable",3000,0,reinterpret_cast<void*>(&cuGetExportTable_v3000)) },
+	{"cuGetExportTable_v3000",CuDriverFunction("cuGetExportTable",3000,0,reinterpret_cast<void*>(&cuGetExportTable)) },
 	{"cuFuncGetModule_v11000",CuDriverFunction("cuFuncGetModule",11000,0,reinterpret_cast<void*>(&cuFuncGetModule_v11000)) },
 	{"cuGetProcAddress_v11030",CuDriverFunction("cuGetProcAddress",11030,0,reinterpret_cast<void*>(&cuGetProcAddress_v11030)) },
 	{"cuGetProcAddress_v12000",CuDriverFunction("cuGetProcAddress",12000,0,reinterpret_cast<void*>(&cuGetProcAddress_v12000)) },
