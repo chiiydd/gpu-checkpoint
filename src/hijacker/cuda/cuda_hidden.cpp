@@ -1,5 +1,6 @@
 #include <bits/types/time_t.h>
 #include <cstddef>
+#include <cstdint>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -194,13 +195,14 @@ int hidden_1_0(int arg1, void* arg2)
 /* called as part of
  * cudart::globalState::initializeDriverInternal()
  */
-int hidden_1_1(void* arg1, void *arg2)
+void hidden_1_1(int64_t * arg1, int64_t *arg2)
 {
-    printf("[hidden_1_1] called: arg1 = %p, arg2 = %p\n", arg1, arg2);
+    printf("[hidden_1_1] called: arg1 = %ld, arg2 = %lu\n", *arg1, *arg2);
 
-    int (*real_func)(void*, void*);
-    real_func = (int(*)(void*, void*)) hidden_table_get(1, 1);
-    return real_func(arg1, arg2);
+    void (*real_func)(int64_t*, int64_t*);
+    real_func = (void(*)(int64_t*,int64_t*)) hidden_table_get(1, 1);
+    real_func(arg1, arg2);
+    printf("[hidden_1_1] result = %lu\n", *arg2);
 
 }
 
@@ -240,13 +242,14 @@ int hidden_1_4(void* arg1)
  * The calling function seems to do not much else than check that the pointers are
  * non-NULL (better verify this before assuming this statement is correct).
  */
-int hidden_1_5(void* arg1, void* arg2) 
+void hidden_1_5(int64_t * arg1, uint64_t * arg2) 
 {
     printf("[hidden_1_5] called: arg1 = %p, arg2 = %p\n", arg1, arg2);
-
-    int (*real_func)(void*, void*);
-    real_func = (int(*)(void*, void*)) hidden_table_get(1, 5);
-    return real_func(arg1, arg2);
+    printf("[hidden_1_5] arg1 = %ld, arg2 = %lu\n", *arg1, *arg2);
+    void (*real_func)(int64_t*, uint64_t*);
+    real_func = (void(*)(int64_t*,uint64_t*)) hidden_table_get(1, 5);
+    real_func(arg1, arg2);
+    printf("[hidden_1_5] result = %d\n", *arg2);
 }
 
 
@@ -335,14 +338,14 @@ int hidden_4_1(void* arg1)
     return real_func(arg1);
 }
 
-int hidden_4_2(void* arg1) 
+unsigned int hidden_4_2(char * arg1,char * arg2,int64_t arg3) 
 {
-    printf("[hidden_4_2] called: arg1 = %p\n", arg1);
+    printf("[hidden_4_2] called: arg1 = %p, arg2 = %02x, arg3 = %ld\n", arg1, (*(arg2+1))&0xff, arg3);
 
-    int (*real_func)(void*);
-    real_func = (int(*)(void*)) hidden_table_get(4, 2);
-    int result=real_func(arg1);
-    printf("[hidden_4_2] result = %d\n", result);
+    unsigned int (*real_func)(char * ,char*,int64_t);
+    real_func = (unsigned int(*)(char * ,char *,int64_t)) hidden_table_get(4, 2);
+    unsigned int result=real_func(arg1,arg2,arg3);
+    printf("[hidden_4_2] result = %u\n", result);
     return result;
 }
 
@@ -355,14 +358,14 @@ int hidden_4_3(void* arg1)
     return real_func(arg1);
 }
 
-int hidden_5_0(int arg1,time_t  arg2, void* arg3) 
+int64_t hidden_5_0(uint64_t arg1,time_t  arg2, char* arg3) 
 {
-    printf("[hidden_5_0] called: arg1 = %d arg2 = %ld, arg3 = %p\n", arg1, arg2, arg3);
+    printf("[hidden_5_0] called: arg1 = %ld arg2 = %ld, arg3 = %p\n", arg1, arg2, arg3);
 
-    int (*real_func)(int, time_t, void*);
-    real_func = (int(*)(int,time_t,void*)) hidden_table_get(5, 0);
-    int result= real_func(arg1,arg2,arg3);
-    printf("[hidden_5_0] result = %d\n", result);
+    int64_t (*real_func)(uint64_t, time_t, char*);
+    real_func = (int64_t (*)(uint64_t,time_t,char*)) hidden_table_get(5, 0);
+    int64_t result= real_func(arg1,arg2,arg3);
+    printf("[hidden_5_0] result = %ld\n", result);
     return result;
 }
 

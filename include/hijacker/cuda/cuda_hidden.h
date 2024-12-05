@@ -1,5 +1,5 @@
-#ifndef _CD_CLIENT_HIDDEN_H_
-#define _CD_CLIENT_HIDDEN_H_
+#ifndef _CUDA_HIDDEN_H_
+#define _CUDA_HIDDEN_H_
 
 
 /* this file is for the hidden function exported from some driver
@@ -27,6 +27,7 @@
  */
 
 #include <bits/types/time_t.h>
+#include <cstdint>
 #include <stdlib.h>
 #define EXPECT_CALL_CNT 6
 #define EXPECT_0 10
@@ -76,11 +77,11 @@ int hidden_0_7(void* arg1);
 int hidden_0_8(void* arg1);
 
 int hidden_1_0(int arg1, void* arg2);
-int hidden_1_1(void* arg1, void *arg2);
+void hidden_1_1(int64_t* arg1, int64_t *arg2);
 int hidden_1_2(void* arg1);
 int hidden_1_3(void* arg1, void* arg2);
 int hidden_1_4(void* arg1);
-int hidden_1_5(void* arg1, void* arg2);
+void hidden_1_5(int64_t* arg1, uint64_t* arg2);
 
 int hidden_2_0(void* arg1);
 int hidden_2_1(void* arg1);
@@ -91,9 +92,9 @@ int hidden_3_2(void** arg1, int arg2, void** arg3);
 
 int hidden_4_0(void* arg1);
 int hidden_4_1(void* arg1);
-int hidden_4_2(void* arg1);
+unsigned int hidden_4_2(char * ,char*,int64_t);
 int hidden_4_3(void* arg1);
 
-int hidden_5_0(int arg1,time_t arg2, void* arg3);
+int64_t hidden_5_0(uint64_t arg1,time_t arg2, char* arg3);
 int hidden_5_1(void* arg1);
-#endif //_CD_CLIENT_HIDDEN_H_
+#endif //_CUDA_HIDDEN_H_
