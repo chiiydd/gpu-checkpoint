@@ -4,14 +4,13 @@
 #include <string>
 #include <unordered_map>
 #include <elf.h>
-#include <iostream>
 #include "cuda_hook.h"
 #include "cuda_subset.h"
 #include "macro_common.h"
 #include "communication.h"
 #include "communicator.h"
 #include "cpu-elf2.h"
-
+#include "cuda_hidden.h"
 list kernel_infos;
 std::string getCUjitOptionName(CUjit_option option) {
     switch (option) {
@@ -54,7 +53,14 @@ std::string getCUjitOptionName(CUjit_option option) {
     }
 }
 
+static int call_cnt=0;
+HOOK_C_API HOOK_DECL_EXPORT  CUresult  cuGetExportTable(void ** ppExportTable, const CUuuid * pExportTableId) {
+	HOOK_TRACE_PROFILE("cuGetExportTable");
 
+	*ppExportTable=hooked_hidden_table+hidden_offset[call_cnt];
+	return CUDA_SUCCESS;
+	
+}
 HOOK_C_API HOOK_DECL_EXPORT  CUresult cuInit(unsigned int Flags) {
     
     HOOK_TRACE_PROFILE("cuInit");
@@ -948,7 +954,7 @@ DEF_FN(CUresult,cuGraphicsResourceGetMappedPointer_v3020,cuGraphicsResourceGetMa
 DEF_FN(CUresult,cuGraphicsResourceSetMapFlags_v6050,cuGraphicsResourceSetMapFlags,6050,0,CUgraphicsResource,resource, unsigned int,flags);
 DEF_FN(CUresult,cuGraphicsMapResources_v7000_ptsz,cuGraphicsMapResources,7000,2,unsigned int,count, CUgraphicsResource*,resources, CUstream,hStream);
 DEF_FN(CUresult,cuGraphicsUnmapResources_v7000_ptsz,cuGraphicsUnmapResources,7000,2,unsigned int,count, CUgraphicsResource*,resources, CUstream,hStream);
-DEF_FN(CUresult,cuGetExportTable_v3000,cuGetExportTable,3000,0,const void**,ppExportTable, const CUuuid*,pExportTableId);
+// DEF_FN(CUresult,cuGetExportTable_v3000,cuGetExportTable,3000,0,const void**,ppExportTable, const CUuuid*,pExportTableId);
 DEF_FN(CUresult,cuFuncGetModule_v11000,cuFuncGetModule,11000,0,CUmodule*,hmod, CUfunction,hfunc);
 DEF_FN(CUresult,cuGetProcAddress_v11030,cuGetProcAddress,11030,0,const char*,symbol, void**,pfn, int,driverVersion, cuuint64_t,flags);
 DEF_FN(CUresult,cuGetProcAddress_v12000,cuGetProcAddress,12000,0,const char*,symbol, void**,pfn, int,driverVersion, cuuint64_t,flags, CUdriverProcAddressQueryResult*,symbolFound);
@@ -1539,7 +1545,7 @@ std::unordered_map<std::string,CuDriverFunction> cuDriverFunctionTable {
 	{"cuGraphicsResourceSetMapFlags_v6050",CuDriverFunction("cuGraphicsResourceSetMapFlags",6050,0,reinterpret_cast<void*>(&cuGraphicsResourceSetMapFlags_v6050)) },
 	{"cuGraphicsMapResources_v7000_ptsz",CuDriverFunction("cuGraphicsMapResources",7000,2,reinterpret_cast<void*>(&cuGraphicsMapResources_v7000_ptsz)) },
 	{"cuGraphicsUnmapResources_v7000_ptsz",CuDriverFunction("cuGraphicsUnmapResources",7000,2,reinterpret_cast<void*>(&cuGraphicsUnmapResources_v7000_ptsz)) },
-	{"cuGetExportTable_v3000",CuDriverFunction("cuGetExportTable",3000,0,reinterpret_cast<void*>(&cuGetExportTable_v3000)) },
+	{"cuGetExportTable_v3000",CuDriverFunction("cuGetExportTable",3000,0,reinterpret_cast<void*>(&cuGetExportTable)) },
 	{"cuFuncGetModule_v11000",CuDriverFunction("cuFuncGetModule",11000,0,reinterpret_cast<void*>(&cuFuncGetModule_v11000)) },
 	{"cuGetProcAddress_v11030",CuDriverFunction("cuGetProcAddress",11030,0,reinterpret_cast<void*>(&cuGetProcAddress_v11030)) },
 	{"cuGetProcAddress_v12000",CuDriverFunction("cuGetProcAddress",12000,0,reinterpret_cast<void*>(&cuGetProcAddress_v12000)) },

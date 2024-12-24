@@ -10,6 +10,7 @@
 
 #include <string>
 
+
 void hexdump(const uint8_t* data, size_t size)
 {
     size_t pos = 0;

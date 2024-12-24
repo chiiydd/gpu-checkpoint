@@ -1,6 +1,7 @@
 #ifndef COMMUNICATION_H
 #define COMMUNICATION_H
 #include <cstddef>
+#include <cstdint>
 #include "cuda_subset.h"
 #include "fatbinary.h"
 enum class CuDriverCall{
@@ -30,7 +31,15 @@ enum class CuDriverCall{
     CuLibraryGetModule,
     CuModuleGetFunction,
     CuLaunchKernel,
-    
+    hidden_get_device_ctx,
+    Hidden_1_1,
+    Hidden_1_5,
+    hidden_3_0,
+    hidden_3_1,
+    hidden_3_2,
+    hidden_4_1,
+    hidden_4_2,
+    hidden_5_0,
 };
 
 
@@ -146,6 +155,40 @@ struct CuDriverCallStructure {
                 CUstream hStream;
                 size_t parametersMetadataLen;
         }cuLaunchKernel;
+
+        struct{
+            CUdevice dev;
+        }hiddenGetDeviceCtx;
+
+        struct{
+            uint32_t dev;
+        }hidden_get_device_ctx;
+        struct{
+            int64_t arg1;
+            uint64_t arg2;
+            uint64_t *arg3;
+            uint64_t arg4;
+        }hidden_3_0;
+
+        struct{
+            void * arg1;
+            void * arg2;
+        }hidden_3_1;
+
+        struct{
+            void *arg1;
+            uint64_t arg2;
+            void * arg3;
+        }hidden_3_2;
+        struct{
+            int64_t arg1; //CUctx
+        }hidden_4_1;
+        struct{
+            uint32_t arg1;
+            uint64_t arg2;
+            uint64_t * arg3;
+        }hidden_5_0;
+
     }params;
 };
 
@@ -170,6 +213,22 @@ struct CuDriverCallReplyStructure{
 
             size_t  bytes;
             char uuid[16];
+            struct{
+                uint64_t arg1;
+                uint64_t arg2;
+            }hidden_1_1;
+            struct{
+                uint64_t arg1;
+                uint64_t arg2;
+            }hidden_1_5;
+
+            struct{
+                uint64_t arg2;
+            }hidden_3_1;
+            struct{
+                int arg2;
+                int64_t arg3;
+            }hidden_4_1;
         }returnParams;
 };
 
